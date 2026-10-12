@@ -2,6 +2,8 @@
 
 Expert Advisor de **scalping para EURUSD en MetaTrader 5**, diseñado para cuentas de fondeo (prop firms) de **100k**.
 
+> 🛑 **Resultado del backtest con datos reales (2021–2025): la estrategia actual NO es rentable** (winrate 39.8%, −0.19R por operación tras costes). Ver la sección *Backtest con datos reales*. No la uses en un challenge tal cual.
+>
 > ⚠️ **Aviso importante:** ningún bot es rentable de forma garantizada. Este EA tiene una lógica razonable y, sobre todo, **protecciones estrictas para no violar las reglas de fondeo**, pero **antes de usarlo en un challenge real** tienes que hacer un backtest con *ticks reales* de tu bróker/prop firm y probarlo al menos 2–4 semanas en demo. Los resultados pasados no garantizan resultados futuros.
 
 ## Archivos
@@ -171,3 +173,41 @@ Mismo riesgo 1.5% pero **sin límite de 3 días**: Rapid 47%, Classic 41%, Ultra
 | 1.5% | 47% | 6 |
 
 En todos los casos 0% de suspensos por las reglas de la firma: lo que no aprueba es porque el EA se detiene antes del límite (cuenta salvada pero challenge no superado) o porque se acaba el plazo.
+
+## Backtest con datos reales (EURUSD M1, 2021–2025)
+
+`tools/backtest.py` replica la lógica del EA en Python sobre datos M1 de HistData (resuelve SL/TP minuto a minuto; si en el mismo minuto se tocan ambos, cuenta el SL). Costes: 0.3 pips de spread + 7 $/lote de comisión (≈0.7 pips). Se ajusta con 2021–2023 y se valida con 2024–2025.
+
+```bash
+python3 tools/backtest.py --data carpeta_con_DAT_ASCII_EURUSD_M1_YYYY.csv --years 2021-2025 --export-r trades_r.txt
+python3 tools/montecarlo.py --r-file trades_r.txt --phases 10 --firm-daily 4 --firm-dd 6 --ea-daily 3.5 --ea-dd 5.2 --risk 1.5 --max-days 3
+```
+
+Comprobación del motor: entradas aleatorias sin costes dan esperanza ≈ 0 (sin sesgo).
+
+**Estrategia actual (pullback M5):**
+
+| Año | Operaciones | Winrate | Esperanza | PF |
+|---|---|---|---|---|
+| 2021 | 847 | 35.7% | −0.31R | 0.49 |
+| 2022 | 909 | 40.2% | −0.18R | 0.66 |
+| 2023 | 741 | 40.8% | −0.17R | 0.69 |
+| 2024 | 730 | 41.0% | −0.18R | 0.68 |
+| 2025 | 892 | 41.7% | −0.12R | 0.78 |
+
+Sin costes la esperanza es ≈ 0: la señal no tiene ventaja y los costes (≈1 pip con SL de 4–8 pips = 0.12–0.25R) la hunden.
+
+Monte Carlo con estas operaciones reales en WSFunded Rapid a 1.5%: aprueba **0.6%** en 3 días y **4.9%** sin límite (en el 94% restante el EA se detiene por drawdown antes de violar la regla).
+
+**Intentos de mejora del winrate (~100 configuraciones, validadas fuera de muestra):**
+
+| Variante | Winrate (test) | Esperanza (test) |
+|---|---|---|
+| Filtros ADX / M15 / cuerpo de vela / apertura diaria / horarios | 40–48% | −0.02 a −0.18R |
+| SL más amplio (8–20 pips) | 43% | −0.11R |
+| Reversión a la media asiática M5 (RR negativo) | 61–71% | −0.12 a −0.18R |
+| Ruptura de rango de Londres / apertura NY | 30–46% | −0.09 a −0.24R |
+| Pullback en M15 | 35–50% | −0.07 a −0.13R |
+| Reversión a la media M15 (Bollinger 2.5, RSI, ADX bajo) | 60–73% | −0.04 a +0.05R (ruido, no supera a train) |
+
+Conclusión: **es fácil subir el winrate (bajando el TP o haciendo reversión a la media), pero ninguna variante simple tiene esperanza positiva estable tras costes en EURUSD M5/M15.** Subir el winrate sin ventaja solo cambia la forma de perder.

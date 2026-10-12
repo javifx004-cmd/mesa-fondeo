@@ -240,6 +240,10 @@ def simulate(rules, draw_r, target_pct, max_days, rng, start_balance=None):
 
 
 def make_drawer(args, rng):
+    if args.r_file:
+        r = np.loadtxt(args.r_file, ndmin=1)
+        print(f"Fichero R: {len(r)} operaciones | Winrate {np.mean(r > 0):.1%} | media {r.mean():+.3f}R")
+        return lambda n: rng.choice(r, size=n, replace=True), r
     if args.report:
         pct, ndays = load_trades_pct(args.report)
         r = pct / args.sample_risk
@@ -382,6 +386,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     src = ap.add_argument_group("Fuente de operaciones")
     src.add_argument("--report", help="Informe HTML del probador de MT5 o CSV con columna Profit")
+    src.add_argument("--r-file", help="Fichero con un resultado en R por linea (tools/backtest.py --export-r)")
     src.add_argument("--sample-risk", type=float, default=0.30, help="%% de riesgo usado en el backtest")
     src.add_argument("--winrate", type=float, default=0.45, help="Tasa de acierto (modo parametrico)")
     src.add_argument("--rr", type=float, default=1.5, help="Ratio TP/SL")
@@ -427,7 +432,7 @@ def main():
         scenarios(args, rules)
         return
 
-    src_label = os.path.basename(args.report) if args.report else f"winrate {args.winrate:.0%}, RR {args.rr}"
+    src_label = os.path.basename(args.report or args.r_file) if (args.report or args.r_file) else f"winrate {args.winrate:.0%}, RR {args.rr}"
     print(f"Fuente: {src_label} | riesgo {args.risk}% | {args.trades_per_day:.2f} operaciones/dia")
     if args.mode == "challenge":
         s, curves, st, days, dds = run_challenge(args, rules, rng, draw)
