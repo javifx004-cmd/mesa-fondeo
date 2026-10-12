@@ -31,6 +31,31 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
 - **Copia de seguridad**: exporta/restaura todos los trabajos en un archivo, útil para
   pasar los trabajos del móvil al PC.
 
+## Presupuesto
+
+Debajo del plano está el apartado **Presupuesto**, calculado con la tarifa (`tarifas.js`,
+copia de `tarifas_carbonell_2025.csv`):
+
+- **Material**: se elige de la tarifa en la ficha.
+- **Piezas**: bancada, frontal o zócalo, con largo, fondo (o alto) y cantos vistos.
+  - Bancada y frontal: por metro lineal si el fondo es menor de 75 cm; a partir de 75 cm, por m².
+  - Zócalo: por metro lineal (precio de zócalo de la tarifa).
+- **Cantos**: metros de los lados marcados como vistos × precio del tipo de canto de la ficha.
+- **Huecos**: fregadero según su tipo, vitro (hueco sobre encimera), taladros de grifo, jabonera
+  y ósmosis (hueco de grifo) y cajas de luz dibujadas en el plano (cajas).
+- **Colocación**: de bancada (por trabajo) y de aplacado (por m² de frontales).
+- **IVA 21 %**: se suma o no con una casilla.
+- Se descarga, se comparte o se imprime como hoja A4 aparte (sin el plano).
+- «Cambiar tarifas» carga otro CSV con el mismo formato.
+
+### Asistente con IA
+
+«Hacer presupuesto con IA» envía a Claude (modelo `claude-opus-5-5`) la imagen del plano, la
+ficha, lo que escribas y los nombres de la tarifa, y rellena las piezas y los datos que falten.
+**Los precios los calcula siempre la app**, no la IA. Necesita conexión y una clave de la API de
+Claude (console.anthropic.com), que se guarda solo en el dispositivo; cada uso se paga en la
+cuenta de esa clave. La librería oficial (`@anthropic-ai/sdk` 0.128.0) va incluida en `vendor/`.
+
 ## Cómo usarla
 
 Abrir `index.html` en el navegador basta para probarla. Para tenerla en el móvil y en el PC

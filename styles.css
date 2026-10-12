@@ -31,6 +31,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg);
@@ -68,7 +69,7 @@ button:active { transform: translateY(1px); }
 
 main { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: grid; gap: 12px; }
 
-.ficha, .plano, .acciones {
+.ficha, .plano, .presupuesto, .acciones {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -131,6 +132,47 @@ main { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: grid; gap
   }
 }
 body.sin-scroll { overflow: hidden; }
+
+.presupuesto h2 { margin: 0; font-size: 20px; }
+.presupuesto h3 { margin: 16px 0 8px; font-size: 16px; }
+.presu-cab { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
+.tarifa { color: var(--muted); font-size: 14px; }
+.enlace { color: var(--active); text-decoration: underline; cursor: pointer; margin-left: 8px; }
+.ia { margin-top: 12px; padding: 12px; border: 1px dashed var(--active); border-radius: 10px; }
+.ia h3 { margin-top: 0; }
+.ayuda { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+#descripcionIA {
+  width: 100%; padding: 9px 10px; font-size: 16px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+}
+.ia-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+#estadoIA { margin: 8px 0 0; font-size: 14px; white-space: pre-wrap; }
+#estadoIA:empty { display: none; }
+button:disabled { opacity: .6; cursor: progress; }
+#listaPiezas { display: grid; gap: 8px; margin-bottom: 8px; }
+#listaPiezas .vacio { color: var(--muted); margin: 0; }
+.pieza { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.pieza-medidas { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.pieza-medidas select, .pieza-medidas input {
+  min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+  padding: 0 8px; font-size: 16px;
+}
+.pieza-medidas label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); font-weight: 600; gap: 2px; }
+.pieza-medidas input { width: 110px; }
+.pieza-medidas .quitar { margin-left: auto; }
+.pieza-cantos { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 14px; }
+.pieza-cantos span { color: var(--muted); }
+.extras { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0; }
+#tablaPresupuesto { overflow-x: auto; }
+#tablaPresupuesto table { width: 100%; border-collapse: collapse; font-size: 14px; }
+#tablaPresupuesto th, #tablaPresupuesto td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+#tablaPresupuesto .num { text-align: right; white-space: nowrap; }
+#tablaPresupuesto tfoot td { border-bottom: 0; }
+#tablaPresupuesto tr.total td { font-weight: 700; font-size: 17px; border-top: 2px solid var(--text); }
+#tablaPresupuesto .vacio { color: var(--muted); margin: 0; }
+.avisos { margin: 10px 0 0; padding-left: 20px; color: #a35a00; font-size: 14px; }
+.avisos:empty { display: none; }
+.acciones-presu { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 

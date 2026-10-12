@@ -12,7 +12,7 @@ const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
-  'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'jabonera',
+  'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
 const ROJO = '#c62828';
 const AZUL_CANTO = '#1e88e5';
@@ -62,11 +62,15 @@ let punteroActivo = null;
 function trabajoVacio() {
   const datos = Object.fromEntries(CAMPOS.map((c) => [c, '']));
   datos.fecha = hoy();
-  return { id: nuevoId(), datos, objetos: [], creado: Date.now(), modificado: Date.now() };
+  return {
+    id: nuevoId(), datos, objetos: [], piezas: [],
+    extras: { colocBancada: false, colocAplacado: false, iva: true },
+    creado: Date.now(), modificado: Date.now(),
+  };
 }
 
 function tieneContenido(t) {
-  return t.objetos.length > 0 ||
+  return t.objetos.length > 0 || (t.piezas || []).length > 0 ||
     CAMPOS.some((c) => c !== 'fecha' && (t.datos[c] || '').trim() !== '');
 }
 
@@ -111,6 +115,8 @@ function textoFregadero(d) {
 // ---------------------------------------------------------------------------
 let temporizador = null;
 function cambio() {
+  // el presupuesto (presupuesto.js) depende de la ficha, las piezas y las cajas del plano
+  if (typeof pintarResultado === 'function') pintarResultado();
   clearTimeout(temporizador);
   temporizador = setTimeout(guardar, 600);
 }
@@ -138,6 +144,7 @@ function abrir(t) {
   rehacer = [];
   volcarFormulario();
   dibujar();
+  if (typeof pintarPresupuesto === 'function') pintarPresupuesto();
   try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
 }
 
@@ -976,14 +983,19 @@ $('#btnCompartir').addEventListener('click', async () => {
   }
 });
 
+// Por defecto se imprime la hoja del plano; el presupuesto pasa su propia hoja.
+let hojaAImprimir = null;
 function prepararImpresion() {
-  $('#imgImpresion').src = componerHoja().toDataURL('image/png');
+  $('#imgImpresion').src = (hojaAImprimir || componerHoja()).toDataURL('image/png');
 }
-window.addEventListener('beforeprint', prepararImpresion);
-$('#btnImprimir').addEventListener('click', () => {
+function imprimirHoja(hoja) {
+  hojaAImprimir = hoja;
   prepararImpresion();
   setTimeout(() => window.print(), 50);
-});
+}
+window.addEventListener('beforeprint', prepararImpresion);
+window.addEventListener('afterprint', () => { hojaAImprimir = null; });
+$('#btnImprimir').addEventListener('click', () => imprimirHoja(null));
 
 // ---------------------------------------------------------------------------
 // Trabajos guardados
