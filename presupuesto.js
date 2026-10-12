@@ -455,7 +455,8 @@ function nombrePresupuesto() {
   return nombreArchivo().replace(/^plano_/, 'presupuesto_');
 }
 
-function presupuestoComoBlob() {
+async function presupuestoComoBlob() {
+  await logoListo();
   return new Promise((ok) => componerPresupuesto().toBlob(ok, 'image/png'));
 }
 
@@ -485,7 +486,7 @@ $('#btnPresuCompartir').addEventListener('click', async () => {
 
 $('#btnPresuImprimir').addEventListener('click', () => {
   if (!comprobarPresupuesto()) return;
-  imprimirHoja(componerPresupuesto());
+  imprimirHoja(componerPresupuesto);
 });
 
 // ---------------------------------------------------------------------------

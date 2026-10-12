@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '16';   // cambiar junto con CACHE en sw.js
+const VERSION = '17';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -992,6 +992,19 @@ function cargarLogo() {
   let datos = null;
   try { datos = localStorage.getItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
   logoImg.src = datos || 'logo.svg';   // logo de Mármoles Carbonell de serie
+  $('#logoApp').src = logoImg.src;
+}
+
+// Espera a que el logo esté cargado antes de componer una hoja (como mucho 4 s).
+function logoListo() {
+  if (logoImg.complete) return Promise.resolve();
+  return Promise.race([
+    new Promise((ok) => {
+      logoImg.addEventListener('load', ok, { once: true });
+      logoImg.addEventListener('error', ok, { once: true });
+    }),
+    new Promise((ok) => setTimeout(ok, 4000)),
+  ]);
 }
 
 function pintarCabecera(c, M, derecha) {
@@ -1182,7 +1195,8 @@ function nombreArchivo() {
     .replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 60) + '.png';
 }
 
-function hojaComoBlob() {
+async function hojaComoBlob() {
+  await logoListo();
   return new Promise((ok) => componerHoja().toBlob(ok, 'image/png'));
 }
 
@@ -1219,8 +1233,10 @@ let hojaAImprimir = null;
 function prepararImpresion() {
   $('#imgImpresion').src = (hojaAImprimir || componerHoja()).toDataURL('image/png');
 }
-function imprimirHoja(hoja) {
-  hojaAImprimir = hoja;
+// componer: función que crea la hoja (null = la del plano)
+async function imprimirHoja(componer) {
+  await logoListo();
+  hojaAImprimir = componer ? componer() : null;
   prepararImpresion();
   setTimeout(() => window.print(), 50);
 }

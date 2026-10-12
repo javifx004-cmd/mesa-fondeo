@@ -62,6 +62,8 @@ button:active { transform: translateY(1px); }
   padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top));
   background: var(--accent); color: var(--accent-text);
 }
+.marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#logoApp { height: 44px; width: auto; border-radius: 4px; flex: none; }
 .topbar h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 .topbar-actions { display: flex; gap: 6px; }
 .topbar-actions button { background: transparent; color: inherit; border-color: rgba(255,255,255,.4); }
@@ -240,7 +242,7 @@ button.enlace { background: none; border: 0; padding: 0; min-height: 0; font: in
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 520px) {
-  .topbar h1 { font-size: 16px; }
+  .topbar h1 { display: none; }   /* en el móvil solo el logo, para que quepan los botones */
   .topbar-actions button { padding: 6px 8px; }
   .grid { grid-template-columns: 1fr; }
   .grid label.wide, .grid .grupo.wide { grid-column: auto; }
