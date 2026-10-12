@@ -11,6 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
+const VERSION = '10';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -140,12 +141,25 @@ function guardar(manual = false) {
 function abrir(t) {
   trabajo = structuredClone(t);
   for (const c of CAMPOS) if (!(c in trabajo.datos)) trabajo.datos[c] = '';
+  trabajo.objetos.forEach(migrarColumna);
   historial = [];
   rehacer = [];
   volcarFormulario();
   dibujar();
   if (typeof pintarPresupuesto === 'function') pintarPresupuesto();
   try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
+}
+
+// Las columnas antiguas guardaban sus medidas en un solo texto ("4,5X10X5" o "300 × 250").
+// Se pasan a una medida por lado suponiendo la columna contra la pared de arriba:
+// tres medidas = izquierda, abajo, derecha; dos = abajo y los dos laterales. Se corrigen con Editar.
+function migrarColumna(o) {
+  if (o.tipo !== 'columna' || o.lados || !o.texto) return;
+  const m = o.texto.split(/\s*[x×*]\s*/i).filter(Boolean);
+  if (m.length >= 3) o.lados = { arriba: '', izq: m[0], abajo: m[1], der: m[2] };
+  else if (m.length === 2) o.lados = { arriba: '', izq: m[1], abajo: m[0], der: m[1] };
+  else o.lados = { arriba: '', izq: '', abajo: m[0] || '', der: '' };
+  delete o.texto;
 }
 
 // ---------------------------------------------------------------------------
@@ -1181,6 +1195,8 @@ function aviso(texto) {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') guardar();
   });
+
+  $('#version').textContent = `Planos Cocina · versión ${VERSION}`;
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => { /* sin modo sin conexión */ });

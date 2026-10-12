@@ -218,6 +218,8 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 #colDer { grid-column: 3; grid-row: 2; }
 #colAbajo { grid-column: 2; grid-row: 3; }
 
+#version { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
+
 #aviso {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
   background: var(--accent); color: var(--accent-text);
