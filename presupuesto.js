@@ -561,8 +561,12 @@ function leerClaveIA() {
 }
 
 async function pedirClaveIA() {
-  const clave = await pedirTexto('Clave de la API de Claude (empieza por sk-ant-). Se guarda solo en este dispositivo.', leerClaveIA(), true);
+  const clave = await pedirTexto('Clave de la API de Claude (empieza por sk-ant-). Se saca en console.anthropic.com y se guarda solo en este dispositivo.', leerClaveIA(), true);
   if (clave === null) return null;
+  if (clave && !clave.startsWith('sk-ant-')) {
+    aviso('Esa no parece una clave de la API: debe empezar por sk-ant-');
+    return null;
+  }
   try {
     if (clave) localStorage.setItem(CLAVE_IA, clave); else localStorage.removeItem(CLAVE_IA);
   } catch { /* sin almacenamiento */ }
@@ -597,17 +601,41 @@ Lista de materiales:
 ${tarifas.materiales.map(etiquetaMaterial).join('\n')}`;
 }
 
+const AYUDA_CLAVE = 'Para usar la IA hace falta una clave de la API de Claude: entra en console.anthropic.com, '
+  + 'crea una clave en «API Keys», añade saldo en «Billing» y pégala con el botón «Clave IA». '
+  + '(La suscripción de claude.ai no sirve: la API es una cuenta aparte.)';
+
 async function presupuestoConIA() {
+  const estado = $('#estadoIA');
+  if (location.protocol === 'file:') {
+    estado.textContent = 'El asistente con IA no funciona abriendo la app desde el ZIP. '
+      + 'Ábrela desde la dirección web (https://javifx004-cmd.github.io/mesa-fondeo/).';
+    return;
+  }
+  if (!navigator.onLine) {
+    estado.textContent = 'Sin conexión a internet: la IA necesita conexión.';
+    return;
+  }
   let clave = leerClaveIA();
   if (!clave) clave = await pedirClaveIA();
-  if (!clave) return;
+  if (!clave) {
+    estado.textContent = AYUDA_CLAVE;
+    return;
+  }
 
   const boton = $('#btnIA');
-  const estado = $('#estadoIA');
   boton.disabled = true;
   estado.textContent = 'La IA está leyendo el plano…';
+  let modulo;
   try {
-    const { Anthropic, jsonSchemaOutputFormat } = await import('./vendor/anthropic-sdk.mjs');
+    modulo = await import('./vendor/anthropic-sdk.js');
+  } catch {
+    estado.textContent = 'No se pudo cargar el asistente. Recarga la página y prueba otra vez.';
+    boton.disabled = false;
+    return;
+  }
+  try {
+    const { Anthropic, jsonSchemaOutputFormat } = modulo;
     const client = new Anthropic({ apiKey: clave, dangerouslyAllowBrowser: true });
     const respuesta = await client.beta.messages.parse({
       model: MODELO_IA,
@@ -639,12 +667,15 @@ async function presupuestoConIA() {
 
 function mensajeErrorIA(err) {
   const s = err && err.status;
-  if (s === 401) return 'La clave de la API no es válida. Pulsa «Clave IA» para cambiarla.';
+  const texto = (err && err.message) || '';
+  if (s === 401) return 'La clave de la API no es válida. Pulsa «Clave IA» y pégala otra vez. ' + AYUDA_CLAVE;
+  if (/credit balance/i.test(texto)) return 'La cuenta de la API no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
   if (s === 403) return 'Esta clave no tiene permiso para usar la IA.';
   if (s === 429) return 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
   if (s >= 500) return 'El servicio de IA no responde ahora mismo. Prueba en un rato.';
   if (!navigator.onLine) return 'Sin conexión a internet: la IA necesita conexión.';
-  return 'No se pudo hacer el presupuesto con IA: ' + (err && err.message ? err.message : 'error desconocido');
+  if (!s) return 'No se pudo conectar con la IA. Revisa la conexión y prueba otra vez.';
+  return `No se pudo hacer el presupuesto con IA (error ${s}): ${texto || 'error desconocido'}`;
 }
 
 function aplicarIA(r) {
