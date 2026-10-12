@@ -17,8 +17,8 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
     Sus medidas y el radio van solo en la ficha, no en el plano; la jabonera y la ósmosis
     marcadas en la ficha salen como taladros detrás del fregadero.
   - Canto visto: se marca en azul a lo largo del canto y la hoja lleva su leyenda.
-  - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados, con sus medidas) y
-    descuadres, marcados con una raya roja discontinua encima del propio canto de la pieza
+  - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados, con la medida de cada lado que toca en pequeño) y
+    descuadres, marcados con una raya roja discontinua fina encima del propio canto de la pieza
     (sin medida; la hoja lleva su leyenda).
   - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero
     te lleva a la ficha).

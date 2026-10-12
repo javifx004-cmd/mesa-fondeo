@@ -386,18 +386,7 @@ function pintarObjeto(c, o) {
       c.strokeStyle = o.color;
       c.lineWidth = o.w;
       c.strokeRect(x, y, w, h);
-      if (o.texto) {
-        // medidas de la columna debajo, sobre fondo blanco
-        const txt = `Columna ${o.texto}`;
-        c.font = '700 28px system-ui, sans-serif';
-        c.textAlign = 'center';
-        c.textBaseline = 'top';
-        const ancho = c.measureText(txt).width;
-        c.fillStyle = '#ffffff';
-        c.fillRect(x + w / 2 - ancho / 2 - 6, y + h + 6, ancho + 12, 34);
-        c.fillStyle = o.color;
-        c.fillText(txt, x + w / 2, y + h + 10);
-      }
+      if (o.lados) pintarLadosColumna(c, o, x, y, w, h);
       break;
     }
     case 'descuadre':
@@ -415,6 +404,39 @@ function pintarObjeto(c, o) {
   }
 }
 
+// Medida pequeña pegada a cada lado de la columna (solo los lados que la tienen).
+function pintarLadosColumna(c, o, x, y, w, h) {
+  const tam = 22;
+  const sep = 6;
+  // [texto, centro x, centro y, giro, desplazamiento hacia fuera]
+  const lados = [
+    [o.lados.arriba, x + w / 2, y, 0, -1],
+    [o.lados.abajo, x + w / 2, y + h, 0, 1],
+    [o.lados.izq, x, y + h / 2, -Math.PI / 2, -1],
+    [o.lados.der, x + w, y + h / 2, -Math.PI / 2, 1],
+  ];
+  c.font = `600 ${tam}px system-ui, sans-serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  for (const [txt, cx, cy, giro, fuera] of lados) {
+    if (!txt) continue;
+    const ancho = c.measureText(txt).width;
+    const d = (tam / 2 + sep) * fuera;   // separación del lado hacia fuera
+    c.save();
+    if (giro) {
+      c.translate(cx + d, cy);
+      c.rotate(giro);
+    } else {
+      c.translate(cx, cy + d);
+    }
+    c.fillStyle = '#ffffff';
+    c.fillRect(-ancho / 2 - 4, -tam / 2 - 2, ancho + 8, tam + 4);
+    c.fillStyle = o.color;
+    c.fillText(txt, 0, 1);
+    c.restore();
+  }
+}
+
 // Descuadre: raya roja discontinua encima del propio canto de la pieza, sin medida.
 function pintarDescuadre(c, o) {
   const [ax, ay] = o.a;
@@ -426,13 +448,13 @@ function pintarDescuadre(c, o) {
   c.rotate(ang);
   c.strokeStyle = ROJO;
   c.lineCap = 'butt';
-  c.lineWidth = 7;
-  c.setLineDash([22, 10]);
+  c.lineWidth = 3;
+  c.setLineDash([14, 8]);
   linea(c, [0, 0], [lon, 0]);
   c.setLineDash([]);
-  c.lineWidth = 4;
-  linea(c, [0, -18], [0, 18]);
-  linea(c, [lon, -18], [lon, 18]);
+  c.lineWidth = 2.5;
+  linea(c, [0, -12], [0, 12]);
+  linea(c, [lon, -12], [lon, 12]);
   c.restore();
 }
 
@@ -674,14 +696,18 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
-  if (o.tipo === 'cota' || o.tipo === 'columna') {
+  if (o.tipo === 'cota') {
     enCurso = o;          // se sigue viendo mientras se escribe la medida
     dibujar();
-    o.texto = o.tipo === 'cota'
-      ? await pedirTexto('Medida (ej. 2450)', '')
-      : await pedirTexto('Medidas de la columna (ancho × fondo, ej. 300 × 250)', '', true);
+    o.texto = await pedirTexto('Medida (ej. 2450)', '');
     enCurso = null;
     if (o.texto === null) { dibujar(); return; }
+  } else if (o.tipo === 'columna') {
+    enCurso = o;
+    dibujar();
+    const ok = await pedirLadosColumna(o);
+    enCurso = null;
+    if (!ok) { dibujar(); return; }
   }
   anadir(o);
 }
@@ -697,11 +723,10 @@ async function editar(o) {
     campo.focus({ preventScroll: true });
     aviso('Las medidas se cambian aquí, en la ficha');
     return;
-  } else if (['cota', 'texto', 'luz', 'columna'].includes(o.tipo)) {
-    const etiquetas = {
-      cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)',
-      columna: 'Medidas de la columna (ancho × fondo, ej. 300 × 250)',
-    };
+  } else if (o.tipo === 'columna') {
+    ok = await pedirLadosColumna(o);
+  } else if (['cota', 'texto', 'luz'].includes(o.tipo)) {
+    const etiquetas = { cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
     if (texto !== null) {
       if (o.tipo === 'texto' && !texto) return;
@@ -780,6 +805,25 @@ function pedirTexto(etiqueta, valor, permitirVacio = false) {
     dlg.addEventListener('close', () => {
       const v = input.value.trim();
       ok(dlg.returnValue === 'ok' && (v || permitirVacio) ? v : null);
+    }, { once: true });
+  });
+}
+
+// Medidas de cada lado de una columna. Devuelve true si se acepta.
+function pedirLadosColumna(o) {
+  const dlg = $('#dlgColumna');
+  const campos = { arriba: '#colArriba', abajo: '#colAbajo', izq: '#colIzq', der: '#colDer' };
+  const lados = o.lados || {};
+  for (const [k, sel] of Object.entries(campos)) $(sel).value = lados[k] || '';
+  dlg.returnValue = '';
+  dlg.showModal();
+  $('#colArriba').focus();
+  return new Promise((ok) => {
+    dlg.addEventListener('close', () => {
+      if (dlg.returnValue !== 'ok') return ok(false);
+      o.lados = Object.fromEntries(Object.entries(campos).map(([k, sel]) => [k, $(sel).value.trim()]));
+      delete o.texto;   // formato antiguo (una sola medida)
+      ok(true);
     }, { once: true });
   });
 }
@@ -927,8 +971,8 @@ function componerHoja() {
       c.lineWidth = 16;
     } else {
       c.strokeStyle = ROJO;
-      c.lineWidth = 7;
-      c.setLineDash([22, 10]);
+      c.lineWidth = 3;
+      c.setLineDash([14, 8]);
     }
     linea(c, [lx, ly], [lx + 70, ly]);
     c.restore();

@@ -199,6 +199,25 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 #listaTrabajos .info small { color: var(--muted); }
 #listaTrabajos .vacio { color: var(--muted); justify-content: center; }
 
+#dlgColumna h2 { margin: 0 0 6px; font-size: 18px; }
+.cruz {
+  display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: auto 90px auto;
+  gap: 8px; align-items: center; margin-top: 10px;
+}
+.cruz input {
+  width: 100%; padding: 10px; font-size: 16px; text-align: center;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+}
+#colArriba { grid-column: 2; grid-row: 1; }
+#colIzq { grid-column: 1; grid-row: 2; }
+.cruz .cuadro {
+  grid-column: 2; grid-row: 2; height: 100%; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--text); border-radius: 4px; color: var(--muted); font-size: 14px;
+  background: repeating-linear-gradient(45deg, transparent 0 8px, var(--border) 8px 10px);
+}
+#colDer { grid-column: 3; grid-row: 2; }
+#colAbajo { grid-column: 2; grid-row: 3; }
+
 #aviso {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
   background: var(--accent); color: var(--accent-text);

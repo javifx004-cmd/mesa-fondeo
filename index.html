@@ -204,6 +204,24 @@
     </form>
   </dialog>
 
+  <dialog id="dlgColumna">
+    <form method="dialog">
+      <h2>Medidas de la columna</h2>
+      <p class="ayuda">Medida en mm de cada lado que toca la encimera. Deja vacío el lado que no toca.</p>
+      <div class="cruz">
+        <input id="colArriba" inputmode="numeric" autocomplete="off" placeholder="Arriba" aria-label="Lado de arriba">
+        <input id="colIzq" inputmode="numeric" autocomplete="off" placeholder="Izq." aria-label="Lado izquierdo">
+        <div class="cuadro" aria-hidden="true">Columna</div>
+        <input id="colDer" inputmode="numeric" autocomplete="off" placeholder="Der." aria-label="Lado derecho">
+        <input id="colAbajo" inputmode="numeric" autocomplete="off" placeholder="Abajo" aria-label="Lado de abajo">
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit">Cancelar</button>
+        <button value="ok" type="submit" class="primary">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="aviso" role="status" aria-live="polite"></div>
 
   <script src="tarifas.js"></script>
