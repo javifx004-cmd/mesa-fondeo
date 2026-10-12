@@ -308,7 +308,6 @@ function pintarObjeto(c, o) {
         c.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2);
         c.stroke();
       }
-      etiquetaBajo(c, o, trabajo.datos.vitroMedida);
       break;
     }
     case 'frega': {
@@ -328,8 +327,7 @@ function pintarObjeto(c, o) {
         c.arc(sx + sw / 2, sy + sh / 2, Math.max(2, Math.min(sw, sh) * 0.08), 0, Math.PI * 2);
         c.stroke();
       }
-      // jabonera y ósmosis: taladros detrás del fregadero
-      // las medidas y extras se toman siempre de la ficha
+      // jabonera y ósmosis (de la ficha): taladros detrás del fregadero; las medidas solo van en la ficha
       const d = trabajo.datos;
       const extras = [d.jabonera && 'J', d.osmosis && 'Ó'].filter(Boolean);
       extras.forEach((letra, i) => {
@@ -344,8 +342,6 @@ function pintarObjeto(c, o) {
         c.textBaseline = 'middle';
         c.fillText(letra, cx + 22, cy + 1);
       });
-      etiquetaBajo(c, o, [d.fregaMedida, d.fregaRadio && `R${d.fregaRadio.replace(/^\s*r\s*/i, '')}`]
-        .filter(Boolean).join('  '));
       break;
     }
     case 'luz': {
@@ -390,6 +386,18 @@ function pintarObjeto(c, o) {
       c.strokeStyle = o.color;
       c.lineWidth = o.w;
       c.strokeRect(x, y, w, h);
+      if (o.texto) {
+        // medidas de la columna debajo, sobre fondo blanco
+        const txt = `Columna ${o.texto}`;
+        c.font = '700 28px system-ui, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'top';
+        const ancho = c.measureText(txt).width;
+        c.fillStyle = '#ffffff';
+        c.fillRect(x + w / 2 - ancho / 2 - 6, y + h + 6, ancho + 12, 34);
+        c.fillStyle = o.color;
+        c.fillText(txt, x + w / 2, y + h + 10);
+      }
       break;
     }
     case 'descuadre':
@@ -405,19 +413,6 @@ function pintarObjeto(c, o) {
       c.restore();
       break;
   }
-}
-
-function etiquetaBajo(c, o, texto) {
-  if (!texto) return;
-  const { x, y, w, h } = caja(o);
-  c.font = '700 28px system-ui, sans-serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'top';
-  const ancho = c.measureText(texto).width;
-  c.fillStyle = '#ffffff';
-  c.fillRect(x + w / 2 - ancho / 2 - 6, y + h + 6, ancho + 12, 34);
-  c.fillStyle = o.color;
-  c.fillText(texto, x + w / 2, y + h + 10);
 }
 
 // Descuadre: raya roja discontinua encima del propio canto de la pieza, sin medida.
@@ -679,10 +674,12 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
-  if (o.tipo === 'cota') {
+  if (o.tipo === 'cota' || o.tipo === 'columna') {
     enCurso = o;          // se sigue viendo mientras se escribe la medida
     dibujar();
-    o.texto = await pedirTexto('Medida (ej. 2450)', '');
+    o.texto = o.tipo === 'cota'
+      ? await pedirTexto('Medida (ej. 2450)', '')
+      : await pedirTexto('Medidas de la columna (ancho × fondo, ej. 300 × 250)', '', true);
     enCurso = null;
     if (o.texto === null) { dibujar(); return; }
   }
@@ -700,8 +697,11 @@ async function editar(o) {
     campo.focus({ preventScroll: true });
     aviso('Las medidas se cambian aquí, en la ficha');
     return;
-  } else if (['cota', 'texto', 'luz'].includes(o.tipo)) {
-    const etiquetas = { cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
+  } else if (['cota', 'texto', 'luz', 'columna'].includes(o.tipo)) {
+    const etiquetas = {
+      cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)',
+      columna: 'Medidas de la columna (ancho × fondo, ej. 300 × 250)',
+    };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
     if (texto !== null) {
       if (o.tipo === 'texto' && !texto) return;

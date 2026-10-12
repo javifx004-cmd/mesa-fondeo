@@ -13,10 +13,11 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - Línea (se endereza sola en horizontal/vertical), lápiz a mano alzada, rectángulo.
   - Cota con medida escrita.
   - Texto.
-  - Símbolos de vitrocerámica y fregadero: muestran solos las medidas, el radio, la jabonera
-    y la ósmosis que se escriben en la ficha (si el fregadero se dibuja ancho, sale de dos senos).
+  - Símbolos de vitrocerámica y fregadero (si el fregadero se dibuja ancho, sale de dos senos).
+    Sus medidas y el radio van solo en la ficha, no en el plano; la jabonera y la ósmosis
+    marcadas en la ficha salen como taladros detrás del fregadero.
   - Canto visto: se marca en azul a lo largo del canto y la hoja lleva su leyenda.
-  - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados) y
+  - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados, con sus medidas) y
     descuadres, marcados con una raya roja discontinua encima del propio canto de la pieza
     (sin medida; la hoja lleva su leyenda).
   - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero
