@@ -17,7 +17,7 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
     y la ósmosis que se escriben en la ficha (si el fregadero se dibuja ancho, sale de dos senos).
   - Canto visto: se marca en azul a lo largo del canto y la hoja lleva su leyenda.
   - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados) y
-    descuadres de pared con su medida.
+    descuadres con su medida, marcados en rojo encima del propio canto de la pieza.
   - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero
     te lleva a la ficha).
   - Mover y borrar elementos, deshacer/rehacer, rejilla e imán.

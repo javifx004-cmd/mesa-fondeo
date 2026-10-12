@@ -413,7 +413,7 @@ function etiquetaBajo(c, o, texto) {
   c.fillText(texto, x + w / 2, y + h + 10);
 }
 
-// Descuadre: la línea teórica (discontinua) y la pared real que se abre.
+// Descuadre: se marca encima del propio canto de la pieza, en rojo, con la medida sobre él.
 function pintarDescuadre(c, o) {
   const [ax, ay] = o.a;
   const [bx, by] = o.b;
@@ -423,14 +423,14 @@ function pintarDescuadre(c, o) {
   c.translate(ax, ay);
   c.rotate(ang);
   c.strokeStyle = ROJO;
-  c.fillStyle = ROJO;
-  c.lineWidth = 3;
-  c.setLineDash([16, 12]);
+  c.lineCap = 'butt';
+  c.lineWidth = 7;
+  c.setLineDash([22, 10]);
   linea(c, [0, 0], [lon, 0]);
   c.setLineDash([]);
-  c.lineWidth = Math.max(3, o.w * 0.7);
-  linea(c, [0, 0], [lon, -28]);
-  linea(c, [lon, 0], [lon, -28]);
+  c.lineWidth = 4;
+  linea(c, [0, -18], [0, 18]);
+  linea(c, [lon, -18], [lon, 18]);
   c.restore();
   if (!o.texto) return;
   let angTexto = ang;
@@ -440,13 +440,17 @@ function pintarDescuadre(c, o) {
   c.rotate(angTexto);
   c.font = '700 30px system-ui, sans-serif';
   c.textAlign = 'center';
-  c.textBaseline = 'top';
+  c.textBaseline = 'middle';
   const txt = `Descuadre ${o.texto}`;
   const ancho = c.measureText(txt).width;
   c.fillStyle = '#ffffff';
-  c.fillRect(-ancho / 2 - 6, 8, ancho + 12, 36);
+  c.strokeStyle = ROJO;
+  c.lineWidth = 3;
+  rectRedondeado(c, -ancho / 2 - 12, -24, ancho + 24, 48, 10);
+  c.fill();
+  c.stroke();
   c.fillStyle = ROJO;
-  c.fillText(txt, 0, 12);
+  c.fillText(txt, 0, 1);
   c.restore();
 }
 
