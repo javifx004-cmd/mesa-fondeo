@@ -211,3 +211,17 @@ Monte Carlo con estas operaciones reales en WSFunded Rapid a 1.5%: aprueba **0.6
 | Reversión a la media M15 (Bollinger 2.5, RSI, ADX bajo) | 60–73% | −0.04 a +0.05R (ruido, no supera a train) |
 
 Conclusión: **es fácil subir el winrate (bajando el TP o haciendo reversión a la media), pero ninguna variante simple tiene esperanza positiva estable tras costes en EURUSD M5/M15.** Subir el winrate sin ventaja solo cambia la forma de perder.
+
+## Búsqueda de una operativa rentable (EURUSD 2010–2025)
+
+Con 16 años de datos M1 (scripts en `tools/research/`), parámetros elegidos en 2010–2017 y validados en 2018–2025, coste 1 pip/operación:
+
+| Familia | Resultado fuera de muestra (2018–2025) |
+|---|---|
+| Scalping con indicadores M5/M15 (pullback, reversión, rupturas) | Negativo en todas las variantes |
+| **Estacionalidad horaria: venta 13:00–16:00 servidor** | **+0.5 pips netos/operación, Sharpe 0.36** (2010–17: +1.9 pips, Sharpe 1.0). Positiva 14 de 16 años |
+| Esa ventana con filtros (sesión previa, día anterior…) | Ningún filtro se mantiene de train a test |
+| Tendencia H4 (medias, Donchian) | Negativo |
+| Tendencia D1 | ≈ 0 (Sharpe −0.17 a +0.17) |
+
+La única anomalía robusta es que el EUR tiende a depreciarse durante el horario europeo, en concreto entre 13:00 y 16:00 servidor (la hora 14 fue negativa los 16 años, t = −4.9; efecto documentado en la literatura como *time-of-day patterns* de divisas). Pero la ventaja se ha reducido a ~0.5 pips por operación tras costes: **no basta para pasar un challenge rápido ni para vivir de ella**, y depende mucho de los costes reales del bróker.
