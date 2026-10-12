@@ -1,0 +1,14 @@
+{
+  "name": "Planos Cocina",
+  "short_name": "Planos",
+  "description": "Fichas y planos de encimeras para marmolistas",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef0f2",
+  "theme_color": "#2f3b45",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

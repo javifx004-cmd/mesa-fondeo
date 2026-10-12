@@ -1,0 +1,901 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Configuración
+// ---------------------------------------------------------------------------
+const W = 2000;            // ancho lógico del plano
+const H = 1400;            // alto lógico del plano
+const REJILLA = 50;        // separación de la rejilla
+const PASO_IMAN = 25;      // los puntos se ajustan a este paso con el imán
+const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
+const CLAVE = 'planosCocina.trabajos';
+const CLAVE_ACTUAL = 'planosCocina.actual';
+const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
+  'canto', 'vitro', 'fregadero', 'observaciones'];
+const ETIQUETAS = {
+  cliente: 'Cliente', telefono: 'Teléfono', direccion: 'Dirección', referencia: 'Referencia',
+  fecha: 'Fecha', material: 'Material', canto: 'Tipo de canto', vitro: 'Vitrocerámica',
+  fregadero: 'Fregadero', observaciones: 'Observaciones',
+};
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+// ---------------------------------------------------------------------------
+// Almacenamiento
+// ---------------------------------------------------------------------------
+function leerTrabajos() {
+  try { return JSON.parse(localStorage.getItem(CLAVE)) || []; } catch { return []; }
+}
+function escribirTrabajos(lista) {
+  try {
+    localStorage.setItem(CLAVE, JSON.stringify(lista));
+    return true;
+  } catch {
+    aviso('No se pudo guardar en este dispositivo');
+    return false;
+  }
+}
+function nuevoId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function hoy() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Estado
+// ---------------------------------------------------------------------------
+let trabajo = trabajoVacio();
+let historial = [];
+let rehacer = [];
+let herramienta = 'linea';
+let enCurso = null;        // elemento que se está dibujando
+let arrastre = null;       // { obj, ultimo } al mover
+let punteroActivo = null;
+
+function trabajoVacio() {
+  const datos = Object.fromEntries(CAMPOS.map((c) => [c, '']));
+  datos.fecha = hoy();
+  return { id: nuevoId(), datos, objetos: [], creado: Date.now(), modificado: Date.now() };
+}
+
+function tieneContenido(t) {
+  return t.objetos.length > 0 ||
+    CAMPOS.some((c) => c !== 'fecha' && (t.datos[c] || '').trim() !== '');
+}
+
+// ---------------------------------------------------------------------------
+// Formulario
+// ---------------------------------------------------------------------------
+const form = $('.ficha');
+
+function volcarFormulario() {
+  for (const c of CAMPOS) {
+    const el = form.querySelector(`[name="${c}"]`);
+    el.value = trabajo.datos[c] || '';
+  }
+}
+
+form.addEventListener('input', (e) => {
+  if (!e.target.name) return;
+  trabajo.datos[e.target.name] = e.target.value;
+  cambio();
+});
+
+// ---------------------------------------------------------------------------
+// Guardado automático
+// ---------------------------------------------------------------------------
+let temporizador = null;
+function cambio() {
+  clearTimeout(temporizador);
+  temporizador = setTimeout(guardar, 600);
+}
+
+function guardar(manual = false) {
+  clearTimeout(temporizador);
+  if (!tieneContenido(trabajo)) {
+    if (manual) aviso('No hay nada que guardar todavía');
+    return;
+  }
+  trabajo.modificado = Date.now();
+  const lista = leerTrabajos();
+  const i = lista.findIndex((t) => t.id === trabajo.id);
+  if (i >= 0) lista[i] = trabajo; else lista.push(trabajo);
+  if (escribirTrabajos(lista)) {
+    try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
+    if (manual) aviso('Trabajo guardado');
+  }
+}
+
+function abrir(t) {
+  trabajo = structuredClone(t);
+  for (const c of CAMPOS) if (!(c in trabajo.datos)) trabajo.datos[c] = '';
+  historial = [];
+  rehacer = [];
+  volcarFormulario();
+  dibujar();
+  try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
+}
+
+// ---------------------------------------------------------------------------
+// Lienzo
+// ---------------------------------------------------------------------------
+const lienzo = $('#lienzo');
+const ctx = lienzo.getContext('2d');
+const seccionPlano = $('.plano');
+let escala = 1;
+
+function ajustarLienzo() {
+  const area = $('.lienzo-area');
+  let anchoCss;
+  if (seccionPlano.classList.contains('maximizado')) {
+    // ocupa todo el hueco libre manteniendo la proporción
+    anchoCss = Math.min(area.clientWidth - 2, (area.clientHeight - 2) * W / H);
+  } else {
+    anchoCss = area.clientWidth - 2;
+  }
+  anchoCss = Math.max(100, anchoCss);
+  const altoCss = anchoCss * H / W;
+  lienzo.style.width = anchoCss + 'px';
+  lienzo.style.height = altoCss + 'px';
+  const dpr = window.devicePixelRatio || 1;
+  lienzo.width = Math.round(anchoCss * dpr);
+  lienzo.height = Math.round(altoCss * dpr);
+  escala = lienzo.width / W;
+  dibujar();
+}
+
+function opciones() {
+  return {
+    color: $('#optColor').value,
+    w: Number($('#optGrosor').value),
+  };
+}
+
+function aLogico(e) {
+  const r = lienzo.getBoundingClientRect();
+  return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height];
+}
+
+function iman(p) {
+  if (!$('#optIman').checked) return p;
+  return [Math.round(p[0] / PASO_IMAN) * PASO_IMAN, Math.round(p[1] / PASO_IMAN) * PASO_IMAN];
+}
+
+// Endereza las líneas casi horizontales o verticales.
+function enderezar(a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const ang = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
+  if (ang < 7 || ang > 173) return [b[0], a[1]];
+  if (Math.abs(ang - 90) < 7) return [a[0], b[1]];
+  return b;
+}
+
+// ---------------------------------------------------------------------------
+// Dibujo
+// ---------------------------------------------------------------------------
+function dibujar() {
+  pintarPlano(ctx, escala, $('#optRejilla').checked);
+}
+
+function pintarPlano(c, s, conRejilla, ox = 0, oy = 0) {
+  c.setTransform(s, 0, 0, s, ox, oy);
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, W, H);
+  if (conRejilla) pintarRejilla(c);
+  for (const o of trabajo.objetos) pintarObjeto(c, o);
+  if (enCurso) pintarObjeto(c, enCurso);
+}
+
+function pintarRejilla(c) {
+  c.lineWidth = 1;
+  for (let x = REJILLA; x < W; x += REJILLA) {
+    c.strokeStyle = x % (REJILLA * 4) === 0 ? '#d3dae0' : '#eef1f4';
+    linea(c, [x, 0], [x, H]);
+  }
+  for (let y = REJILLA; y < H; y += REJILLA) {
+    c.strokeStyle = y % (REJILLA * 4) === 0 ? '#d3dae0' : '#eef1f4';
+    linea(c, [0, y], [W, y]);
+  }
+}
+
+function linea(c, a, b) {
+  c.beginPath();
+  c.moveTo(a[0], a[1]);
+  c.lineTo(b[0], b[1]);
+  c.stroke();
+}
+
+function caja(o) {
+  const x = Math.min(o.a[0], o.b[0]);
+  const y = Math.min(o.a[1], o.b[1]);
+  return { x, y, w: Math.abs(o.b[0] - o.a[0]), h: Math.abs(o.b[1] - o.a[1]) };
+}
+
+function rectRedondeado(c, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function tamTexto(o) {
+  return 30 + o.w * 2;
+}
+
+function pintarObjeto(c, o) {
+  c.strokeStyle = o.color;
+  c.fillStyle = o.color;
+  c.lineWidth = o.w;
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+
+  switch (o.tipo) {
+    case 'lapiz': {
+      c.beginPath();
+      c.moveTo(o.pts[0][0], o.pts[0][1]);
+      for (const p of o.pts) c.lineTo(p[0], p[1]);
+      c.stroke();
+      break;
+    }
+    case 'linea':
+      linea(c, o.a, o.b);
+      break;
+    case 'rect': {
+      const { x, y, w, h } = caja(o);
+      c.strokeRect(x, y, w, h);
+      break;
+    }
+    case 'cota':
+      pintarCota(c, o);
+      break;
+    case 'texto': {
+      c.font = `600 ${tamTexto(o)}px system-ui, sans-serif`;
+      c.textBaseline = 'top';
+      c.textAlign = 'left';
+      o.texto.split('\n').forEach((l, i) => c.fillText(l, o.p[0], o.p[1] + i * tamTexto(o) * 1.2));
+      break;
+    }
+    case 'vitro': {
+      const { x, y, w, h } = caja(o);
+      c.lineWidth = Math.max(2, o.w * 0.7);
+      rectRedondeado(c, x, y, w, h, Math.min(w, h) * 0.06);
+      c.stroke();
+      // cuatro fuegos: dos grandes y dos pequeños
+      const m = Math.min(w / 2, h / 2);
+      const fuegos = [
+        [x + w * 0.27, y + h * 0.3, m * 0.38], [x + w * 0.73, y + h * 0.3, m * 0.28],
+        [x + w * 0.27, y + h * 0.72, m * 0.28], [x + w * 0.73, y + h * 0.72, m * 0.38],
+      ];
+      for (const [cx, cy, r] of fuegos) {
+        c.beginPath();
+        c.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2);
+        c.stroke();
+      }
+      break;
+    }
+    case 'frega': {
+      const { x, y, w, h } = caja(o);
+      c.lineWidth = Math.max(2, o.w * 0.7);
+      rectRedondeado(c, x, y, w, h, Math.min(w, h) * 0.12);
+      c.stroke();
+      const dos = w > h * 1.9;   // fregadero ancho → dos senos
+      const mx = Math.min(w, h) * 0.1;
+      const senos = dos
+        ? [[x + mx, y + mx, w / 2 - mx * 1.5, h - mx * 2], [x + w / 2 + mx / 2, y + mx, w / 2 - mx * 1.5, h - mx * 2]]
+        : [[x + mx, y + mx, w - mx * 2, h - mx * 2]];
+      for (const [sx, sy, sw, sh] of senos) {
+        rectRedondeado(c, sx, sy, sw, sh, Math.min(sw, sh) * 0.15);
+        c.stroke();
+        c.beginPath();
+        c.arc(sx + sw / 2, sy + sh / 2, Math.max(2, Math.min(sw, sh) * 0.08), 0, Math.PI * 2);
+        c.stroke();
+      }
+      break;
+    }
+  }
+}
+
+function pintarCota(c, o) {
+  const [ax, ay] = o.a;
+  const [bx, by] = o.b;
+  const ang = Math.atan2(by - ay, bx - ax);
+  const lon = Math.hypot(bx - ax, by - ay);
+  const t = 14;  // tamaño de las marcas de los extremos
+  c.lineWidth = Math.max(2, o.w * 0.6);
+
+  c.save();
+  c.translate(ax, ay);
+  c.rotate(ang);
+  linea(c, [0, 0], [lon, 0]);
+  // flechas
+  c.beginPath();
+  c.moveTo(0, 0); c.lineTo(t * 1.6, -t * 0.6); c.lineTo(t * 1.6, t * 0.6); c.closePath();
+  c.moveTo(lon, 0); c.lineTo(lon - t * 1.6, -t * 0.6); c.lineTo(lon - t * 1.6, t * 0.6); c.closePath();
+  c.fill();
+  // líneas de referencia
+  linea(c, [0, -t * 1.4], [0, t * 1.4]);
+  linea(c, [lon, -t * 1.4], [lon, t * 1.4]);
+  c.restore();
+
+  if (!o.texto) return;
+  // texto centrado y siempre legible
+  let angTexto = ang;
+  if (angTexto > Math.PI / 2 || angTexto < -Math.PI / 2) angTexto += Math.PI;
+  const tam = tamTexto(o);
+  c.save();
+  c.translate((ax + bx) / 2, (ay + by) / 2);
+  c.rotate(angTexto);
+  c.font = `700 ${tam}px system-ui, sans-serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'bottom';
+  const ancho = c.measureText(o.texto).width;
+  c.fillStyle = '#ffffff';
+  c.fillRect(-ancho / 2 - 6, -tam - 10, ancho + 12, tam + 2);
+  c.fillStyle = o.color;
+  c.fillText(o.texto, 0, -10);
+  c.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Selección de elementos (para mover y borrar)
+// ---------------------------------------------------------------------------
+function distSegmento(p, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+function distancia(o, p) {
+  switch (o.tipo) {
+    case 'lapiz': {
+      let d = Infinity;
+      for (let i = 1; i < o.pts.length; i++) d = Math.min(d, distSegmento(p, o.pts[i - 1], o.pts[i]));
+      return o.pts.length === 1 ? Math.hypot(p[0] - o.pts[0][0], p[1] - o.pts[0][1]) : d;
+    }
+    case 'linea':
+    case 'cota':
+      return distSegmento(p, o.a, o.b);
+    case 'rect': {
+      const { x, y, w, h } = caja(o);
+      const esq = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      return Math.min(...esq.map((e, i) => distSegmento(p, e, esq[(i + 1) % 4])));
+    }
+    case 'vitro':
+    case 'frega': {
+      const { x, y, w, h } = caja(o);
+      const dentro = p[0] >= x && p[0] <= x + w && p[1] >= y && p[1] <= y + h;
+      return dentro ? 0 : Infinity;
+    }
+    case 'texto': {
+      ctx.save();
+      ctx.font = `600 ${tamTexto(o)}px system-ui, sans-serif`;
+      const lineas = o.texto.split('\n');
+      const ancho = Math.max(...lineas.map((l) => ctx.measureText(l).width));
+      ctx.restore();
+      const alto = lineas.length * tamTexto(o) * 1.2;
+      const dentro = p[0] >= o.p[0] - 8 && p[0] <= o.p[0] + ancho + 8 &&
+        p[1] >= o.p[1] - 8 && p[1] <= o.p[1] + alto + 8;
+      return dentro ? 0 : Infinity;
+    }
+  }
+  return Infinity;
+}
+
+function elementoEn(p) {
+  for (let i = trabajo.objetos.length - 1; i >= 0; i--) {
+    if (distancia(trabajo.objetos[i], p) <= TOL_TOQUE) return trabajo.objetos[i];
+  }
+  return null;
+}
+
+function desplazar(o, dx, dy) {
+  const mv = (q) => { q[0] += dx; q[1] += dy; };
+  if (o.pts) o.pts.forEach(mv);
+  if (o.a) { mv(o.a); mv(o.b); }
+  if (o.p) mv(o.p);
+}
+
+// ---------------------------------------------------------------------------
+// Historial
+// ---------------------------------------------------------------------------
+function memorizar() {
+  historial.push(JSON.stringify(trabajo.objetos));
+  if (historial.length > 100) historial.shift();
+  rehacer = [];
+}
+
+function deshacer() {
+  if (!historial.length) return;
+  rehacer.push(JSON.stringify(trabajo.objetos));
+  trabajo.objetos = JSON.parse(historial.pop());
+  dibujar();
+  cambio();
+}
+
+function volverAHacer() {
+  if (!rehacer.length) return;
+  historial.push(JSON.stringify(trabajo.objetos));
+  trabajo.objetos = JSON.parse(rehacer.pop());
+  dibujar();
+  cambio();
+}
+
+function anadir(o) {
+  memorizar();
+  trabajo.objetos.push(o);
+  dibujar();
+  cambio();
+}
+
+// ---------------------------------------------------------------------------
+// Eventos del puntero (ratón, dedo o lápiz)
+// ---------------------------------------------------------------------------
+lienzo.addEventListener('pointerdown', async (e) => {
+  if (punteroActivo !== null) return;   // ignora el segundo dedo
+  if (e.button && e.button !== 0) return;
+  e.preventDefault();
+  const crudo = aLogico(e);
+  const p = iman(crudo);
+  const { color, w } = opciones();
+
+  switch (herramienta) {
+    case 'lapiz':
+      enCurso = { tipo: 'lapiz', pts: [crudo], color, w };
+      break;
+    case 'linea':
+    case 'rect':
+    case 'cota':
+    case 'vitro':
+    case 'frega':
+      enCurso = { tipo: herramienta, a: p, b: [...p], color, w };
+      break;
+    case 'texto': {
+      const texto = await pedirTexto('Texto', '');
+      if (texto) anadir({ tipo: 'texto', p: crudo, texto, color, w });
+      return;
+    }
+    case 'mover': {
+      const obj = elementoEn(crudo);
+      if (!obj) return;
+      memorizar();
+      arrastre = { obj, ultimo: p };
+      break;
+    }
+    case 'borrar': {
+      const obj = elementoEn(crudo);
+      if (!obj) return;
+      memorizar();
+      trabajo.objetos.splice(trabajo.objetos.indexOf(obj), 1);
+      dibujar();
+      cambio();
+      return;
+    }
+  }
+  punteroActivo = e.pointerId;
+  lienzo.setPointerCapture(e.pointerId);
+  dibujar();
+});
+
+lienzo.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== punteroActivo) return;
+  const crudo = aLogico(e);
+  if (enCurso) {
+    if (enCurso.tipo === 'lapiz') {
+      enCurso.pts.push(crudo);
+    } else {
+      const p = iman(crudo);
+      enCurso.b = (enCurso.tipo === 'linea' || enCurso.tipo === 'cota') ? enderezar(enCurso.a, p) : p;
+    }
+    dibujar();
+  } else if (arrastre) {
+    const p = iman(crudo);
+    desplazar(arrastre.obj, p[0] - arrastre.ultimo[0], p[1] - arrastre.ultimo[1]);
+    arrastre.ultimo = p;
+    dibujar();
+  }
+});
+
+async function terminarTrazo(e) {
+  if (e.pointerId !== punteroActivo) return;
+  punteroActivo = null;
+  if (arrastre) {
+    arrastre = null;
+    cambio();
+    return;
+  }
+  const o = enCurso;
+  enCurso = null;
+  if (!o) return;
+
+  if (o.tipo === 'lapiz') {
+    if (o.pts.length > 1) anadir(o); else dibujar();
+    return;
+  }
+  const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
+  if (lon < 10) { dibujar(); return; }
+  if (o.tipo === 'cota') {
+    dibujar();
+    enCurso = o;          // se sigue viendo mientras se escribe la medida
+    dibujar();
+    const texto = await pedirTexto('Medida (ej. 2450)', '');
+    enCurso = null;
+    if (texto === null) { dibujar(); return; }
+    o.texto = texto;
+  }
+  anadir(o);
+}
+
+lienzo.addEventListener('pointerup', terminarTrazo);
+lienzo.addEventListener('pointercancel', terminarTrazo);
+
+// ---------------------------------------------------------------------------
+// Barra de herramientas
+// ---------------------------------------------------------------------------
+$$('.tools [data-tool]').forEach((b) => b.addEventListener('click', () => {
+  herramienta = b.dataset.tool;
+  $$('.tools [data-tool]').forEach((x) => x.classList.toggle('active', x === b));
+  lienzo.style.cursor = herramienta === 'mover' ? 'move' : herramienta === 'borrar' ? 'not-allowed' : 'crosshair';
+}));
+
+$('#optRejilla').addEventListener('change', dibujar);
+$('#btnDeshacer').addEventListener('click', deshacer);
+$('#btnRehacer').addEventListener('click', volverAHacer);
+$('#btnLimpiar').addEventListener('click', () => {
+  if (!trabajo.objetos.length) return;
+  if (!confirm('¿Borrar todo el plano?')) return;
+  memorizar();
+  trabajo.objetos = [];
+  dibujar();
+  cambio();
+});
+$('#btnAmpliar').addEventListener('click', () => {
+  const max = seccionPlano.classList.toggle('maximizado');
+  document.body.classList.toggle('sin-scroll', max);
+  $('#btnAmpliar').textContent = max ? 'Reducir' : 'Ampliar';
+  ajustarLienzo();
+});
+
+document.addEventListener('keydown', (e) => {
+  const enCampo = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !enCampo) {
+    e.preventDefault();
+    if (e.shiftKey) volverAHacer(); else deshacer();
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !enCampo) {
+    e.preventDefault();
+    volverAHacer();
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    guardar(true);
+  } else if (e.key === 'Escape' && seccionPlano.classList.contains('maximizado')) {
+    $('#btnAmpliar').click();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Diálogo de texto
+// ---------------------------------------------------------------------------
+function pedirTexto(etiqueta, valor) {
+  const dlg = $('#dlgTexto');
+  const input = $('#dlgTextoInput');
+  $('#dlgTextoLabel').firstChild.textContent = etiqueta;
+  input.value = valor;
+  dlg.returnValue = '';
+  dlg.showModal();
+  input.focus();
+  return new Promise((ok) => {
+    dlg.addEventListener('close', () => {
+      ok(dlg.returnValue === 'ok' && input.value.trim() ? input.value.trim() : null);
+    }, { once: true });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Hoja completa (datos + plano) para imagen, compartir e imprimir
+// ---------------------------------------------------------------------------
+function partirTexto(c, texto, ancho) {
+  const lineas = [];
+  for (const parrafo of String(texto).split('\n')) {
+    let actual = '';
+    for (const palabra of parrafo.split(' ')) {
+      const prueba = actual ? actual + ' ' + palabra : palabra;
+      if (c.measureText(prueba).width > ancho && actual) {
+        lineas.push(actual);
+        actual = palabra;
+      } else {
+        actual = prueba;
+      }
+    }
+    lineas.push(actual);
+  }
+  return lineas;
+}
+
+function fechaLegible(iso) {
+  if (!iso) return '';
+  const [a, m, d] = iso.split('-');
+  return d && m && a ? `${d}/${m}/${a}` : iso;
+}
+
+function componerHoja() {
+  const M = 40;                     // margen
+  const colW = (W - M * 3) / 2;     // dos columnas de datos
+  const tamEt = 26;
+  const tamVal = 32;
+  const alto = tamVal * 1.25;
+  const medir = document.createElement('canvas').getContext('2d');
+  medir.font = `400 ${tamVal}px system-ui, sans-serif`;
+
+  const d = { ...trabajo.datos, fecha: fechaLegible(trabajo.datos.fecha) };
+  const pares = [
+    ['cliente', 'telefono'], ['direccion', 'referencia'], ['material', 'fecha'],
+    ['canto', 'vitro'], ['fregadero', null],
+  ];
+  // calcula el alto de cada fila
+  const filas = pares.map((par) => {
+    const celdas = par.map((c) => c && {
+      etiqueta: ETIQUETAS[c],
+      lineas: partirTexto(medir, d[c] || '—', colW - 20),
+    });
+    const n = Math.max(...celdas.filter(Boolean).map((x) => x.lineas.length));
+    return { celdas, h: tamEt + 10 + n * alto + 16 };
+  });
+  const obs = (d.observaciones || '').trim();
+  const lineasObs = obs ? partirTexto(medir, obs, W - M * 2 - 20) : [];
+  const hObs = obs ? tamEt + 10 + lineasObs.length * alto + 16 : 0;
+
+  const cabecera = 90;
+  const altoDatos = filas.reduce((s, f) => s + f.h, 0) + hObs;
+  const escalaPlano = (W - M * 2) / W;
+  const yPlano = M + cabecera + altoDatos + 20;
+  const total = yPlano + H * escalaPlano + M;
+
+  const hoja = document.createElement('canvas');
+  hoja.width = W;
+  hoja.height = Math.ceil(total);
+  const c = hoja.getContext('2d');
+  c.fillStyle = '#fff';
+  c.fillRect(0, 0, hoja.width, hoja.height);
+
+  // título
+  c.fillStyle = '#2f3b45';
+  c.font = '700 48px system-ui, sans-serif';
+  c.textBaseline = 'top';
+  c.fillText('Ficha de encimera', M, M);
+  c.font = '400 28px system-ui, sans-serif';
+  c.fillStyle = '#5f6b75';
+  c.textAlign = 'right';
+  c.fillText(d.referencia ? `Ref. ${d.referencia}` : '', W - M, M + 14);
+  c.textAlign = 'left';
+
+  let y = M + cabecera;
+  c.strokeStyle = '#c9d0d6';
+  c.lineWidth = 2;
+  const celda = (x, yy, w, h, cel) => {
+    c.strokeRect(x, yy, w, h);
+    c.fillStyle = '#5f6b75';
+    c.font = `600 ${tamEt}px system-ui, sans-serif`;
+    c.fillText(cel.etiqueta.toUpperCase(), x + 10, yy + 8);
+    c.fillStyle = '#111';
+    c.font = `400 ${tamVal}px system-ui, sans-serif`;
+    cel.lineas.forEach((l, i) => c.fillText(l, x + 10, yy + tamEt + 14 + i * alto));
+  };
+  for (const f of filas) {
+    f.celdas.forEach((cel, i) => {
+      if (cel) celda(M + i * (colW + M), y, colW, f.h - 8, cel);
+    });
+    y += f.h;
+  }
+  if (obs) celda(M, y, W - M * 2, hObs - 8, { etiqueta: ETIQUETAS.observaciones, lineas: lineasObs });
+
+  // plano
+  pintarPlano(c, escalaPlano, false, M, yPlano);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.strokeStyle = '#2f3b45';
+  c.lineWidth = 3;
+  c.strokeRect(M, yPlano, W - M * 2, H * escalaPlano);
+  return hoja;
+}
+
+function nombreArchivo() {
+  const partes = [trabajo.datos.cliente, trabajo.datos.referencia].filter(Boolean).join('_') || 'plano';
+  return 'plano_' + partes.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 60) + '.png';
+}
+
+function hojaComoBlob() {
+  return new Promise((ok) => componerHoja().toBlob(ok, 'image/png'));
+}
+
+function descargar(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+$('#btnImagen').addEventListener('click', async () => {
+  descargar(await hojaComoBlob(), nombreArchivo());
+});
+
+$('#btnCompartir').addEventListener('click', async () => {
+  const blob = await hojaComoBlob();
+  const archivo = new File([blob], nombreArchivo(), { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try {
+      await navigator.share({ files: [archivo], title: 'Plano ' + (trabajo.datos.cliente || '') });
+    } catch { /* cancelado */ }
+  } else {
+    descargar(blob, archivo.name);
+    aviso('Este navegador no permite compartir: se ha descargado la imagen');
+  }
+});
+
+function prepararImpresion() {
+  $('#imgImpresion').src = componerHoja().toDataURL('image/png');
+}
+window.addEventListener('beforeprint', prepararImpresion);
+$('#btnImprimir').addEventListener('click', () => {
+  prepararImpresion();
+  setTimeout(() => window.print(), 50);
+});
+
+// ---------------------------------------------------------------------------
+// Trabajos guardados
+// ---------------------------------------------------------------------------
+const dlgTrabajos = $('#dlgTrabajos');
+
+function pintarLista() {
+  const filtro = $('#buscar').value.trim().toLowerCase();
+  const ul = $('#listaTrabajos');
+  ul.innerHTML = '';
+  const lista = leerTrabajos()
+    .filter((t) => !filtro || CAMPOS.some((c) => (t.datos[c] || '').toLowerCase().includes(filtro)))
+    .sort((a, b) => b.modificado - a.modificado);
+  if (!lista.length) {
+    const li = document.createElement('li');
+    li.className = 'vacio';
+    li.textContent = filtro ? 'Sin resultados' : 'Todavía no hay trabajos guardados';
+    ul.appendChild(li);
+    return;
+  }
+  for (const t of lista) {
+    const li = document.createElement('li');
+    const info = document.createElement('div');
+    info.className = 'info';
+    const titulo = document.createElement('strong');
+    titulo.textContent = [t.datos.cliente || 'Sin cliente', t.datos.referencia].filter(Boolean).join(' · ');
+    const sub = document.createElement('small');
+    sub.textContent = [t.datos.telefono, t.datos.direccion, fechaLegible(t.datos.fecha)].filter(Boolean).join(' · ');
+    info.append(titulo, sub);
+    info.addEventListener('click', () => {
+      guardar();
+      abrir(t);
+      dlgTrabajos.close();
+    });
+
+    const dup = document.createElement('button');
+    dup.type = 'button';
+    dup.textContent = 'Copiar';
+    dup.title = 'Duplicar trabajo';
+    dup.addEventListener('click', () => {
+      const copia = structuredClone(t);
+      copia.id = nuevoId();
+      copia.datos.referencia = (copia.datos.referencia || '') + ' (copia)';
+      copia.creado = copia.modificado = Date.now();
+      escribirTrabajos([...leerTrabajos(), copia]);
+      pintarLista();
+    });
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = 'Borrar';
+    del.addEventListener('click', () => {
+      if (!confirm(`¿Borrar el trabajo de "${t.datos.cliente || 'sin cliente'}"?`)) return;
+      escribirTrabajos(leerTrabajos().filter((x) => x.id !== t.id));
+      if (t.id === trabajo.id) {
+        trabajo = trabajoVacio();
+        abrir(trabajo);
+      }
+      pintarLista();
+    });
+    li.append(info, dup, del);
+    ul.appendChild(li);
+  }
+}
+
+$('#btnTrabajos').addEventListener('click', () => {
+  guardar();
+  $('#buscar').value = '';
+  pintarLista();
+  dlgTrabajos.showModal();
+});
+$('#buscar').addEventListener('input', pintarLista);
+$$('[data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
+
+$('#btnNuevo').addEventListener('click', () => {
+  guardar();
+  abrir(trabajoVacio());
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  aviso('Nuevo trabajo');
+});
+$('#btnGuardar').addEventListener('click', () => guardar(true));
+
+$('#btnExportar').addEventListener('click', () => {
+  guardar();
+  const blob = new Blob([JSON.stringify(leerTrabajos(), null, 1)], { type: 'application/json' });
+  descargar(blob, `planos-cocina-copia-${hoy()}.json`);
+});
+
+$('#fileImportar').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const entrada = JSON.parse(await f.text());
+    if (!Array.isArray(entrada)) throw new Error();
+    const lista = leerTrabajos();
+    let n = 0;
+    for (const t of entrada) {
+      if (!t || !t.id || !t.datos || !Array.isArray(t.objetos)) continue;
+      const i = lista.findIndex((x) => x.id === t.id);
+      if (i >= 0) {
+        if ((t.modificado || 0) > (lista[i].modificado || 0)) lista[i] = t;
+      } else {
+        lista.push(t);
+      }
+      n++;
+    }
+    escribirTrabajos(lista);
+    pintarLista();
+    aviso(`${n} trabajos restaurados`);
+  } catch {
+    aviso('El archivo no es una copia válida');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Avisos
+// ---------------------------------------------------------------------------
+let tempAviso = null;
+function aviso(texto) {
+  const el = $('#aviso');
+  el.textContent = texto;
+  el.classList.add('visible');
+  clearTimeout(tempAviso);
+  tempAviso = setTimeout(() => el.classList.remove('visible'), 2200);
+}
+
+// ---------------------------------------------------------------------------
+// Inicio
+// ---------------------------------------------------------------------------
+(function iniciar() {
+  let idActual = null;
+  try { idActual = localStorage.getItem(CLAVE_ACTUAL); } catch { /* sin almacenamiento */ }
+  const previo = leerTrabajos().find((t) => t.id === idActual);
+  abrir(previo || trabajoVacio());
+  ajustarLienzo();
+  window.addEventListener('resize', ajustarLienzo);
+  window.addEventListener('pagehide', () => guardar());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') guardar();
+  });
+
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* sin modo sin conexión */ });
+  }
+})();

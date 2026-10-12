@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Planos Cocina</title>
+  <meta name="description" content="Fichas y planos de encimeras para marmolistas">
+  <meta name="theme-color" content="#2f3b45">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Planos Cocina</h1>
+    <div class="topbar-actions">
+      <button id="btnNuevo" type="button">Nuevo</button>
+      <button id="btnTrabajos" type="button">Trabajos</button>
+      <button id="btnGuardar" type="button" class="primary">Guardar</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="ficha" aria-label="Datos del trabajo">
+      <div class="grid">
+        <label>Cliente
+          <input name="cliente" autocomplete="off">
+        </label>
+        <label>Teléfono
+          <input name="telefono" type="tel" inputmode="tel" autocomplete="off">
+        </label>
+        <label class="wide">Dirección
+          <input name="direccion" autocomplete="off">
+        </label>
+        <label>Referencia
+          <input name="referencia" autocomplete="off">
+        </label>
+        <label>Fecha
+          <input name="fecha" type="date">
+        </label>
+        <label>Material
+          <input name="material" list="listaMateriales" autocomplete="off" placeholder="Ej. Silestone Blanco Zeus 2 cm">
+        </label>
+        <label>Tipo de canto
+          <input name="canto" list="listaCantos" autocomplete="off" placeholder="Elegir o escribir">
+        </label>
+        <label>Vitrocerámica
+          <input name="vitro" list="listaVitro" autocomplete="off" placeholder="Modelo / medidas / tipo">
+        </label>
+        <label>Fregadero
+          <input name="fregadero" list="listaFregadero" autocomplete="off" placeholder="Modelo / medidas / tipo">
+        </label>
+        <label class="wide">Observaciones
+          <textarea name="observaciones" rows="2"></textarea>
+        </label>
+      </div>
+
+      <datalist id="listaMateriales">
+        <option value="Granito"><option value="Mármol"><option value="Silestone">
+        <option value="Dekton"><option value="Neolith"><option value="Compac">
+        <option value="Cuarzo"><option value="Porcelánico">
+      </datalist>
+      <datalist id="listaCantos">
+        <option value="Recto pulido"><option value="Recto matado"><option value="Biselado">
+        <option value="Media caña"><option value="Bullnose (redondo)"><option value="Pecho paloma">
+        <option value="Inglete (canto ingletado)"><option value="Canto doble (engrosado)">
+      </datalist>
+      <datalist id="listaVitro">
+        <option value="Encastrada"><option value="Enrasada"><option value="Sin vitro">
+      </datalist>
+      <datalist id="listaFregadero">
+        <option value="Bajo encimera"><option value="Sobre encimera"><option value="Enrasado">
+        <option value="Integrado (mismo material)"><option value="Sin fregadero">
+      </datalist>
+    </section>
+
+    <section class="plano" aria-label="Plano">
+      <div class="toolbar" role="toolbar" aria-label="Herramientas de dibujo">
+        <div class="tools">
+          <button type="button" data-tool="linea" class="active" title="Línea recta">Línea</button>
+          <button type="button" data-tool="lapiz" title="Dibujo a mano alzada">Lápiz</button>
+          <button type="button" data-tool="rect" title="Rectángulo">Rect.</button>
+          <button type="button" data-tool="cota" title="Cota con medida">Cota</button>
+          <button type="button" data-tool="texto" title="Texto">Texto</button>
+          <button type="button" data-tool="vitro" title="Símbolo vitrocerámica">Vitro</button>
+          <button type="button" data-tool="frega" title="Símbolo fregadero">Fregad.</button>
+          <button type="button" data-tool="mover" title="Mover elemento">Mover</button>
+          <button type="button" data-tool="borrar" title="Borrar elemento">Borrar</button>
+        </div>
+        <div class="options">
+          <label class="chk"><input type="checkbox" id="optRejilla" checked> Rejilla</label>
+          <label class="chk"><input type="checkbox" id="optIman" checked> Imán</label>
+          <select id="optColor" aria-label="Color">
+            <option value="#111111">Negro</option>
+            <option value="#c62828">Rojo</option>
+            <option value="#1565c0">Azul</option>
+            <option value="#2e7d32">Verde</option>
+          </select>
+          <select id="optGrosor" aria-label="Grosor">
+            <option value="3">Fino</option>
+            <option value="5" selected>Medio</option>
+            <option value="9">Grueso</option>
+          </select>
+          <button type="button" id="btnDeshacer" title="Deshacer">↶</button>
+          <button type="button" id="btnRehacer" title="Rehacer">↷</button>
+          <button type="button" id="btnLimpiar" title="Borrar todo el plano">Limpiar</button>
+          <button type="button" id="btnAmpliar" title="Plano a pantalla completa">Ampliar</button>
+        </div>
+      </div>
+      <div class="lienzo-area">
+        <div class="lienzo-wrap">
+          <canvas id="lienzo"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="acciones">
+      <button type="button" id="btnImagen">Descargar imagen</button>
+      <button type="button" id="btnCompartir">Compartir</button>
+      <button type="button" id="btnImprimir">Imprimir / PDF</button>
+    </section>
+  </main>
+
+  <!-- Hoja usada solo al imprimir -->
+  <div id="hojaImpresion" aria-hidden="true"><img id="imgImpresion" alt=""></div>
+
+  <dialog id="dlgTrabajos">
+    <div class="dlg-head">
+      <h2>Trabajos guardados</h2>
+      <button type="button" class="cerrar" data-close>✕</button>
+    </div>
+    <input type="search" id="buscar" placeholder="Buscar cliente, referencia, teléfono…">
+    <ul id="listaTrabajos"></ul>
+    <div class="dlg-foot">
+      <button type="button" id="btnExportar">Copia de seguridad</button>
+      <label class="boton">Restaurar copia<input type="file" id="fileImportar" accept="application/json,.json" hidden></label>
+    </div>
+  </dialog>
+
+  <dialog id="dlgTexto">
+    <form method="dialog">
+      <label id="dlgTextoLabel">Texto
+        <input id="dlgTextoInput" autocomplete="off">
+      </label>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit">Cancelar</button>
+        <button value="ok" type="submit" class="primary">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
