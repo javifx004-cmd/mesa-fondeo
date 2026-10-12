@@ -162,7 +162,7 @@ function calcular(t) {
   if (mlCanto) {
     const canto = buscarConcepto(d.canto);
     if (!canto) avisos.push(d.canto ? `El canto «${d.canto}» no está en la tarifa.` : 'Hay cantos vistos pero falta el tipo de canto.');
-    linea(canto ? canto.concepto : 'Canto', Math.round(mlCanto * 100) / 100, 'ml', canto ? canto.precio : null);
+    linea(canto ? canto.concepto : 'Canto (falta el tipo)', Math.round(mlCanto * 100) / 100, 'ml', canto ? canto.precio : 0);
   }
 
   // Huecos
@@ -562,8 +562,8 @@ const PROVEEDORES = {
   gemini: {
     nombre: 'Gemini',
     almacen: 'planosCocina.claveGemini',
-    prefijo: 'AIza',
-    pedir: 'Clave de Gemini (empieza por AIza). Se saca gratis en aistudio.google.com y se guarda solo en este dispositivo.',
+    prefijos: ['AIza', 'AQ.'],   // formato clásico y formato nuevo de Google
+    pedir: 'Clave de Gemini (empieza por AIza o por AQ.). Se saca gratis en aistudio.google.com y se guarda solo en este dispositivo.',
     ayuda: 'Para usar la IA gratis hace falta una clave de Gemini: entra en aistudio.google.com con tu cuenta de Google, '
       + 'pulsa «Get API key» y luego «Create API key», cópiala y pégala con el botón «Clave IA». '
       + 'Es gratis y no pide tarjeta (tiene un límite de usos al día).',
@@ -571,7 +571,7 @@ const PROVEEDORES = {
   claude: {
     nombre: 'Claude',
     almacen: CLAVE_IA,
-    prefijo: 'sk-ant-api',
+    prefijos: ['sk-ant-api'],
     pedir: 'Clave de la API de Claude (empieza por sk-ant-api). Se saca en console.anthropic.com y se guarda solo en este dispositivo.',
     ayuda: 'Para usar Claude hace falta una clave de la API de Claude (de pago): entra en console.anthropic.com, '
       + 'crea una clave en «API Keys», añade saldo en «Billing» y pégala con el botón «Clave IA». '
@@ -592,11 +592,15 @@ function leerClaveIA(prov = proveedorActual()) {
   const cfg = PROVEEDORES[prov];
   let clave = '';
   try { clave = limpiarClave(localStorage.getItem(cfg.almacen) || ''); } catch { return ''; }
-  if (clave && !clave.startsWith(cfg.prefijo)) {
+  if (clave && !formatoValido(cfg, clave)) {
     borrarClaveIA(prov);
     return '';
   }
   return clave;
+}
+
+function formatoValido(cfg, clave) {
+  return cfg.prefijos.some((p) => clave.startsWith(p));
 }
 
 function borrarClaveIA(prov = proveedorActual()) {
@@ -622,8 +626,8 @@ async function pedirClaveIA(prov = proveedorActual()) {
     $('#estadoIA').textContent = 'Esa clave es de la suscripción de Claude (Claude Code), no de la API, y aquí no sirve. ' + cfg.ayuda;
     return null;
   }
-  if (clave && !clave.startsWith(cfg.prefijo)) {
-    $('#estadoIA').textContent = `Esa no parece una clave de ${cfg.nombre}: tiene que empezar por ${cfg.prefijo}. ` + cfg.ayuda;
+  if (clave && !formatoValido(cfg, clave)) {
+    $('#estadoIA').textContent = `Esa no parece una clave de ${cfg.nombre}: tiene que empezar por ${cfg.prefijos.join(' o ')}. ` + cfg.ayuda;
     return null;
   }
   try {
@@ -740,6 +744,33 @@ async function llamarGemini(clave, cuerpo) {
   return datos;
 }
 
+// En el plan gratuito Gemini a veces está saturado (503) o limita por minuto (429):
+// se espera y se reintenta, y después se prueba con otros modelos flash.
+const MODELOS_RESERVA = ['gemini-2.5-flash', 'gemini-flash-lite-latest'];
+const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+async function llamarGeminiConReintentos(clave, cuerpo) {
+  const principal = modeloGemini;
+  const intentos = [principal, principal, ...MODELOS_RESERVA.filter((m) => m !== principal)];
+  let ultimo;
+  for (let i = 0; i < intentos.length; i++) {
+    modeloGemini = intentos[i];
+    try {
+      const datos = await llamarGemini(clave, cuerpo);
+      modeloGemini = principal;
+      return datos;
+    } catch (err) {
+      ultimo = err;
+      const saturado = err.status === 503 || err.status === 500 || (err.status === 429 && !/per ?day|daily/i.test(err.message));
+      if (!saturado || i === intentos.length - 1) break;
+      $('#estadoIA').textContent = 'Gemini está muy ocupado ahora mismo; probando otra vez…';
+      await espera(2000 * (i + 1));
+    }
+  }
+  modeloGemini = principal;
+  throw ultimo;
+}
+
 // Si el nombre del modelo deja de existir, se elige otro "flash" de los disponibles.
 async function buscarModeloGemini(clave) {
   const resp = await fetch(`${URL_GEMINI}?pageSize=200`, { headers: { 'x-goog-api-key': clave } });
@@ -748,8 +779,8 @@ async function buscarModeloGemini(clave) {
   const validos = models
     .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
     .map((m) => m.name.replace(/^models\//, ''))
-    .filter((n) => /flash/.test(n) && !/lite|image|tts|live|audio|thinking|exp/.test(n));
-  validos.sort().reverse();
+    .filter((n) => /^gemini-\d[\d.]*-flash$/.test(n));   // estables: gemini-X.Y-flash
+  validos.sort((a, b) => parseFloat(b.slice(7)) - parseFloat(a.slice(7)));
   return validos[0] || null;
 }
 
@@ -764,13 +795,13 @@ async function pedirAGemini(clave, imagen, texto) {
   };
   let datos;
   try {
-    datos = await llamarGemini(clave, cuerpo);
+    datos = await llamarGeminiConReintentos(clave, cuerpo);
   } catch (err) {
     if (err.status !== 404) throw err;
     const otro = await buscarModeloGemini(clave);
     if (!otro || otro === modeloGemini) throw err;
     modeloGemini = otro;
-    datos = await llamarGemini(clave, cuerpo);
+    datos = await llamarGeminiConReintentos(clave, cuerpo);
   }
   const cand = (datos.candidates || [])[0];
   if (!cand) throw new Error('Gemini no ha podido procesar esta petición.');
@@ -832,7 +863,7 @@ function mensajeErrorIA(err, prov) {
       ? 'Se ha llegado al límite gratuito de Gemini por ahora. Espera un minuto (o hasta mañana si es el límite diario) y prueba otra vez.'
       : 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
   }
-  if (s >= 500) return `${cfg.nombre} no responde ahora mismo. Prueba en un rato.`;
+  if (s >= 500) return `${cfg.nombre} está saturado ahora mismo (pasa a veces en el plan gratuito). Prueba otra vez en unos minutos.`;
   if (!navigator.onLine) return 'Sin conexión a internet: la IA necesita conexión.';
   if (!s) return texto ? `No se pudo hacer el presupuesto con IA: ${texto}` : 'No se pudo conectar con la IA. Revisa la conexión y prueba otra vez.';
   return `No se pudo hacer el presupuesto con IA (error ${s}): ${texto || 'error desconocido'}`;

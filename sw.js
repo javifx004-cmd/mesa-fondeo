@@ -1,5 +1,5 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v12';
+const CACHE = 'planos-cocina-v13';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js',
   'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg'];
 
