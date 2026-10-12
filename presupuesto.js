@@ -556,8 +556,19 @@ Reglas:
 - material, canto y fregadero deben copiarse literalmente de las listas que te paso; si no encaja ninguno, deja "".
 - No calcules precios.`;
 
+// Una clave guardada que no tiene forma de clave de la API (p. ej. de versiones antiguas) se descarta.
 function leerClaveIA() {
-  try { return limpiarClave(localStorage.getItem(CLAVE_IA) || ''); } catch { return ''; }
+  let clave = '';
+  try { clave = limpiarClave(localStorage.getItem(CLAVE_IA) || ''); } catch { return ''; }
+  if (clave && !clave.startsWith('sk-ant-api')) {
+    borrarClaveIA();
+    return '';
+  }
+  return clave;
+}
+
+function borrarClaveIA() {
+  try { localStorage.removeItem(CLAVE_IA); } catch { /* sin almacenamiento */ }
 }
 
 // Al copiar desde el móvil se cuelan espacios, saltos de línea, comillas o caracteres invisibles.
@@ -685,9 +696,12 @@ function mensajeErrorIA(err) {
   const s = err && err.status;
   const texto = (err && err.message) || '';
   if (s === 401) {
-    return `Claude dice que la clave no es válida (la guardada es ${claveOculta(leerClaveIA())}). `
+    // se borra para que al volver a pulsar se pida una clave nueva
+    const guardada = claveOculta(leerClaveIA());
+    borrarClaveIA();
+    return `Claude dice que la clave no es válida (era ${guardada}) y se ha borrado. `
       + 'Comprueba en console.anthropic.com, en «API Keys», que la clave existe y no está desactivada; '
-      + 'si no se ve entera, crea una nueva, cópiala con el botón de copiar y pégala en «Clave IA».';
+      + 'crea una nueva si hace falta, cópiala con el botón de copiar, pulsa otra vez «Hacer presupuesto con IA» y pégala.';
   }
   if (/credit balance/i.test(texto)) return 'La cuenta de la API no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
   if (s === 403) return 'Esta clave no tiene permiso para usar la IA.';
