@@ -225,3 +225,18 @@ Con 16 años de datos M1 (scripts en `tools/research/`), parámetros elegidos en
 | Tendencia D1 | ≈ 0 (Sharpe −0.17 a +0.17) |
 
 La única anomalía robusta es que el EUR tiende a depreciarse durante el horario europeo, en concreto entre 13:00 y 16:00 servidor (la hora 14 fue negativa los 16 años, t = −4.9; efecto documentado en la literatura como *time-of-day patterns* de divisas). Pero la ventaja se ha reducido a ~0.5 pips por operación tras costes: **no basta para pasar un challenge rápido ni para vivir de ella**, y depende mucho de los costes reales del bróker.
+
+## Continuaciones FVG en M1 (2010–2025)
+
+`tools/fvg_backtest.py` (requiere `numba`) automatiza la entrada en continuación sobre Fair Value Gaps de M1: FVG de 3 velas a favor de la tendencia (EMA de M1), vela de desplazamiento, orden limitada en el borde o al 50% del hueco, SL tras la vela 1 o el borde lejano del FVG, TP por RR y una operación a la vez. Ejecución conservadora sobre velas M1 (en la vela de relleno solo cuenta el SL).
+
+`tools/research/fvg_grid.py` prueba 1296 variantes (tamaño mínimo del hueco, desplazamiento, EMA 0/50/200/800, entrada borde/50%, tipo de SL, RR 1/2/3, sesiones):
+
+| | Resultado |
+|---|---|
+| Variantes con esperanza positiva tras costes | **0 de 1296** (ni en 2010–17 ni en 2018–25) |
+| Mejor variante (hueco ≥2 pips, desplazamiento ≥2.5 ATR, EMA 800, RR 2) | −0.18R/op (winrate 33%) |
+| La misma, sin costes | ≈ 0R (−0.02 / +0.00) |
+| La misma con SL ≥ 8 pips y coste 1 pip | −0.08R |
+
+Las reglas mecánicas de FVG en M1 no tienen ventaja: sin costes se comportan como entradas aleatorias, y en M1 los costes (≈1 pip con SL de 2–6 pips) suponen 0.2–0.4R por operación.
