@@ -15,6 +15,7 @@ const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'mate
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'jabonera',
   'osmosis', 'observaciones'];
 const ROJO = '#c62828';
+const AZUL_CANTO = '#1e88e5';
 const ETIQUETAS = {
   cliente: 'Cliente', telefono: 'Teléfono', direccion: 'Dirección', referencia: 'Referencia',
   fecha: 'Fecha', material: 'Material', canto: 'Tipo de canto', vitro: 'Vitrocerámica',
@@ -87,6 +88,7 @@ form.addEventListener('input', (e) => {
   const el = e.target;
   if (!el.name) return;
   trabajo.datos[el.name] = el.type === 'checkbox' ? (el.checked ? 'sí' : '') : el.value;
+  dibujar();   // los símbolos muestran las medidas de la ficha
   cambio();
 });
 
@@ -299,7 +301,7 @@ function pintarObjeto(c, o) {
         c.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2);
         c.stroke();
       }
-      etiquetaBajo(c, o, [o.medida].filter(Boolean).join(' '));
+      etiquetaBajo(c, o, trabajo.datos.vitroMedida);
       break;
     }
     case 'frega': {
@@ -320,7 +322,9 @@ function pintarObjeto(c, o) {
         c.stroke();
       }
       // jabonera y ósmosis: taladros detrás del fregadero
-      const extras = [o.jabonera && 'J', o.osmosis && 'Ó'].filter(Boolean);
+      // las medidas y extras se toman siempre de la ficha
+      const d = trabajo.datos;
+      const extras = [d.jabonera && 'J', d.osmosis && 'Ó'].filter(Boolean);
       extras.forEach((letra, i) => {
         const cx = x + w - 30 - i * 80;
         const cy = y - 34;
@@ -333,7 +337,8 @@ function pintarObjeto(c, o) {
         c.textBaseline = 'middle';
         c.fillText(letra, cx + 22, cy + 1);
       });
-      etiquetaBajo(c, o, [o.medida, o.radio && `R${String(o.radio).replace(/^r/i, '')}`].filter(Boolean).join('  '));
+      etiquetaBajo(c, o, [d.fregaMedida, d.fregaRadio && `R${d.fregaRadio.replace(/^\s*r\s*/i, '')}`]
+        .filter(Boolean).join('  '));
       break;
     }
     case 'luz': {
@@ -382,6 +387,15 @@ function pintarObjeto(c, o) {
     }
     case 'descuadre':
       pintarDescuadre(c, o);
+      break;
+    case 'canto':
+      c.save();
+      c.globalAlpha = 0.6;
+      c.strokeStyle = AZUL_CANTO;
+      c.lineWidth = 16;
+      c.lineCap = 'butt';
+      linea(c, o.a, o.b);
+      c.restore();
       break;
   }
 }
@@ -499,6 +513,7 @@ function distancia(o, p) {
     case 'linea':
     case 'cota':
     case 'descuadre':
+    case 'canto':
       return distSegmento(p, o.a, o.b);
     case 'luz':
       return Math.max(Math.abs(p[0] - o.p[0]), Math.abs(p[1] - o.p[1])) <= TAM_LUZ / 2 ? 0 : Infinity;
@@ -597,6 +612,7 @@ lienzo.addEventListener('pointerdown', async (e) => {
     case 'frega':
     case 'columna':
     case 'descuadre':
+    case 'canto':
       enCurso = { tipo: herramienta, a: p, b: [...p], color, w };
       break;
     case 'luz':
@@ -642,7 +658,7 @@ lienzo.addEventListener('pointermove', (e) => {
       enCurso.pts.push(crudo);
     } else {
       const p = iman(crudo);
-      const recta = ['linea', 'cota', 'descuadre'].includes(enCurso.tipo);
+      const recta = ['linea', 'cota', 'descuadre', 'canto'].includes(enCurso.tipo);
       enCurso.b = recta ? enderezar(enCurso.a, p) : p;
     }
     dibujar();
@@ -672,25 +688,16 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
-  if (['cota', 'descuadre', 'vitro', 'frega'].includes(o.tipo)) {
+  if (['cota', 'descuadre'].includes(o.tipo)) {
     enCurso = o;          // se sigue viendo mientras se escriben los datos
     dibujar();
     let ok;
     if (o.tipo === 'cota') {
       o.texto = await pedirTexto('Medida (ej. 2450)', '');
       ok = o.texto !== null;
-    } else if (o.tipo === 'descuadre') {
+    } else {
       o.texto = await pedirTexto('Descuadre (ej. 8 mm)', '');
       ok = o.texto !== null;
-    } else {
-      // valores de la ficha como punto de partida
-      const d = trabajo.datos;
-      if (o.tipo === 'vitro') {
-        o.medida = d.vitroMedida;
-      } else {
-        Object.assign(o, { medida: d.fregaMedida, radio: d.fregaRadio, jabonera: !!d.jabonera, osmosis: !!d.osmosis });
-      }
-      ok = await pedirElemento(o);
     }
     enCurso = null;
     if (!ok) { dibujar(); return; }
@@ -702,7 +709,13 @@ async function editar(o) {
   const copia = JSON.stringify(trabajo.objetos);
   let ok = false;
   if (o.tipo === 'vitro' || o.tipo === 'frega') {
-    ok = await pedirElemento(o);
+    // sus datos están en la ficha: se lleva allí al usuario
+    if (seccionPlano.classList.contains('maximizado')) $('#btnAmpliar').click();
+    const campo = form.querySelector(`[name="${o.tipo === 'vitro' ? 'vitroMedida' : 'fregaMedida'}"]`);
+    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    campo.focus({ preventScroll: true });
+    aviso('Las medidas se cambian aquí, en la ficha');
+    return;
   } else if (['cota', 'descuadre', 'texto', 'luz'].includes(o.tipo)) {
     const etiquetas = { cota: 'Medida', descuadre: 'Descuadre', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
@@ -785,49 +798,6 @@ function pedirTexto(etiqueta, valor, permitirVacio = false) {
       ok(dlg.returnValue === 'ok' && (v || permitirVacio) ? v : null);
     }, { once: true });
   });
-}
-
-// Datos de un símbolo de vitro o fregadero. Devuelve true si se acepta.
-function pedirElemento(o) {
-  const dlg = $('#dlgElemento');
-  const esFrega = o.tipo === 'frega';
-  $('#elTitulo').textContent = esFrega ? 'Fregadero' : 'Vitrocerámica';
-  $('#elFrega').hidden = !esFrega;
-  $('#elMedida').value = o.medida || '';
-  $('#elRadio').value = o.radio || '';
-  $('#elJabonera').checked = !!o.jabonera;
-  $('#elOsmosis').checked = !!o.osmosis;
-  dlg.returnValue = '';
-  dlg.showModal();
-  $('#elMedida').focus();
-  return new Promise((ok) => {
-    dlg.addEventListener('close', () => {
-      if (dlg.returnValue !== 'ok') return ok(false);
-      o.medida = $('#elMedida').value.trim();
-      if (esFrega) {
-        o.radio = $('#elRadio').value.trim();
-        o.jabonera = $('#elJabonera').checked;
-        o.osmosis = $('#elOsmosis').checked;
-      }
-      completarFicha(o);
-      ok(true);
-    }, { once: true });
-  });
-}
-
-// Si la ficha aún no tiene esos datos, los toma del símbolo.
-function completarFicha(o) {
-  const d = trabajo.datos;
-  const poner = (campo, valor) => { if (!d[campo] && valor) d[campo] = valor; };
-  if (o.tipo === 'vitro') {
-    poner('vitroMedida', o.medida);
-  } else {
-    poner('fregaMedida', o.medida);
-    poner('fregaRadio', o.radio);
-    poner('jabonera', o.jabonera ? 'sí' : '');
-    poner('osmosis', o.osmosis ? 'sí' : '');
-  }
-  volcarFormulario();
 }
 
 // ---------------------------------------------------------------------------
@@ -950,6 +920,26 @@ function componerHoja() {
   c.strokeStyle = '#2f3b45';
   c.lineWidth = 3;
   c.strokeRect(xPlano, yPlano, W * escalaPlano, H * escalaPlano);
+
+  // leyenda de cantos vistos
+  if (trabajo.objetos.some((o) => o.tipo === 'canto')) {
+    const txt = 'Canto visto' + (trabajo.datos.canto ? ` (${trabajo.datos.canto})` : '');
+    c.font = '600 28px system-ui, sans-serif';
+    c.textAlign = 'left';
+    c.textBaseline = 'middle';
+    const lx = xPlano + 20;
+    const ly = yPlano + H * escalaPlano - 44;
+    c.fillStyle = '#ffffff';
+    c.fillRect(lx - 10, ly - 26, 110 + c.measureText(txt).width, 52);
+    c.save();
+    c.globalAlpha = 0.6;
+    c.strokeStyle = AZUL_CANTO;
+    c.lineWidth = 16;
+    linea(c, [lx, ly], [lx + 70, ly]);
+    c.restore();
+    c.fillStyle = '#111';
+    c.fillText(txt, lx + 86, ly);
+  }
 
   // pie
   c.strokeStyle = '#c9d0d6';

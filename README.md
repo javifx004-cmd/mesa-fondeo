@@ -13,11 +13,13 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - Línea (se endereza sola en horizontal/vertical), lápiz a mano alzada, rectángulo.
   - Cota con medida escrita.
   - Texto.
-  - Símbolos de vitrocerámica y fregadero con su medida (el fregadero también con radio,
-    jabonera y ósmosis; si se dibuja ancho, sale de dos senos).
+  - Símbolos de vitrocerámica y fregadero: muestran solos las medidas, el radio, la jabonera
+    y la ósmosis que se escriben en la ficha (si el fregadero se dibuja ancho, sale de dos senos).
+  - Canto visto: se marca en azul a lo largo del canto y la hoja lleva su leyenda.
   - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados) y
     descuadres de pared con su medida.
-  - Editar: toca un elemento para cambiar sus medidas o su texto.
+  - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero
+    te lleva a la ficha).
   - Mover y borrar elementos, deshacer/rehacer, rejilla e imán.
   - **Ampliar**: el plano a pantalla completa (en el móvil, mejor en horizontal).
 - **Trabajos guardados** en el propio dispositivo (se guardan solos mientras trabajas),
