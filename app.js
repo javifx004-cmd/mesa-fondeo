@@ -8,10 +8,13 @@ const H = 1400;            // alto lógico del plano
 const REJILLA = 50;        // separación de la rejilla
 const PASO_IMAN = 25;      // los puntos se ajustan a este paso con el imán
 const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
+const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
-  'canto', 'vitro', 'fregadero', 'observaciones'];
+  'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'jabonera',
+  'osmosis', 'observaciones'];
+const ROJO = '#c62828';
 const ETIQUETAS = {
   cliente: 'Cliente', telefono: 'Teléfono', direccion: 'Dirección', referencia: 'Referencia',
   fecha: 'Fecha', material: 'Material', canto: 'Tipo de canto', vitro: 'Vitrocerámica',
@@ -74,15 +77,32 @@ const form = $('.ficha');
 function volcarFormulario() {
   for (const c of CAMPOS) {
     const el = form.querySelector(`[name="${c}"]`);
-    el.value = trabajo.datos[c] || '';
+    if (el.type === 'checkbox') el.checked = !!trabajo.datos[c];
+    else el.value = trabajo.datos[c] || '';
   }
 }
 
+// Las casillas se guardan como 'sí' o '' para que todos los datos sean texto.
 form.addEventListener('input', (e) => {
-  if (!e.target.name) return;
-  trabajo.datos[e.target.name] = e.target.value;
+  const el = e.target;
+  if (!el.name) return;
+  trabajo.datos[el.name] = el.type === 'checkbox' ? (el.checked ? 'sí' : '') : el.value;
   cambio();
 });
+
+// Texto completo de la vitro y del fregadero para la hoja.
+function textoVitro(d) {
+  return [d.vitro, d.vitroMedida && `Medida ${d.vitroMedida}`].filter(Boolean).join(' · ');
+}
+function textoFregadero(d) {
+  return [
+    d.fregadero,
+    d.fregaMedida && `Medida ${d.fregaMedida}`,
+    d.fregaRadio && `Radio ${d.fregaRadio}`,
+    d.jabonera && 'Con jabonera',
+    d.osmosis && 'Con ósmosis',
+  ].filter(Boolean).join(' · ');
+}
 
 // ---------------------------------------------------------------------------
 // Guardado automático
@@ -279,6 +299,7 @@ function pintarObjeto(c, o) {
         c.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2);
         c.stroke();
       }
+      etiquetaBajo(c, o, [o.medida].filter(Boolean).join(' '));
       break;
     }
     case 'frega': {
@@ -298,9 +319,121 @@ function pintarObjeto(c, o) {
         c.arc(sx + sw / 2, sy + sh / 2, Math.max(2, Math.min(sw, sh) * 0.08), 0, Math.PI * 2);
         c.stroke();
       }
+      // jabonera y ósmosis: taladros detrás del fregadero
+      const extras = [o.jabonera && 'J', o.osmosis && 'Ó'].filter(Boolean);
+      extras.forEach((letra, i) => {
+        const cx = x + w - 30 - i * 80;
+        const cy = y - 34;
+        c.lineWidth = Math.max(2, o.w * 0.6);
+        c.beginPath();
+        c.arc(cx, cy, 16, 0, Math.PI * 2);
+        c.stroke();
+        c.font = '700 24px system-ui, sans-serif';
+        c.textAlign = 'left';
+        c.textBaseline = 'middle';
+        c.fillText(letra, cx + 22, cy + 1);
+      });
+      etiquetaBajo(c, o, [o.medida, o.radio && `R${String(o.radio).replace(/^r/i, '')}`].filter(Boolean).join('  '));
       break;
     }
+    case 'luz': {
+      // caja de luz / enchufe: cuadrado con un rayo
+      const t = TAM_LUZ;
+      const [x, y] = o.p;
+      c.lineWidth = Math.max(2, o.w * 0.6);
+      c.fillStyle = '#ffffff';
+      rectRedondeado(c, x - t / 2, y - t / 2, t, t, 8);
+      c.fill();
+      c.stroke();
+      c.fillStyle = o.color;
+      c.beginPath();
+      c.moveTo(x + 5, y - t * 0.36);
+      c.lineTo(x - t * 0.2, y + 3);
+      c.lineTo(x - 1, y + 3);
+      c.lineTo(x - 5, y + t * 0.36);
+      c.lineTo(x + t * 0.2, y - 3);
+      c.lineTo(x + 1, y - 3);
+      c.closePath();
+      c.fill();
+      if (o.texto) {
+        c.font = '600 26px system-ui, sans-serif';
+        c.textAlign = 'left';
+        c.textBaseline = 'middle';
+        c.fillText(o.texto, x + t / 2 + 10, y);
+      }
+      break;
+    }
+    case 'columna': {
+      // pilar: rectángulo rayado
+      const { x, y, w, h } = caja(o);
+      c.save();
+      c.fillStyle = '#e6e6e6';
+      c.fillRect(x, y, w, h);
+      c.beginPath();
+      c.rect(x, y, w, h);
+      c.clip();
+      c.lineWidth = 2;
+      for (let d = -h; d < w; d += 22) linea(c, [x + d, y + h], [x + d + h, y]);
+      c.restore();
+      c.strokeStyle = o.color;
+      c.lineWidth = o.w;
+      c.strokeRect(x, y, w, h);
+      break;
+    }
+    case 'descuadre':
+      pintarDescuadre(c, o);
+      break;
   }
+}
+
+function etiquetaBajo(c, o, texto) {
+  if (!texto) return;
+  const { x, y, w, h } = caja(o);
+  c.font = '700 28px system-ui, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'top';
+  const ancho = c.measureText(texto).width;
+  c.fillStyle = '#ffffff';
+  c.fillRect(x + w / 2 - ancho / 2 - 6, y + h + 6, ancho + 12, 34);
+  c.fillStyle = o.color;
+  c.fillText(texto, x + w / 2, y + h + 10);
+}
+
+// Descuadre: la línea teórica (discontinua) y la pared real que se abre.
+function pintarDescuadre(c, o) {
+  const [ax, ay] = o.a;
+  const [bx, by] = o.b;
+  const ang = Math.atan2(by - ay, bx - ax);
+  const lon = Math.hypot(bx - ax, by - ay);
+  c.save();
+  c.translate(ax, ay);
+  c.rotate(ang);
+  c.strokeStyle = ROJO;
+  c.fillStyle = ROJO;
+  c.lineWidth = 3;
+  c.setLineDash([16, 12]);
+  linea(c, [0, 0], [lon, 0]);
+  c.setLineDash([]);
+  c.lineWidth = Math.max(3, o.w * 0.7);
+  linea(c, [0, 0], [lon, -28]);
+  linea(c, [lon, 0], [lon, -28]);
+  c.restore();
+  if (!o.texto) return;
+  let angTexto = ang;
+  if (angTexto > Math.PI / 2 || angTexto < -Math.PI / 2) angTexto += Math.PI;
+  c.save();
+  c.translate((ax + bx) / 2, (ay + by) / 2);
+  c.rotate(angTexto);
+  c.font = '700 30px system-ui, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'top';
+  const txt = `Descuadre ${o.texto}`;
+  const ancho = c.measureText(txt).width;
+  c.fillStyle = '#ffffff';
+  c.fillRect(-ancho / 2 - 6, 8, ancho + 12, 36);
+  c.fillStyle = ROJO;
+  c.fillText(txt, 0, 12);
+  c.restore();
 }
 
 function pintarCota(c, o) {
@@ -365,14 +498,18 @@ function distancia(o, p) {
     }
     case 'linea':
     case 'cota':
+    case 'descuadre':
       return distSegmento(p, o.a, o.b);
+    case 'luz':
+      return Math.max(Math.abs(p[0] - o.p[0]), Math.abs(p[1] - o.p[1])) <= TAM_LUZ / 2 ? 0 : Infinity;
     case 'rect': {
       const { x, y, w, h } = caja(o);
       const esq = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
       return Math.min(...esq.map((e, i) => distSegmento(p, e, esq[(i + 1) % 4])));
     }
     case 'vitro':
-    case 'frega': {
+    case 'frega':
+    case 'columna': {
       const { x, y, w, h } = caja(o);
       const dentro = p[0] >= x && p[0] <= x + w && p[1] >= y && p[1] <= y + h;
       return dentro ? 0 : Infinity;
@@ -458,8 +595,18 @@ lienzo.addEventListener('pointerdown', async (e) => {
     case 'cota':
     case 'vitro':
     case 'frega':
+    case 'columna':
+    case 'descuadre':
       enCurso = { tipo: herramienta, a: p, b: [...p], color, w };
       break;
+    case 'luz':
+      anadir({ tipo: 'luz', p, color, w });
+      return;
+    case 'editar': {
+      const obj = elementoEn(crudo);
+      if (obj) await editar(obj);
+      return;
+    }
     case 'texto': {
       const texto = await pedirTexto('Texto', '');
       if (texto) anadir({ tipo: 'texto', p: crudo, texto, color, w });
@@ -495,7 +642,8 @@ lienzo.addEventListener('pointermove', (e) => {
       enCurso.pts.push(crudo);
     } else {
       const p = iman(crudo);
-      enCurso.b = (enCurso.tipo === 'linea' || enCurso.tipo === 'cota') ? enderezar(enCurso.a, p) : p;
+      const recta = ['linea', 'cota', 'descuadre'].includes(enCurso.tipo);
+      enCurso.b = recta ? enderezar(enCurso.a, p) : p;
     }
     dibujar();
   } else if (arrastre) {
@@ -524,16 +672,54 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
-  if (o.tipo === 'cota') {
+  if (['cota', 'descuadre', 'vitro', 'frega'].includes(o.tipo)) {
+    enCurso = o;          // se sigue viendo mientras se escriben los datos
     dibujar();
-    enCurso = o;          // se sigue viendo mientras se escribe la medida
-    dibujar();
-    const texto = await pedirTexto('Medida (ej. 2450)', '');
+    let ok;
+    if (o.tipo === 'cota') {
+      o.texto = await pedirTexto('Medida (ej. 2450)', '');
+      ok = o.texto !== null;
+    } else if (o.tipo === 'descuadre') {
+      o.texto = await pedirTexto('Descuadre (ej. 8 mm)', '');
+      ok = o.texto !== null;
+    } else {
+      // valores de la ficha como punto de partida
+      const d = trabajo.datos;
+      if (o.tipo === 'vitro') {
+        o.medida = d.vitroMedida;
+      } else {
+        Object.assign(o, { medida: d.fregaMedida, radio: d.fregaRadio, jabonera: !!d.jabonera, osmosis: !!d.osmosis });
+      }
+      ok = await pedirElemento(o);
+    }
     enCurso = null;
-    if (texto === null) { dibujar(); return; }
-    o.texto = texto;
+    if (!ok) { dibujar(); return; }
   }
   anadir(o);
+}
+
+async function editar(o) {
+  const copia = JSON.stringify(trabajo.objetos);
+  let ok = false;
+  if (o.tipo === 'vitro' || o.tipo === 'frega') {
+    ok = await pedirElemento(o);
+  } else if (['cota', 'descuadre', 'texto', 'luz'].includes(o.tipo)) {
+    const etiquetas = { cota: 'Medida', descuadre: 'Descuadre', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
+    const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
+    if (texto !== null) {
+      if (o.tipo === 'texto' && !texto) return;
+      o.texto = texto;
+      ok = true;
+    }
+  } else {
+    aviso('Este elemento no tiene datos que editar');
+    return;
+  }
+  if (!ok) return;
+  historial.push(copia);
+  rehacer = [];
+  dibujar();
+  cambio();
 }
 
 lienzo.addEventListener('pointerup', terminarTrazo);
@@ -545,7 +731,7 @@ lienzo.addEventListener('pointercancel', terminarTrazo);
 $$('.tools [data-tool]').forEach((b) => b.addEventListener('click', () => {
   herramienta = b.dataset.tool;
   $$('.tools [data-tool]').forEach((x) => x.classList.toggle('active', x === b));
-  lienzo.style.cursor = herramienta === 'mover' ? 'move' : herramienta === 'borrar' ? 'not-allowed' : 'crosshair';
+  lienzo.style.cursor = { mover: 'move', borrar: 'not-allowed', editar: 'pointer' }[herramienta] || 'crosshair';
 }));
 
 $('#optRejilla').addEventListener('change', dibujar);
@@ -585,7 +771,7 @@ document.addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------------------
 // Diálogo de texto
 // ---------------------------------------------------------------------------
-function pedirTexto(etiqueta, valor) {
+function pedirTexto(etiqueta, valor, permitirVacio = false) {
   const dlg = $('#dlgTexto');
   const input = $('#dlgTextoInput');
   $('#dlgTextoLabel').firstChild.textContent = etiqueta;
@@ -595,9 +781,53 @@ function pedirTexto(etiqueta, valor) {
   input.focus();
   return new Promise((ok) => {
     dlg.addEventListener('close', () => {
-      ok(dlg.returnValue === 'ok' && input.value.trim() ? input.value.trim() : null);
+      const v = input.value.trim();
+      ok(dlg.returnValue === 'ok' && (v || permitirVacio) ? v : null);
     }, { once: true });
   });
+}
+
+// Datos de un símbolo de vitro o fregadero. Devuelve true si se acepta.
+function pedirElemento(o) {
+  const dlg = $('#dlgElemento');
+  const esFrega = o.tipo === 'frega';
+  $('#elTitulo').textContent = esFrega ? 'Fregadero' : 'Vitrocerámica';
+  $('#elFrega').hidden = !esFrega;
+  $('#elMedida').value = o.medida || '';
+  $('#elRadio').value = o.radio || '';
+  $('#elJabonera').checked = !!o.jabonera;
+  $('#elOsmosis').checked = !!o.osmosis;
+  dlg.returnValue = '';
+  dlg.showModal();
+  $('#elMedida').focus();
+  return new Promise((ok) => {
+    dlg.addEventListener('close', () => {
+      if (dlg.returnValue !== 'ok') return ok(false);
+      o.medida = $('#elMedida').value.trim();
+      if (esFrega) {
+        o.radio = $('#elRadio').value.trim();
+        o.jabonera = $('#elJabonera').checked;
+        o.osmosis = $('#elOsmosis').checked;
+      }
+      completarFicha(o);
+      ok(true);
+    }, { once: true });
+  });
+}
+
+// Si la ficha aún no tiene esos datos, los toma del símbolo.
+function completarFicha(o) {
+  const d = trabajo.datos;
+  const poner = (campo, valor) => { if (!d[campo] && valor) d[campo] = valor; };
+  if (o.tipo === 'vitro') {
+    poner('vitroMedida', o.medida);
+  } else {
+    poner('fregaMedida', o.medida);
+    poner('fregaRadio', o.radio);
+    poner('jabonera', o.jabonera ? 'sí' : '');
+    poner('osmosis', o.osmosis ? 'sí' : '');
+  }
+  volcarFormulario();
 }
 
 // ---------------------------------------------------------------------------
@@ -627,8 +857,11 @@ function fechaLegible(iso) {
   return d && m && a ? `${d}/${m}/${a}` : iso;
 }
 
+// La hoja sale en A4 vertical (210 × 297 mm).
+const HOJA_H = Math.round(W * 297 / 210);
+
 function componerHoja() {
-  const M = 40;                     // margen
+  const M = 70;                     // margen (unos 7 mm)
   const colW = (W - M * 3) / 2;     // dos columnas de datos
   const tamEt = 26;
   const tamVal = 32;
@@ -636,7 +869,12 @@ function componerHoja() {
   const medir = document.createElement('canvas').getContext('2d');
   medir.font = `400 ${tamVal}px system-ui, sans-serif`;
 
-  const d = { ...trabajo.datos, fecha: fechaLegible(trabajo.datos.fecha) };
+  const d = {
+    ...trabajo.datos,
+    fecha: fechaLegible(trabajo.datos.fecha),
+    vitro: textoVitro(trabajo.datos),
+    fregadero: textoFregadero(trabajo.datos),
+  };
   const pares = [
     ['cliente', 'telefono'], ['direccion', 'referencia'], ['material', 'fecha'],
     ['canto', 'vitro'], ['fregadero', null],
@@ -650,19 +888,26 @@ function componerHoja() {
     const n = Math.max(...celdas.filter(Boolean).map((x) => x.lineas.length));
     return { celdas, h: tamEt + 10 + n * alto + 16 };
   });
+  // pie: observaciones a la izquierda y firma del cliente a la derecha
+  const anchoObs = Math.round((W - M * 3) * 0.64);
+  const anchoFirma = W - M * 3 - anchoObs;
   const obs = (d.observaciones || '').trim();
-  const lineasObs = obs ? partirTexto(medir, obs, W - M * 2 - 20) : [];
-  const hObs = obs ? tamEt + 10 + lineasObs.length * alto + 16 : 0;
+  const lineasObs = obs ? partirTexto(medir, obs, anchoObs - 20) : [];
+  const hPieMin = Math.max(200, tamEt + 10 + lineasObs.length * alto + 16);
 
   const cabecera = 90;
-  const altoDatos = filas.reduce((s, f) => s + f.h, 0) + hObs;
-  const escalaPlano = (W - M * 2) / W;
-  const yPlano = M + cabecera + altoDatos + 20;
-  const total = yPlano + H * escalaPlano + M;
+  const altoDatos = filas.reduce((s, f) => s + f.h, 0);
+  const yPlano = M + cabecera + altoDatos + 12;
+  // el plano ocupa todo el ancho si cabe; si no, se reduce para no salirse de la hoja
+  const altoLibre = HOJA_H - M - yPlano - 24 - hPieMin;
+  const escalaPlano = Math.min((W - M * 2) / W, altoLibre / H);
+  const xPlano = (W - W * escalaPlano) / 2;
+  const yPie = yPlano + H * escalaPlano + 24;
+  const hPie = HOJA_H - M - yPie;
 
   const hoja = document.createElement('canvas');
   hoja.width = W;
-  hoja.height = Math.ceil(total);
+  hoja.height = HOJA_H;
   const c = hoja.getContext('2d');
   c.fillStyle = '#fff';
   c.fillRect(0, 0, hoja.width, hoja.height);
@@ -682,6 +927,8 @@ function componerHoja() {
   c.strokeStyle = '#c9d0d6';
   c.lineWidth = 2;
   const celda = (x, yy, w, h, cel) => {
+    c.textAlign = 'left';
+    c.textBaseline = 'top';
     c.strokeRect(x, yy, w, h);
     c.fillStyle = '#5f6b75';
     c.font = `600 ${tamEt}px system-ui, sans-serif`;
@@ -696,14 +943,19 @@ function componerHoja() {
     });
     y += f.h;
   }
-  if (obs) celda(M, y, W - M * 2, hObs - 8, { etiqueta: ETIQUETAS.observaciones, lineas: lineasObs });
 
   // plano
-  pintarPlano(c, escalaPlano, false, M, yPlano);
+  pintarPlano(c, escalaPlano, false, xPlano, yPlano);
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.strokeStyle = '#2f3b45';
   c.lineWidth = 3;
-  c.strokeRect(M, yPlano, W - M * 2, H * escalaPlano);
+  c.strokeRect(xPlano, yPlano, W * escalaPlano, H * escalaPlano);
+
+  // pie
+  c.strokeStyle = '#c9d0d6';
+  c.lineWidth = 2;
+  celda(M, yPie, anchoObs, hPie, { etiqueta: ETIQUETAS.observaciones, lineas: lineasObs });
+  celda(M * 2 + anchoObs, yPie, anchoFirma, hPie, { etiqueta: 'Conforme del cliente', lineas: [] });
   return hoja;
 }
 

@@ -45,12 +45,31 @@
         <label>Tipo de canto
           <input name="canto" list="listaCantos" autocomplete="off" placeholder="Elegir o escribir">
         </label>
-        <label>Vitrocerámica
-          <input name="vitro" list="listaVitro" autocomplete="off" placeholder="Modelo / medidas / tipo">
-        </label>
-        <label>Fregadero
-          <input name="fregadero" list="listaFregadero" autocomplete="off" placeholder="Modelo / medidas / tipo">
-        </label>
+        <fieldset class="wide grupo">
+          <legend>Vitrocerámica</legend>
+          <label>Tipo / modelo
+            <input name="vitro" list="listaVitro" autocomplete="off" placeholder="Encastrada, enrasada…">
+          </label>
+          <label>Medida (ancho × fondo)
+            <input name="vitroMedida" autocomplete="off" placeholder="Ej. 560 × 490">
+          </label>
+        </fieldset>
+        <fieldset class="wide grupo">
+          <legend>Fregadero</legend>
+          <label>Tipo / modelo
+            <input name="fregadero" list="listaFregadero" autocomplete="off" placeholder="Bajo encimera…">
+          </label>
+          <label>Medida (ancho × fondo)
+            <input name="fregaMedida" autocomplete="off" placeholder="Ej. 760 × 430">
+          </label>
+          <label>Radio de esquinas
+            <input name="fregaRadio" autocomplete="off" placeholder="Ej. R15">
+          </label>
+          <div class="casillas">
+            <label class="chk"><input type="checkbox" name="jabonera"> Jabonera</label>
+            <label class="chk"><input type="checkbox" name="osmosis"> Ósmosis</label>
+          </div>
+        </fieldset>
         <label class="wide">Observaciones
           <textarea name="observaciones" rows="2"></textarea>
         </label>
@@ -85,6 +104,10 @@
           <button type="button" data-tool="texto" title="Texto">Texto</button>
           <button type="button" data-tool="vitro" title="Símbolo vitrocerámica">Vitro</button>
           <button type="button" data-tool="frega" title="Símbolo fregadero">Fregad.</button>
+          <button type="button" data-tool="luz" title="Caja de luz / enchufe: toca donde va">Caja luz</button>
+          <button type="button" data-tool="columna" title="Columna o pilar: arrastra el rectángulo">Columna</button>
+          <button type="button" data-tool="descuadre" title="Descuadre de pared: arrastra a lo largo de la pared">Descuadre</button>
+          <button type="button" data-tool="editar" title="Toca un elemento para cambiar sus datos">Editar</button>
           <button type="button" data-tool="mover" title="Mover elemento">Mover</button>
           <button type="button" data-tool="borrar" title="Borrar elemento">Borrar</button>
         </div>
@@ -143,6 +166,28 @@
       <label id="dlgTextoLabel">Texto
         <input id="dlgTextoInput" autocomplete="off">
       </label>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit">Cancelar</button>
+        <button value="ok" type="submit" class="primary">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgElemento">
+    <form method="dialog">
+      <h2 id="elTitulo">Fregadero</h2>
+      <label class="campo">Medida (ancho × fondo)
+        <input id="elMedida" autocomplete="off" placeholder="Ej. 760 × 430">
+      </label>
+      <div id="elFrega">
+        <label class="campo">Radio de esquinas
+          <input id="elRadio" autocomplete="off" placeholder="Ej. R15">
+        </label>
+        <div class="casillas">
+          <label class="chk"><input type="checkbox" id="elJabonera"> Jabonera</label>
+          <label class="chk"><input type="checkbox" id="elOsmosis"> Ósmosis</label>
+        </div>
+      </div>
       <div class="dlg-foot">
         <button value="cancel" type="submit">Cancelar</button>
         <button value="ok" type="submit" class="primary">Aceptar</button>
