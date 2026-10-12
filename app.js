@@ -413,7 +413,7 @@ function etiquetaBajo(c, o, texto) {
   c.fillText(texto, x + w / 2, y + h + 10);
 }
 
-// Descuadre: se marca encima del propio canto de la pieza, en rojo, con la medida sobre él.
+// Descuadre: raya roja discontinua encima del propio canto de la pieza, sin medida.
 function pintarDescuadre(c, o) {
   const [ax, ay] = o.a;
   const [bx, by] = o.b;
@@ -431,26 +431,6 @@ function pintarDescuadre(c, o) {
   c.lineWidth = 4;
   linea(c, [0, -18], [0, 18]);
   linea(c, [lon, -18], [lon, 18]);
-  c.restore();
-  if (!o.texto) return;
-  let angTexto = ang;
-  if (angTexto > Math.PI / 2 || angTexto < -Math.PI / 2) angTexto += Math.PI;
-  c.save();
-  c.translate((ax + bx) / 2, (ay + by) / 2);
-  c.rotate(angTexto);
-  c.font = '700 30px system-ui, sans-serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  const txt = `Descuadre ${o.texto}`;
-  const ancho = c.measureText(txt).width;
-  c.fillStyle = '#ffffff';
-  c.strokeStyle = ROJO;
-  c.lineWidth = 3;
-  rectRedondeado(c, -ancho / 2 - 12, -24, ancho + 24, 48, 10);
-  c.fill();
-  c.stroke();
-  c.fillStyle = ROJO;
-  c.fillText(txt, 0, 1);
   c.restore();
 }
 
@@ -692,19 +672,12 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
-  if (['cota', 'descuadre'].includes(o.tipo)) {
-    enCurso = o;          // se sigue viendo mientras se escriben los datos
+  if (o.tipo === 'cota') {
+    enCurso = o;          // se sigue viendo mientras se escribe la medida
     dibujar();
-    let ok;
-    if (o.tipo === 'cota') {
-      o.texto = await pedirTexto('Medida (ej. 2450)', '');
-      ok = o.texto !== null;
-    } else {
-      o.texto = await pedirTexto('Descuadre (ej. 8 mm)', '');
-      ok = o.texto !== null;
-    }
+    o.texto = await pedirTexto('Medida (ej. 2450)', '');
     enCurso = null;
-    if (!ok) { dibujar(); return; }
+    if (o.texto === null) { dibujar(); return; }
   }
   anadir(o);
 }
@@ -720,8 +693,8 @@ async function editar(o) {
     campo.focus({ preventScroll: true });
     aviso('Las medidas se cambian aquí, en la ficha');
     return;
-  } else if (['cota', 'descuadre', 'texto', 'luz'].includes(o.tipo)) {
-    const etiquetas = { cota: 'Medida', descuadre: 'Descuadre', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
+  } else if (['cota', 'texto', 'luz'].includes(o.tipo)) {
+    const etiquetas = { cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
     if (texto !== null) {
       if (o.tipo === 'texto' && !texto) return;
@@ -925,24 +898,36 @@ function componerHoja() {
   c.lineWidth = 3;
   c.strokeRect(xPlano, yPlano, W * escalaPlano, H * escalaPlano);
 
-  // leyenda de cantos vistos
+  // leyenda de cantos vistos y descuadres
+  const leyenda = [];
   if (trabajo.objetos.some((o) => o.tipo === 'canto')) {
-    const txt = 'Canto visto' + (trabajo.datos.canto ? ` (${trabajo.datos.canto})` : '');
-    c.font = '600 28px system-ui, sans-serif';
-    c.textAlign = 'left';
-    c.textBaseline = 'middle';
-    const lx = xPlano + 20;
-    const ly = yPlano + H * escalaPlano - 44;
+    leyenda.push({ txt: 'Canto visto' + (trabajo.datos.canto ? ` (${trabajo.datos.canto})` : ''), tipo: 'canto' });
+  }
+  if (trabajo.objetos.some((o) => o.tipo === 'descuadre')) leyenda.push({ txt: 'Descuadre', tipo: 'descuadre' });
+  let lx = xPlano + 20;
+  const ly = yPlano + H * escalaPlano - 44;
+  c.font = '600 28px system-ui, sans-serif';
+  c.textAlign = 'left';
+  c.textBaseline = 'middle';
+  for (const { txt, tipo } of leyenda) {
+    const ancho = 96 + c.measureText(txt).width;
     c.fillStyle = '#ffffff';
-    c.fillRect(lx - 10, ly - 26, 110 + c.measureText(txt).width, 52);
+    c.fillRect(lx - 10, ly - 26, ancho + 20, 52);
     c.save();
-    c.globalAlpha = 0.6;
-    c.strokeStyle = AZUL_CANTO;
-    c.lineWidth = 16;
+    if (tipo === 'canto') {
+      c.globalAlpha = 0.6;
+      c.strokeStyle = AZUL_CANTO;
+      c.lineWidth = 16;
+    } else {
+      c.strokeStyle = ROJO;
+      c.lineWidth = 7;
+      c.setLineDash([22, 10]);
+    }
     linea(c, [lx, ly], [lx + 70, ly]);
     c.restore();
     c.fillStyle = '#111';
     c.fillText(txt, lx + 86, ly);
+    lx += ancho + 40;
   }
 
   // pie
