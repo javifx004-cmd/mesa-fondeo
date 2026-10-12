@@ -20,6 +20,8 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados, con la medida de cada lado que toca en pequeño) y
     descuadres, marcados con una raya roja discontinua fina encima del propio canto de la pieza
     (sin medida; la hoja lleva su leyenda).
+  - Arista: toca una esquina y escribe la medida (ej. 5x5); la esquina se dibuja redondeada
+    con «R 5x5» al lado.
   - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero
     te lleva a la ficha).
   - Mover y borrar elementos, deshacer/rehacer, rejilla e imán.
@@ -27,8 +29,9 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
 - **Trabajos guardados** en el propio dispositivo (se guardan solos mientras trabajas),
   con buscador, duplicar y borrar.
 - **Descargar imagen**, **Compartir** (WhatsApp, correo… desde el móvil) e
-  **Imprimir / PDF** de la hoja completa en **A4 vertical**: datos arriba, plano en medio y
-  abajo observaciones y firma del cliente.
+  **Imprimir / PDF** de la hoja completa en **A4 vertical**, con «MÁRMOLES CARBONELL» y el logo
+  en la cabecera, los datos, el plano ampliado a lo dibujado y una franja pequeña de observaciones.
+- **Logo**: «Cambiar logo» al final de la página; sale en la ficha y en el presupuesto.
 - **Copia de seguridad**: exporta/restaura todos los trabajos en un archivo, útil para
   pasar los trabajos del móvil al PC.
 

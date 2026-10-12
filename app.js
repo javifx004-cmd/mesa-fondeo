@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '14';   // cambiar junto con CACHE en sw.js
+const VERSION = '15';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -229,7 +229,9 @@ function pintarPlano(c, s, conRejilla, ox = 0, oy = 0) {
   c.fillStyle = '#ffffff';
   c.fillRect(0, 0, W, H);
   if (conRejilla) pintarRejilla(c);
-  for (const o of trabajo.objetos) pintarObjeto(c, o);
+  // las aristas se pintan las últimas para que redondeen las esquinas ya dibujadas
+  for (const o of trabajo.objetos) if (o.tipo !== 'arista') pintarObjeto(c, o);
+  for (const o of trabajo.objetos) if (o.tipo === 'arista') pintarObjeto(c, o);
   if (enCurso) pintarObjeto(c, enCurso);
 }
 
@@ -406,6 +408,9 @@ function pintarObjeto(c, o) {
     case 'descuadre':
       pintarDescuadre(c, o);
       break;
+    case 'arista':
+      pintarArista(c, o);
+      break;
     case 'canto':
       c.save();
       c.globalAlpha = 0.6;
@@ -449,6 +454,95 @@ function pintarLadosColumna(c, o, x, y, w, h) {
     c.fillText(txt, 0, 1);
     c.restore();
   }
+}
+
+// Arista redondeada: tapa la esquina en blanco, dibuja el arco y escribe la medida (ej. R 5x5).
+const RADIO_ARISTA = 36;
+function pintarArista(c, o) {
+  const [cx, cy] = o.p;
+  const r = RADIO_ARISTA;
+  c.save();
+  if (o.u1 && o.u2) {
+    const t1 = [cx + o.u1[0] * r, cy + o.u1[1] * r];
+    const t2 = [cx + o.u2[0] * r, cy + o.u2[1] * r];
+    // tapa la esquina viva
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.moveTo(cx - (o.u1[0] + o.u2[0]) * 10, cy - (o.u1[1] + o.u2[1]) * 10);
+    c.lineTo(cx + o.u1[0] * (r + 2) - o.u2[0] * 12, cy + o.u1[1] * (r + 2) - o.u2[1] * 12);
+    c.lineTo(...t1);
+    c.arcTo(cx, cy, t2[0], t2[1], r);
+    c.lineTo(cx + o.u2[0] * (r + 2) - o.u1[0] * 12, cy + o.u2[1] * (r + 2) - o.u1[1] * 12);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = o.color;
+    c.lineWidth = o.w;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(...t1);
+    c.arcTo(cx, cy, t2[0], t2[1], r);
+    c.lineTo(...t2);
+    c.stroke();
+  } else {
+    c.strokeStyle = o.color;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(cx, cy, 14, 0, Math.PI * 2);
+    c.stroke();
+  }
+  if (o.texto) {
+    // la medida va por fuera de la esquina
+    let dx = -1;
+    let dy = -1;
+    if (o.u1 && o.u2) {
+      dx = -(o.u1[0] + o.u2[0]);
+      dy = -(o.u1[1] + o.u2[1]);
+    }
+    const n = Math.hypot(dx, dy) || 1;
+    const tx = cx + dx / n * 34;
+    const ty = cy + dy / n * 34;
+    const txt = `R ${o.texto}`;
+    c.font = '700 24px system-ui, sans-serif';
+    c.textAlign = dx > 0.3 ? 'left' : dx < -0.3 ? 'right' : 'center';
+    c.textBaseline = dy > 0.3 ? 'top' : dy < -0.3 ? 'bottom' : 'middle';
+    c.fillStyle = o.color;
+    c.fillText(txt, tx, ty);
+  }
+  c.restore();
+}
+
+// Busca los dos cantos que forman la esquina tocada: direcciones desde la esquina.
+function esquinaEn(p) {
+  const tramos = [];
+  for (const o of trabajo.objetos) {
+    if (o.tipo === 'linea' || o.tipo === 'canto') tramos.push([o.a, o.b]);
+    if (o.tipo === 'rect') {
+      const { x, y, w, h } = caja(o);
+      const e = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      e.forEach((q, i) => tramos.push([q, e[(i + 1) % 4]]));
+    }
+  }
+  const dirs = [];
+  let suma = [0, 0];
+  for (const [a, b] of tramos) {
+    for (const [ext, otro] of [[a, b], [b, a]]) {
+      if (Math.hypot(ext[0] - p[0], ext[1] - p[1]) > 30) continue;
+      const lon = Math.hypot(otro[0] - ext[0], otro[1] - ext[1]);
+      if (lon < 20) continue;
+      dirs.push([(otro[0] - ext[0]) / lon, (otro[1] - ext[1]) / lon]);
+      suma = [suma[0] + ext[0], suma[1] + ext[1]];
+    }
+  }
+  // el par de direcciones más cercano a 90°
+  let mejor = null;
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const cos = Math.abs(dirs[i][0] * dirs[j][0] + dirs[i][1] * dirs[j][1]);
+      if (cos < 0.9 && (!mejor || cos < mejor.cos)) mejor = { cos, u1: dirs[i], u2: dirs[j] };
+    }
+  }
+  if (!mejor) return { p, u1: null, u2: null };
+  return { p: [suma[0] / dirs.length, suma[1] / dirs.length], u1: mejor.u1, u2: mejor.u2 };
 }
 
 // Descuadre: raya roja discontinua encima del propio canto de la pieza, sin medida.
@@ -539,6 +633,8 @@ function distancia(o, p) {
       return distSegmento(p, o.a, o.b);
     case 'luz':
       return Math.max(Math.abs(p[0] - o.p[0]), Math.abs(p[1] - o.p[1])) <= TAM_LUZ / 2 ? 0 : Infinity;
+    case 'arista':
+      return Math.hypot(p[0] - o.p[0], p[1] - o.p[1]) <= 40 ? 0 : Infinity;
     case 'rect': {
       const { x, y, w, h } = caja(o);
       const esq = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -640,6 +736,17 @@ lienzo.addEventListener('pointerdown', async (e) => {
     case 'luz':
       anadir({ tipo: 'luz', p, color, w });
       return;
+    case 'arista': {
+      const esq = esquinaEn(p);
+      const o = { tipo: 'arista', ...esq, color, w };
+      enCurso = o;
+      dibujar();
+      o.texto = await pedirTexto('Medida de la arista redondeada (ej. 5x5)', '', true);
+      enCurso = null;
+      if (o.texto === null) { dibujar(); return; }
+      anadir(o);
+      return;
+    }
     case 'editar': {
       const obj = elementoEn(crudo);
       if (obj) await editar(obj);
@@ -739,8 +846,11 @@ async function editar(o) {
     return;
   } else if (o.tipo === 'columna') {
     ok = await pedirLadosColumna(o);
-  } else if (['cota', 'texto', 'luz'].includes(o.tipo)) {
-    const etiquetas = { cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)' };
+  } else if (['cota', 'texto', 'luz', 'arista'].includes(o.tipo)) {
+    const etiquetas = {
+      cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)',
+      arista: 'Medida de la arista redondeada (ej. 5x5)',
+    };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
     if (texto !== null) {
       if (o.tipo === 'texto' && !texto) return;
@@ -872,11 +982,85 @@ function fechaLegible(iso) {
 // La hoja sale en A4 vertical (210 × 297 mm).
 const HOJA_H = Math.round(W * 297 / 210);
 
+// Cabecera común de las hojas (ficha y presupuesto): logo y nombre de la empresa.
+// Devuelve la altura que ocupa.
+const EMPRESA = 'MÁRMOLES CARBONELL';
+const CLAVE_LOGO = 'planosCocina.logo';
+const logoImg = new Image();
+
+function cargarLogo() {
+  let datos = null;
+  try { datos = localStorage.getItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
+  if (datos) logoImg.src = datos; else logoImg.removeAttribute('src');
+}
+
+function pintarCabecera(c, M, derecha) {
+  const altoLogo = 110;
+  let x = M;
+  if (logoImg.complete && logoImg.naturalWidth) {
+    const ancho = Math.min(360, altoLogo * logoImg.naturalWidth / logoImg.naturalHeight);
+    const alto = ancho * logoImg.naturalHeight / logoImg.naturalWidth;
+    c.drawImage(logoImg, x, M + (altoLogo - alto) / 2, ancho, alto);
+    x += ancho + 28;
+  }
+  c.fillStyle = '#2f3b45';
+  c.font = '800 54px system-ui, sans-serif';
+  c.textAlign = 'left';
+  c.textBaseline = 'middle';
+  c.fillText(EMPRESA, x, M + altoLogo / 2);
+  c.font = '400 28px system-ui, sans-serif';
+  c.fillStyle = '#5f6b75';
+  c.textAlign = 'right';
+  derecha.filter(Boolean).forEach((t, i, lista) => {
+    c.fillText(t, W - M, M + altoLogo / 2 + (i - (lista.length - 1) / 2) * 38);
+  });
+  c.textAlign = 'left';
+  c.textBaseline = 'top';
+  c.strokeStyle = '#2f3b45';
+  c.lineWidth = 3;
+  linea(c, [M, M + altoLogo + 16], [W - M, M + altoLogo + 16]);
+  return altoLogo + 40;
+}
+
+// Zona del lienzo con dibujo, para ampliarla en la hoja.
+function cajaDibujo() {
+  const pts = [];
+  ctx.save();
+  for (const o of trabajo.objetos) {
+    if (o.pts) pts.push(...o.pts);
+    if (o.a) pts.push(o.a, o.b);
+    if (o.tipo === 'arista') {
+      // la medida va por fuera de la esquina
+      pts.push([o.p[0] - 140, o.p[1] - 70], [o.p[0] + 140, o.p[1] + 70]);
+    }
+    if (o.p) {
+      pts.push(o.p);
+      if (o.texto && (o.tipo === 'texto' || o.tipo === 'luz')) {
+        ctx.font = `600 ${o.tipo === 'texto' ? tamTexto(o) : 26}px system-ui, sans-serif`;
+        const ancho = Math.max(...o.texto.split('\n').map((l) => ctx.measureText(l).width));
+        const lineas = o.texto.split('\n').length;
+        pts.push([o.p[0] + ancho + (o.tipo === 'luz' ? TAM_LUZ : 0), o.p[1] + lineas * tamTexto(o) * 1.2]);
+      }
+    }
+  }
+  ctx.restore();
+  if (!pts.length) return { x: 0, y: 0, w: W, h: H };
+  const margen = 80;
+  let x0 = Math.min(...pts.map((q) => q[0])) - margen;
+  let y0 = Math.min(...pts.map((q) => q[1])) - margen;
+  let x1 = Math.max(...pts.map((q) => q[0])) + margen;
+  let y1 = Math.max(...pts.map((q) => q[1])) + margen;
+  // tamaño mínimo para que un dibujo pequeño no salga gigante
+  if (x1 - x0 < 800) { const m = (x0 + x1) / 2; x0 = m - 400; x1 = m + 400; }
+  if (y1 - y0 < 560) { const m = (y0 + y1) / 2; y0 = m - 280; y1 = m + 280; }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
 function componerHoja() {
   const M = 70;                     // margen (unos 7 mm)
   const colW = (W - M * 3) / 2;     // dos columnas de datos
-  const tamEt = 26;
-  const tamVal = 32;
+  const tamEt = 24;
+  const tamVal = 30;
   const alto = tamVal * 1.25;
   const medir = document.createElement('canvas').getContext('2d');
   medir.font = `400 ${tamVal}px system-ui, sans-serif`;
@@ -898,24 +1082,8 @@ function componerHoja() {
       lineas: partirTexto(medir, d[c] || '—', colW - 20),
     });
     const n = Math.max(...celdas.filter(Boolean).map((x) => x.lineas.length));
-    return { celdas, h: tamEt + 10 + n * alto + 16 };
+    return { celdas, h: tamEt + 10 + n * alto + 14 };
   });
-  // pie: observaciones a la izquierda y firma del cliente a la derecha
-  const anchoObs = Math.round((W - M * 3) * 0.64);
-  const anchoFirma = W - M * 3 - anchoObs;
-  const obs = (d.observaciones || '').trim();
-  const lineasObs = obs ? partirTexto(medir, obs, anchoObs - 20) : [];
-  const hPieMin = Math.max(200, tamEt + 10 + lineasObs.length * alto + 16);
-
-  const cabecera = 90;
-  const altoDatos = filas.reduce((s, f) => s + f.h, 0);
-  const yPlano = M + cabecera + altoDatos + 12;
-  // el plano ocupa todo el ancho si cabe; si no, se reduce para no salirse de la hoja
-  const altoLibre = HOJA_H - M - yPlano - 24 - hPieMin;
-  const escalaPlano = Math.min((W - M * 2) / W, altoLibre / H);
-  const xPlano = (W - W * escalaPlano) / 2;
-  const yPie = yPlano + H * escalaPlano + 24;
-  const hPie = HOJA_H - M - yPie;
 
   const hoja = document.createElement('canvas');
   hoja.width = W;
@@ -924,16 +1092,7 @@ function componerHoja() {
   c.fillStyle = '#fff';
   c.fillRect(0, 0, hoja.width, hoja.height);
 
-  // título
-  c.fillStyle = '#2f3b45';
-  c.font = '700 48px system-ui, sans-serif';
-  c.textBaseline = 'top';
-  c.fillText('Ficha de encimera', M, M);
-  c.font = '400 28px system-ui, sans-serif';
-  c.fillStyle = '#5f6b75';
-  c.textAlign = 'right';
-  c.fillText(d.referencia ? `Ref. ${d.referencia}` : '', W - M, M + 14);
-  c.textAlign = 'left';
+  const cabecera = pintarCabecera(c, M, [d.referencia && `Ref. ${d.referencia}`, d.fecha]);
 
   let y = M + cabecera;
   c.strokeStyle = '#c9d0d6';
@@ -941,6 +1100,8 @@ function componerHoja() {
   const celda = (x, yy, w, h, cel) => {
     c.textAlign = 'left';
     c.textBaseline = 'top';
+    c.strokeStyle = '#c9d0d6';
+    c.lineWidth = 2;
     c.strokeRect(x, yy, w, h);
     c.fillStyle = '#5f6b75';
     c.font = `600 ${tamEt}px system-ui, sans-serif`;
@@ -956,28 +1117,44 @@ function componerHoja() {
     y += f.h;
   }
 
-  // plano
-  pintarPlano(c, escalaPlano, false, xPlano, yPlano);
-  c.setTransform(1, 0, 0, 1, 0, 0);
-  c.strokeStyle = '#2f3b45';
-  c.lineWidth = 3;
-  c.strokeRect(xPlano, yPlano, W * escalaPlano, H * escalaPlano);
-
-  // leyenda de cantos vistos y descuadres
+  // leyenda de cantos vistos y descuadres (debajo del plano)
   const leyenda = [];
   if (trabajo.objetos.some((o) => o.tipo === 'canto')) {
     leyenda.push({ txt: 'Canto visto' + (trabajo.datos.canto ? ` (${trabajo.datos.canto})` : ''), tipo: 'canto' });
   }
   if (trabajo.objetos.some((o) => o.tipo === 'descuadre')) leyenda.push({ txt: 'Descuadre', tipo: 'descuadre' });
-  let lx = xPlano + 20;
-  const ly = yPlano + H * escalaPlano - 44;
-  c.font = '600 28px system-ui, sans-serif';
+  const hLeyenda = leyenda.length ? 56 : 0;
+
+  // observaciones: una franja pequeña, solo si hay texto
+  const obs = (d.observaciones || '').trim();
+  const lineasObs = obs ? partirTexto(medir, obs, W - M * 2 - 20).slice(0, 3) : [];
+  const hObs = obs ? tamEt + 10 + lineasObs.length * alto + 14 : 0;
+
+  // plano: se recorta a lo dibujado y se amplía para llenar todo el hueco libre
+  const marco = { x: M, y: y + 4, w: W - M * 2 };
+  marco.h = HOJA_H - M - (hObs ? hObs + 16 : 0) - hLeyenda - marco.y;
+  const caja = cajaDibujo();
+  const escala = Math.min(marco.w / caja.w, marco.h / caja.h, 1.5);
+  const ox = marco.x + (marco.w - caja.w * escala) / 2 - caja.x * escala;
+  const oy = marco.y + (marco.h - caja.h * escala) / 2 - caja.y * escala;
+  c.save();
+  c.beginPath();
+  c.rect(marco.x, marco.y, marco.w, marco.h);
+  c.clip();
+  pintarPlano(c, escala, false, ox, oy);
+  c.restore();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.strokeStyle = '#2f3b45';
+  c.lineWidth = 3;
+  c.strokeRect(marco.x, marco.y, marco.w, marco.h);
+
+  let lx = M + 10;
+  const ly = marco.y + marco.h + hLeyenda / 2;
+  c.font = '600 26px system-ui, sans-serif';
   c.textAlign = 'left';
   c.textBaseline = 'middle';
   for (const { txt, tipo } of leyenda) {
-    const ancho = 96 + c.measureText(txt).width;
-    c.fillStyle = '#ffffff';
-    c.fillRect(lx - 10, ly - 26, ancho + 20, 52);
+    const ancho = 90 + c.measureText(txt).width;
     c.save();
     if (tipo === 'canto') {
       c.globalAlpha = 0.6;
@@ -991,15 +1168,11 @@ function componerHoja() {
     linea(c, [lx, ly], [lx + 70, ly]);
     c.restore();
     c.fillStyle = '#111';
-    c.fillText(txt, lx + 86, ly);
+    c.fillText(txt, lx + 84, ly);
     lx += ancho + 40;
   }
 
-  // pie
-  c.strokeStyle = '#c9d0d6';
-  c.lineWidth = 2;
-  celda(M, yPie, anchoObs, hPie, { etiqueta: ETIQUETAS.observaciones, lineas: lineasObs });
-  celda(M * 2 + anchoObs, yPie, anchoFirma, hPie, { etiqueta: 'Conforme del cliente', lineas: [] });
+  if (obs) celda(M, HOJA_H - M - hObs, W - M * 2, hObs, { etiqueta: ETIQUETAS.observaciones, lineas: lineasObs });
   return hoja;
 }
 
@@ -1170,6 +1343,36 @@ $('#fileImportar').addEventListener('change', async (e) => {
 });
 
 // ---------------------------------------------------------------------------
+// Logo de la empresa (se reduce y se guarda en el dispositivo)
+// ---------------------------------------------------------------------------
+$('#fileLogo').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const img = new Image();
+    img.src = URL.createObjectURL(f);
+    await img.decode();
+    const escalaLogo = Math.min(1, 600 / img.naturalWidth, 300 / img.naturalHeight);
+    const lc = document.createElement('canvas');
+    lc.width = Math.round(img.naturalWidth * escalaLogo);
+    lc.height = Math.round(img.naturalHeight * escalaLogo);
+    lc.getContext('2d').drawImage(img, 0, 0, lc.width, lc.height);
+    URL.revokeObjectURL(img.src);
+    localStorage.setItem(CLAVE_LOGO, lc.toDataURL('image/png'));
+    cargarLogo();
+    aviso('Logo guardado: saldrá en la ficha y en el presupuesto');
+  } catch {
+    aviso('No se pudo cargar esa imagen');
+  }
+});
+$('#btnQuitarLogo').addEventListener('click', () => {
+  try { localStorage.removeItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
+  cargarLogo();
+  aviso('Logo quitado');
+});
+
+// ---------------------------------------------------------------------------
 // Avisos
 // ---------------------------------------------------------------------------
 let tempAviso = null;
@@ -1197,6 +1400,7 @@ function aviso(texto) {
   });
 
   $('#version').textContent = `Planos Cocina · versión ${VERSION}`;
+  cargarLogo();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => { /* sin modo sin conexión */ });

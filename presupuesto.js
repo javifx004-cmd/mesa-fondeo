@@ -367,17 +367,10 @@ function componerPresupuesto() {
   c.textBaseline = 'top';
   c.textAlign = 'left';
 
-  c.fillStyle = '#2f3b45';
-  c.font = '700 64px system-ui, sans-serif';
-  c.fillText('Presupuesto', M, M);
-  c.font = '400 32px system-ui, sans-serif';
-  c.fillStyle = '#5f6b75';
-  c.textAlign = 'right';
-  c.fillText([d.referencia && `Ref. ${d.referencia}`, fechaLegible(d.fecha)].filter(Boolean).join('   ·   '), W - M, M + 24);
-  c.textAlign = 'left';
+  const cabecera = pintarCabecera(c, M, ['PRESUPUESTO', d.referencia && `Ref. ${d.referencia}`, fechaLegible(d.fecha)]);
 
   // datos del cliente
-  let y = M + 130;
+  let y = M + cabecera + 10;
   c.font = '600 34px system-ui, sans-serif';
   c.fillStyle = '#111';
   c.fillText(d.cliente || 'Cliente', M, y);
