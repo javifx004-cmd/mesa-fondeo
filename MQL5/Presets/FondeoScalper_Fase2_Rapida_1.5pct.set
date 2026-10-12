@@ -1,0 +1,21 @@
+; Fase 2 RAPIDA: 1.5% por operacion, objetivo 5%, maximo 3 dias habiles
+; ALTO RIESGO - ver README (Monte Carlo): la mayoria de intentos NO aprueban en 3 dias.
+; Pon InpResetPhase=true la primera vez en cada cuenta nueva y luego vuelve a false.
+InpAccountSize=100000
+InpMaxDailyLossPct=4.0
+InpMaxTotalDDPct=8.0
+InpTrailingDD=false
+InpDailyProfitStopPct=0
+InpProfitTargetPct=5
+InpPhaseMaxDays=3
+InpResetPhase=false
+InpRiskPct=1.5
+InpCommissionPerLot=7.0
+InpMaxLots=50
+InpMaxTradesPerDay=10
+InpMaxConsecLosses=6
+InpCooldownMinutes=0
+InpMinRiskFraction=0.25
+InpMaxSpreadPips=1.2
+InpStartHour=9
+InpEndHour=19

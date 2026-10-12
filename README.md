@@ -112,3 +112,21 @@ Conclusiones:
 - **Lo que decide todo es el winrate real** con RR 1.5: por debajo de ~43% no hay ventaja tras costes; a partir de ~48% el challenge se aprueba con alta probabilidad, pero tarda meses con 0.4% de riesgo.
 - Subir el riesgo acorta el tiempo pero aumenta mucho la probabilidad de quemar el intento. 0.4–0.6% es el punto de equilibrio.
 - Limitaciones: asume operaciones independientes (no capta rachas por régimen de mercado), no modela gaps/slippage extremos ni el drawdown flotante dentro de una operación. Repite la simulación con **tu informe real** del backtest.
+
+### Modo rápido: 1.5% por operación y fases en 3 días
+
+Presets: `FondeoScalper_Fase1_Rapida_1.5pct.set` (objetivo 10%) y `FondeoScalper_Fase2_Rapida_1.5pct.set` (objetivo 5%). Activan `InpRiskPct=1.5`, `InpPhaseMaxDays=3` (el EA cierra todo y se bloquea si la fase no se ha pasado en 3 días hábiles), quitan el stop por beneficio diario y permiten hasta 10 operaciones/día. Las protecciones de pérdida diaria (4%) y DD total (8%) **siguen activas**. En cada cuenta nueva arranca una vez con `InpResetPhase=true`.
+
+Monte Carlo (RR 1.5, sin días mínimos de trading, 3000 simulaciones):
+
+| Winrate | Fase 1 (10%) en 3 días, 4 ops/día | Fase 2 (5%) en 3 días, 4 ops/día | Ambas fases, 4 ops/día | Ambas fases, 6 ops/día | Ambas fases a 1.5% con 60 días, 2 ops/día |
+|---|---|---|---|---|---|
+| 45% | 8% | 32% | 2.4% | 5.4% | 30% |
+| 48% | 11% | 37% | 3.8% | 8.7% | 47% |
+| 50% | 14% | 42% | 5.4% | 12% | 57% |
+| 55% | 21% | 53% | 11% | 23% | 79% |
+
+- Ninguna simulación viola las reglas de la firma (el EA se detiene antes), pero **la mayoría de intentos terminan sin llegar al objetivo en 3 días**.
+- 10% en 3 días a 1.5% = unas 5 operaciones ganadoras netas. Con ~2 señales/día la estrategia no genera suficientes operaciones: el resultado depende más de la suerte que de la ventaja.
+- Si la firma exige 4 días mínimos de trading, pasar en 3 días es imposible.
+- El riesgo de 1.5% sin límite de 3 días aprueba bastante más, a cambio de más intentos con el EA parado por drawdown.

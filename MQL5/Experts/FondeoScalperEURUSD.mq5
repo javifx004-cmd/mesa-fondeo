@@ -29,6 +29,8 @@ input double InpMaxTotalDDPct      = 8.0;      // Drawdown total max % (regla 10
 input bool   InpTrailingDD         = false;    // DD trailing desde maximo de balance (si tu firma lo usa)
 input double InpDailyProfitStopPct = 1.5;      // Dejar de operar al ganar este % en el dia (0 = off)
 input double InpProfitTargetPct    = 0.0;      // Parar EA al alcanzar objetivo total % (0 = off)
+input int    InpPhaseMaxDays       = 0;        // Dias habiles max para la fase (0 = sin limite)
+input bool   InpResetPhase         = false;    // Reiniciar fase (contador de dias y bloqueos)
 
 input group "=== Riesgo por operacion ==="
 input double InpRiskPct            = 0.30;  // Riesgo por operacion % del balance
@@ -135,6 +137,16 @@ int OnInit()
 
    if(StringFind(_Symbol, "EURUSD") < 0)
       Print("AVISO: este EA esta disenado y ajustado para EURUSD. Simbolo actual: ", _Symbol);
+
+   if(InpResetPhase)
+   {
+      GlobalVariableDel(GVName("perm"));
+      GlobalVariableDel(GVName("phase0"));
+      GlobalVariableDel(GVName("peak"));
+      Print("Fase reiniciada. Vuelve a poner InpResetPhase=false.");
+   }
+   if(!GlobalVariableCheck(GVName("phase0")))
+      GlobalVariableSet(GVName("phase0"), (double)DayStart());
 
    // Restaurar estado persistente (reinicios de terminal/VPS)
    g_peakBalance = GlobalVariableCheck(GVName("peak")) ? GlobalVariableGet(GVName("peak"))
@@ -311,6 +323,12 @@ void CheckRiskLimits()
       SetPermBlock("Objetivo de la fase alcanzado");
    }
 
+   if(!g_permBlocked && InpPhaseMaxDays > 0 && PhaseDaysElapsed() > InpPhaseMaxDays)
+   {
+      CloseAll("Plazo de la fase agotado");
+      SetPermBlock(StringFormat("Plazo de %d dias de la fase agotado", InpPhaseMaxDays));
+   }
+
    if(!g_dailyBlocked && equity <= DailyFloor())
    {
       CloseAll("Perdida diaria maxima");
@@ -325,6 +343,22 @@ void CheckRiskLimits()
       g_dailyBlocked = true;
       g_blockReason  = "Objetivo diario alcanzado";
    }
+}
+
+// Dias habiles (lunes-viernes) desde el inicio de la fase, incluido hoy
+int PhaseDaysElapsed()
+{
+   datetime start = (datetime)GlobalVariableGet(GVName("phase0"));
+   datetime today = DayStart();
+   int days = 0;
+   for(datetime d = start; d <= today; d += 86400)
+   {
+      MqlDateTime t;
+      TimeToStruct(d, t);
+      if(t.day_of_week != 0 && t.day_of_week != 6)
+         days++;
+   }
+   return days;
 }
 
 void SetPermBlock(const string reason)
@@ -654,13 +688,14 @@ void DrawPanel()
       "Equity: %.2f   Inicio dia: %.2f   P/L dia: %.2f\n"
       "Limite diario: %.2f (margen %.2f)\n"
       "Limite DD total: %.2f (margen %.2f)\n"
-      "Operaciones hoy: %d/%d   Perdidas seguidas: %d/%d\n"
+      "Operaciones hoy: %d/%d   Perdidas seguidas: %d/%d   Dia de fase: %d/%s\n"
       "Spread: %.1f pips   Sesion: %s   Noticias: %s",
       status, g_blockReason,
       equity, g_dayStartEquity, equity - g_dayStartEquity,
       DailyFloor(), equity - DailyFloor(),
       DDFloor(), equity - DDFloor(),
       g_tradesToday, InpMaxTradesPerDay, g_consecLosses, InpMaxConsecLosses,
+      PhaseDaysElapsed(), InpPhaseMaxDays > 0 ? IntegerToString(InpPhaseMaxDays) : "-",
       SpreadPips(), InSession() ? "SI" : "NO", g_newsActive ? "BLOQUEO" : "OK"));
 }
 
