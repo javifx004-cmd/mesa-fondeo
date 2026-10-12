@@ -183,11 +183,12 @@ function calcular(t) {
     const que = [d.grifo && 'grifo', d.jabonera && 'jabonera', d.osmosis && 'ósmosis'].filter(Boolean).join(', ');
     linea(`Hueco de grifo (${que})`, taladros, 'ud', g && g.precio);
   }
+  // cajas de enchufe y columnas dibujadas en el plano: cada una al precio de «Cajas»
+  const precioCaja = (buscarConcepto('Cajas') || {}).precio;
   const cajas = t.objetos.filter((o) => o.tipo === 'luz').length;
-  if (cajas) {
-    const c = buscarConcepto('Cajas');
-    linea('Cajas de luz', cajas, 'ud', c && c.precio);
-  }
+  if (cajas) linea('Cajas de enchufe', cajas, 'ud', precioCaja);
+  const columnas = t.objetos.filter((o) => o.tipo === 'columna').length;
+  if (columnas) linea('Columnas', columnas, 'ud', precioCaja);
 
   // Colocación
   const extras = t.extras || {};
@@ -541,7 +542,7 @@ A partir del plano (imagen), los datos de la ficha y la descripción del marmoli
 Cómo leer el plano:
 - Las cotas están en milímetros. El dibujo no está a escala: fíate de las cotas, no de las proporciones.
 - Las bandas azules son cantos vistos. Las rayas rojas discontinuas son descuadres de pared (no cambian las medidas).
-- Los rectángulos rayados son columnas o pilares. Los cuadrados con un rayo son cajas de luz (la app las cuenta sola; no las incluyas).
+- Los rectángulos rayados son columnas o pilares y los cuadrados con un rayo son cajas de enchufe: la app los cuenta y cobra sola; no los incluyas como piezas.
 - Una encimera en L o en U se divide en piezas rectangulares (bancadas). Que la suma de largos coincida con las cotas sin contar dos veces la esquina.
 
 Piezas:

@@ -43,7 +43,7 @@ copia de `tarifas_carbonell_2025.csv`):
   - Zócalo: por metro lineal (precio de zócalo de la tarifa).
 - **Cantos**: metros de los lados marcados como vistos × precio del tipo de canto de la ficha.
 - **Huecos**: fregadero según su tipo, vitro (hueco sobre encimera), taladros de grifo, jabonera
-  y ósmosis (hueco de grifo) y cajas de luz dibujadas en el plano (cajas).
+  y ósmosis (hueco de grifo) y cajas de enchufe y columnas dibujadas en el plano (cada una al precio de «Cajas», 20 €).
 - **Colocación**: de bancada (por trabajo) y de aplacado (por m² de frontales).
 - **IVA 21 %**: se suma o no con una casilla.
 - Se descarga, se comparte o se imprime como hoja A4 aparte (sin el plano).
