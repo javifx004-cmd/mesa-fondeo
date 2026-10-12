@@ -1,0 +1,24 @@
+; WSFunded CLASSIC fase 1 - 1.5%, maximo 3 dias
+; Reglas firma: objetivo 8% | perdida diaria 5% | DD max estatico 8%
+; Verifica las reglas actuales en wsfunded.com antes de usarlo.
+; Pon InpResetPhase=true la primera vez en cada cuenta nueva y luego vuelve a false.
+; InpDayResetHour: hora del servidor equivalente a las 17:00 de Nueva York (0 en servidores GMT+2/+3).
+InpAccountSize=100000
+InpMaxDailyLossPct=4.0
+InpMaxTotalDDPct=7.0
+InpTrailingDD=false
+InpDailyProfitStopPct=0
+InpProfitTargetPct=8
+InpPhaseMaxDays=3
+InpResetPhase=false
+InpDayResetHour=0
+InpRiskPct=1.5
+InpCommissionPerLot=7.0
+InpMaxLots=50
+InpMaxTradesPerDay=10
+InpMaxConsecLosses=6
+InpCooldownMinutes=0
+InpMinRiskFraction=0.25
+InpMaxSpreadPips=1.2
+InpStartHour=9
+InpEndHour=19

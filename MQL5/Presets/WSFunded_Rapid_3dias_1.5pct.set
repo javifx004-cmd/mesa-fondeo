@@ -1,0 +1,24 @@
+; WSFunded RAPID 1 fase - 1.5% por operacion, maximo 3 dias (ALTO RIESGO)
+; Reglas firma: objetivo 10% | perdida diaria 4% | DD max estatico 6%
+; Verifica las reglas actuales en wsfunded.com antes de usarlo.
+; Pon InpResetPhase=true la primera vez en cada cuenta nueva y luego vuelve a false.
+; InpDayResetHour: hora del servidor equivalente a las 17:00 de Nueva York (0 en servidores GMT+2/+3).
+InpAccountSize=100000
+InpMaxDailyLossPct=3.5
+InpMaxTotalDDPct=5.2
+InpTrailingDD=false
+InpDailyProfitStopPct=0
+InpProfitTargetPct=10
+InpPhaseMaxDays=3
+InpResetPhase=false
+InpDayResetHour=0
+InpRiskPct=1.5
+InpCommissionPerLot=7.0
+InpMaxLots=50
+InpMaxTradesPerDay=10
+InpMaxConsecLosses=6
+InpCooldownMinutes=0
+InpMinRiskFraction=0.25
+InpMaxSpreadPips=1.2
+InpStartHour=9
+InpEndHour=19

@@ -130,3 +130,44 @@ Monte Carlo (RR 1.5, sin días mínimos de trading, 3000 simulaciones):
 - 10% en 3 días a 1.5% = unas 5 operaciones ganadoras netas. Con ~2 señales/día la estrategia no genera suficientes operaciones: el resultado depende más de la suerte que de la ventaja.
 - Si la firma exige 4 días mínimos de trading, pasar en 3 días es imposible.
 - El riesgo de 1.5% sin límite de 3 días aprueba bastante más, a cambio de más intentos con el EA parado por drawdown.
+
+## WSFunded
+
+Reglas recogidas de reseñas públicas (la web oficial no era accesible desde el entorno donde se hizo esto: **verifícalas en wsfunded.com** antes de operar):
+
+| Modelo | Fases | Objetivo | Pérdida diaria | DD máx. (estático) | Límites del EA (preset) |
+|---|---|---|---|---|---|
+| Rapid | 1 | 10% | 4% | 6% | 3.5% / 5.2% |
+| Classic | 2 | 8% + 5% | 5% | 8% | 4% / 7% |
+| Ultra | 2 | 10% + 5% | 5% | 10% | 4% / 8% |
+
+Otras reglas que el EA ya respeta:
+- **Stop loss obligatorio** en los primeros minutos: el EA envía cada orden con SL y TP.
+- **Máx. 50% de la pérdida diaria por idea de trading**: el EA nunca arriesga más de la mitad del margen diario restante (1.5% < 2%).
+- **Día de trading desde las 17:00 de Nueva York**: ajustable con `InpDayResetHour` (0 en servidores GMT+2/+3, que ya cierran a esa hora).
+- **Noticias en cuenta fondeada** (ventana restringida alrededor de noticias de alto impacto): el filtro de noticias del EA cubre ±30 min.
+- Revisa si tu modelo tiene **regla de consistencia** (mejor día ≤ 15–30% del beneficio) para los retiros en la cuenta fondeada.
+
+Presets en `MQL5/Presets/WSFunded_*.set`.
+
+### Monte Carlo WSFunded (riesgo 1.5%, 3 días máx. por fase, 4 operaciones/día)
+
+| Winrate | Rapid | Classic | Ultra |
+|---|---|---|---|
+| 45% | 7.6% | 4.2% | 2.4% |
+| 48% | 10.2% | 6.2% | 3.8% |
+| 50% | 12.5% | 8.1% | 5.4% |
+| 55% | 19.7% | 16.2% | 10.7% |
+
+Mismo riesgo 1.5% pero **sin límite de 3 días**: Rapid 47%, Classic 41%, Ultra 46% (winrate 48%).
+
+**Rapid** con winrate 48% y 4 operaciones/día, según el riesgo (sin límite de días):
+
+| Riesgo | Aprueba | Días mediana |
+|---|---|---|
+| 0.5% | 78% | 32 |
+| 0.75% | 66% | 17 |
+| 1.0% | 58% | 11 |
+| 1.5% | 47% | 6 |
+
+En todos los casos 0% de suspensos por las reglas de la firma: lo que no aprueba es porque el EA se detiene antes del límite (cuenta salvada pero challenge no superado) o porque se acaba el plazo.

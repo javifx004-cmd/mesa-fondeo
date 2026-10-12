@@ -31,6 +31,7 @@ input double InpDailyProfitStopPct = 1.5;      // Dejar de operar al ganar este 
 input double InpProfitTargetPct    = 0.0;      // Parar EA al alcanzar objetivo total % (0 = off)
 input int    InpPhaseMaxDays       = 0;        // Dias habiles max para la fase (0 = sin limite)
 input bool   InpResetPhase         = false;    // Reiniciar fase (contador de dias y bloqueos)
+input int    InpDayResetHour       = 0;        // Hora (servidor) de reinicio del dia de la firma
 
 input group "=== Riesgo por operacion ==="
 input double InpRiskPct            = 0.30;  // Riesgo por operacion % del balance
@@ -114,7 +115,8 @@ int OnInit()
       Print("Riesgo por operacion fuera de rango (0-2%).");
       return INIT_PARAMETERS_INCORRECT;
    }
-   if(InpStartHour < 0 || InpStartHour > 23 || InpEndHour < 0 || InpEndHour > 24)
+   if(InpStartHour < 0 || InpStartHour > 23 || InpEndHour < 0 || InpEndHour > 24 ||
+      InpDayResetHour < 0 || InpDayResetHour > 23)
       return INIT_PARAMETERS_INCORRECT;
 
    g_pip = (_Digits == 3 || _Digits == 5) ? _Point * 10.0 : _Point;
@@ -218,7 +220,7 @@ void OnTick()
 void UpdateDay()
 {
    MqlDateTime t;
-   TimeToStruct(TimeCurrent(), t);
+   TimeToStruct(TimeCurrent() - InpDayResetHour * 3600, t);
    int dayId = t.year * 10000 + t.mon * 100 + t.day;
    if(dayId == g_dayId)
       return;
@@ -244,8 +246,8 @@ void UpdateDay()
 
 datetime DayStart()
 {
-   datetime now = TimeCurrent();
-   return now - (now % 86400);
+   datetime now = TimeCurrent() - InpDayResetHour * 3600;
+   return now - (now % 86400) + InpDayResetHour * 3600;
 }
 
 void RecountToday()
