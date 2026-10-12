@@ -240,3 +240,18 @@ La única anomalía robusta es que el EUR tiende a depreciarse durante el horari
 | La misma con SL ≥ 8 pips y coste 1 pip | −0.08R |
 
 Las reglas mecánicas de FVG en M1 no tienen ventaja: sin costes se comportan como entradas aleatorias, y en M1 los costes (≈1 pip con SL de 2–6 pips) suponen 0.2–0.4R por operación.
+
+### FVG en M5 + EMA 20, Londres y Nueva York (reglas del operador)
+
+FVG detectado en M5 a favor de la EMA 20 de M5, sesiones 10–13 y 15–18 servidor (9–12 y 14–17 hora España), SL bajo el mínimo (compras) / sobre el máximo (ventas), TP 1:3. Ejecución minuto a minuto en M1 (`run_htf` en `tools/fvg_backtest.py`).
+
+| Variante (RR 1:3) | Winrate 2018–25 | Esperanza 2010–17 | Esperanza 2018–25 | Sin costes |
+|---|---|---|---|---|
+| SL tras la vela 1 del FVG, entrada en el borde | 27.9% | −0.15R | −0.15R | ≈ 0 |
+| SL tras mín./máx. de 5 velas | 29.8% | −0.14R | −0.14R | ≈ 0 |
+| SL tras mín./máx. de 10 velas | 32.9% | −0.10R | −0.13R | ≈ 0 |
+| SL tras mín./máx. de 20 velas | 35.6% | −0.11R | −0.12R | ≈ 0 |
+| Entrada al 50% del FVG | 25–34% | −0.10 a −0.17R | −0.12 a −0.17R | |
+| Otras sesiones / hueco ≥1.5 pips / desplazamiento ≥1.5 ATR | 27–30% | −0.13 a −0.17R | −0.12 a −0.18R | |
+
+Unas 3–4 operaciones/día. Negativa los 16 años; sin costes queda en ≈ 0R. (Nota: exigir pendiente de la EMA 20 no cambia nada, porque un cierre por encima de la EMA implica que la EMA sube.)
