@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '15';   // cambiar junto con CACHE en sw.js
+const VERSION = '16';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -991,11 +991,11 @@ const logoImg = new Image();
 function cargarLogo() {
   let datos = null;
   try { datos = localStorage.getItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
-  if (datos) logoImg.src = datos; else logoImg.removeAttribute('src');
+  logoImg.src = datos || 'logo.svg';   // logo de Mármoles Carbonell de serie
 }
 
 function pintarCabecera(c, M, derecha) {
-  const altoLogo = 110;
+  const altoLogo = 150;
   let x = M;
   if (logoImg.complete && logoImg.naturalWidth) {
     const ancho = Math.min(360, altoLogo * logoImg.naturalWidth / logoImg.naturalHeight);
@@ -1369,7 +1369,7 @@ $('#fileLogo').addEventListener('change', async (e) => {
 $('#btnQuitarLogo').addEventListener('click', () => {
   try { localStorage.removeItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
   cargarLogo();
-  aviso('Logo quitado');
+  aviso('Se vuelve a usar el logo de Mármoles Carbonell');
 });
 
 // ---------------------------------------------------------------------------

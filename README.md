@@ -31,7 +31,7 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
 - **Descargar imagen**, **Compartir** (WhatsApp, correo… desde el móvil) e
   **Imprimir / PDF** de la hoja completa en **A4 vertical**, con «MÁRMOLES CARBONELL» y el logo
   en la cabecera, los datos, el plano ampliado a lo dibujado y una franja pequeña de observaciones.
-- **Logo**: «Cambiar logo» al final de la página; sale en la ficha y en el presupuesto.
+- **Logo**: el de Mármoles Carbonell va de serie (`logo.svg`, redibujado en vectorial); «Cambiar logo», al final de la página, permite usar otro en ese dispositivo.
 - **Copia de seguridad**: exporta/restaura todos los trabajos en un archivo, útil para
   pasar los trabajos del móvil al PC.
 

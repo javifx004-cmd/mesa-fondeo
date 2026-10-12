@@ -1,7 +1,7 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v15';
+const CACHE = 'planos-cocina-v16';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js',
-  'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg'];
+  'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS.map((a) => new Request(a, { cache: 'reload' })))).then(() => self.skipWaiting()));
