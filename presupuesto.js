@@ -536,6 +536,7 @@ A partir del plano (imagen), los datos de la ficha y la descripción del marmoli
 Cómo leer el plano:
 - Las cotas están en milímetros. El dibujo no está a escala: fíate de las cotas, no de las proporciones.
 - Las bandas azules son cantos vistos. Las rayas rojas discontinuas son descuadres de pared (no cambian las medidas).
+- Un triángulo negro sobre un canto es una bajada a inglete (con su altura en cm). Una línea verde con «Pulido detrás» indica la parte pulida por detrás.
 - Los rectángulos rayados son columnas o pilares y los cuadrados con un rayo son cajas de enchufe: la app los cuenta y cobra sola; no los incluyas como piezas.
 - Una encimera en L o en U se divide en piezas rectangulares (bancadas). Que la suma de largos coincida con las cotas sin contar dos veces la esquina.
 

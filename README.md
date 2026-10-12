@@ -20,6 +20,9 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - Cajas de luz / enchufes (con nota opcional), columnas o pilares (rayados, con la medida de cada lado que toca en pequeño) y
     descuadres, marcados con una raya roja discontinua fina encima del propio canto de la pieza
     (sin medida; la hoja lleva su leyenda).
+  - Inglete: arrastra a lo largo del canto de una bajada; se marca con un solo triángulo y la
+    altura en cm (3, 4, 5, 6… se propone la última usada).
+  - Pulido detrás: arrastra a lo largo del canto; línea verde con «Pulido detrás X cm».
   - Arista: toca una esquina y escribe la medida (ej. 5x5); la esquina se dibuja redondeada
     con «R 5x5» al lado.
   - Editar: toca un elemento para cambiar su medida o su texto (en la vitro y el fregadero

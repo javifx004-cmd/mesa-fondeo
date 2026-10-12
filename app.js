@@ -11,12 +11,13 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '17';   // cambiar junto con CACHE en sw.js
+const VERSION = '18';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
 const ROJO = '#c62828';
 const AZUL_CANTO = '#1e88e5';
+const VERDE_PULIDO = '#2e7d32';
 const ETIQUETAS = {
   cliente: 'Cliente', telefono: 'Teléfono', direccion: 'Dirección', referencia: 'Referencia',
   fecha: 'Fecha', material: 'Material', canto: 'Tipo de canto', vitro: 'Vitrocerámica',
@@ -420,7 +421,73 @@ function pintarObjeto(c, o) {
       linea(c, o.a, o.b);
       c.restore();
       break;
+    case 'inglete':
+      pintarInglete(c, o);
+      break;
+    case 'pulido':
+      pintarPulido(c, o);
+      break;
   }
+}
+
+// Dirección del tramo y normal a su izquierda (hacia donde van el símbolo y el texto).
+function ejes(o) {
+  const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]) || 1;
+  const u = [(o.b[0] - o.a[0]) / lon, (o.b[1] - o.a[1]) / lon];
+  return { u, n: [u[1], -u[0]], m: [(o.a[0] + o.b[0]) / 2, (o.a[1] + o.b[1]) / 2], lon };
+}
+
+// Bajada a inglete: un solo triángulo sobre el canto y la altura en cm.
+function triangulo(c, m, u, n, lado) {
+  const h = lado * 0.87;
+  c.beginPath();
+  c.moveTo(m[0] - u[0] * lado / 2, m[1] - u[1] * lado / 2);
+  c.lineTo(m[0] + u[0] * lado / 2, m[1] + u[1] * lado / 2);
+  c.lineTo(m[0] + n[0] * h, m[1] + n[1] * h);
+  c.closePath();
+  c.fill();
+}
+
+function pintarInglete(c, o) {
+  const { u, n, m } = ejes(o);
+  c.save();
+  c.fillStyle = o.color;
+  triangulo(c, m, u, n, 34);
+  if (o.texto) {
+    c.font = '700 26px system-ui, sans-serif';
+    c.textAlign = n[0] > 0.5 ? 'left' : n[0] < -0.5 ? 'right' : 'center';
+    c.textBaseline = n[1] > 0.5 ? 'top' : n[1] < -0.5 ? 'bottom' : 'middle';
+    c.fillText(`${o.texto} cm`, m[0] + n[0] * 40, m[1] + n[1] * 40);
+  }
+  c.restore();
+}
+
+// Pulido por detrás: línea verde fina junto al canto y los cm.
+function pintarPulido(c, o) {
+  const { u, n, m } = ejes(o);
+  const d = 12;
+  c.save();
+  c.strokeStyle = VERDE_PULIDO;
+  c.lineWidth = 3;
+  c.setLineDash([18, 6, 4, 6]);
+  linea(c, [o.a[0] + n[0] * d, o.a[1] + n[1] * d], [o.b[0] + n[0] * d, o.b[1] + n[1] * d]);
+  c.setLineDash([]);
+  if (o.texto) {
+    let ang = Math.atan2(u[1], u[0]);
+    if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+    const txt = `Pulido detrás ${o.texto} cm`;
+    c.translate(m[0] + n[0] * (d + 24), m[1] + n[1] * (d + 24));
+    c.rotate(ang);
+    c.font = '700 24px system-ui, sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    const ancho = c.measureText(txt).width;
+    c.fillStyle = '#ffffff';
+    c.fillRect(-ancho / 2 - 4, -14, ancho + 8, 28);
+    c.fillStyle = VERDE_PULIDO;
+    c.fillText(txt, 0, 1);
+  }
+  c.restore();
 }
 
 // Medida pequeña pegada a cada lado de la columna (solo los lados que la tienen).
@@ -630,7 +697,10 @@ function distancia(o, p) {
     case 'cota':
     case 'descuadre':
     case 'canto':
+    case 'pulido':
       return distSegmento(p, o.a, o.b);
+    case 'inglete':
+      return Math.hypot(p[0] - (o.a[0] + o.b[0]) / 2, p[1] - (o.a[1] + o.b[1]) / 2) <= 40 ? 0 : Infinity;
     case 'luz':
       return Math.max(Math.abs(p[0] - o.p[0]), Math.abs(p[1] - o.p[1])) <= TAM_LUZ / 2 ? 0 : Infinity;
     case 'arista':
@@ -731,6 +801,8 @@ lienzo.addEventListener('pointerdown', async (e) => {
     case 'columna':
     case 'descuadre':
     case 'canto':
+    case 'inglete':
+    case 'pulido':
       enCurso = { tipo: herramienta, a: p, b: [...p], color, w };
       break;
     case 'luz':
@@ -787,7 +859,7 @@ lienzo.addEventListener('pointermove', (e) => {
       enCurso.pts.push(crudo);
     } else {
       const p = iman(crudo);
-      const recta = ['linea', 'cota', 'descuadre', 'canto'].includes(enCurso.tipo);
+      const recta = ['linea', 'cota', 'descuadre', 'canto', 'inglete', 'pulido'].includes(enCurso.tipo);
       enCurso.b = recta ? enderezar(enCurso.a, p) : p;
     }
     dibujar();
@@ -829,9 +901,23 @@ async function terminarTrazo(e) {
     const ok = await pedirLadosColumna(o);
     enCurso = null;
     if (!ok) { dibujar(); return; }
+  } else if (o.tipo === 'inglete' || o.tipo === 'pulido') {
+    enCurso = o;
+    dibujar();
+    o.texto = await pedirTexto(PREGUNTAS[o.tipo], o.tipo === 'inglete' ? ultimoInglete : '');
+    enCurso = null;
+    if (o.texto === null) { dibujar(); return; }
+    o.texto = o.texto.replace(/\s*cm$/i, '');
+    if (o.tipo === 'inglete') ultimoInglete = o.texto;
   }
   anadir(o);
 }
+
+const PREGUNTAS = {
+  inglete: 'Altura de la bajada a inglete en cm (3, 4, 5, 6…)',
+  pulido: 'Centímetros pulidos por detrás',
+};
+let ultimoInglete = '6';   // se propone la última altura usada
 
 async function editar(o) {
   const copia = JSON.stringify(trabajo.objetos);
@@ -846,10 +932,10 @@ async function editar(o) {
     return;
   } else if (o.tipo === 'columna') {
     ok = await pedirLadosColumna(o);
-  } else if (['cota', 'texto', 'luz', 'arista'].includes(o.tipo)) {
+  } else if (['cota', 'texto', 'luz', 'arista', 'inglete', 'pulido'].includes(o.tipo)) {
     const etiquetas = {
       cota: 'Medida', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)',
-      arista: 'Medida de la arista redondeada (ej. 5x5)',
+      arista: 'Medida de la arista redondeada (ej. 5x5)', ...PREGUNTAS,
     };
     const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
     if (texto !== null) {
@@ -1136,6 +1222,8 @@ function componerHoja() {
     leyenda.push({ txt: 'Canto visto' + (trabajo.datos.canto ? ` (${trabajo.datos.canto})` : ''), tipo: 'canto' });
   }
   if (trabajo.objetos.some((o) => o.tipo === 'descuadre')) leyenda.push({ txt: 'Descuadre', tipo: 'descuadre' });
+  if (trabajo.objetos.some((o) => o.tipo === 'inglete')) leyenda.push({ txt: 'Bajada a inglete', tipo: 'inglete' });
+  if (trabajo.objetos.some((o) => o.tipo === 'pulido')) leyenda.push({ txt: 'Pulido por detrás', tipo: 'pulido' });
   const hLeyenda = leyenda.length ? 56 : 0;
 
   // observaciones: una franja pequeña, solo si hay texto
@@ -1173,12 +1261,21 @@ function componerHoja() {
       c.globalAlpha = 0.6;
       c.strokeStyle = AZUL_CANTO;
       c.lineWidth = 16;
+    } else if (tipo === 'pulido') {
+      c.strokeStyle = VERDE_PULIDO;
+      c.lineWidth = 3;
+      c.setLineDash([18, 6, 4, 6]);
     } else {
       c.strokeStyle = ROJO;
       c.lineWidth = 3;
       c.setLineDash([14, 8]);
     }
-    linea(c, [lx, ly], [lx + 70, ly]);
+    if (tipo === 'inglete') {
+      c.fillStyle = '#111';
+      triangulo(c, [lx + 35, ly + 12], [1, 0], [0, -1], 30);
+    } else {
+      linea(c, [lx, ly], [lx + 70, ly]);
+    }
     c.restore();
     c.fillStyle = '#111';
     c.fillText(txt, lx + 84, ly);
