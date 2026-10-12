@@ -11,6 +11,8 @@ Expert Advisor de **scalping para EURUSD en MetaTrader 5**, diseñado para cuent
 | `MQL5/Experts/FondeoScalperEURUSD.mq5` | Código del EA |
 | `MQL5/Presets/FondeoScalper_Challenge_100k.set` | Ajustes para la fase de evaluación |
 | `MQL5/Presets/FondeoScalper_Funded_100k.set` | Ajustes más conservadores para cuenta ya fondeada |
+| `tools/montecarlo.py` | Simulador Monte Carlo con las reglas de fondeo y las protecciones del EA |
+| `reports/` | Gráficos de la última simulación |
 
 ## Instalación
 
@@ -64,3 +66,49 @@ El estado del día (equity inicial, bloqueos) se guarda en variables globales de
 3. Revisa: factor de beneficio > 1.3, DD máx. de equity < 5%, número de operaciones > 300.
 4. **Optimización:** usa *Criterio personalizado máximo* (el EA incluye `OnTester` que premia beneficio/drawdown). Optimiza pocos parámetros (`InpSL_ATR`, `InpRR`, `InpStartHour`, `InpEndHour`, `InpTouchPips`) y valida con **forward test** (1/3 del periodo) para evitar sobreoptimización.
 5. Demo 2–4 semanas con el mismo bróker antes del challenge.
+
+## Monte Carlo
+
+`tools/montecarlo.py` simula miles de challenges o meses de cuenta fondeada aplicando las reglas de la prop firm (5% diario, 10% total, objetivos por fase, días mínimos) **y** las protecciones del EA (stop diario 4%, DD 8%, stop por beneficio diario, máx. operaciones, pérdidas seguidas y reducción de riesgo según el margen restante). Requiere `numpy` (y `matplotlib` para los gráficos).
+
+```bash
+# Con las operaciones reales de tu backtest (Probador → clic derecho → Informe → HTML)
+python3 tools/montecarlo.py --report ReportTester.html --sample-risk 0.30 --max-days 250
+
+# Sin backtest: tabla de escenarios según la tasa de acierto
+python3 tools/montecarlo.py --scenarios
+
+# Cuenta ya fondeada, 12 meses, con el preset conservador
+python3 tools/montecarlo.py --winrate 0.48 --mode funded --risk 0.25 --ea-daily 3 --ea-dd 7 --ea-day-profit 1 --max-consec 2
+```
+
+`--sample-risk` debe ser el `InpRiskPct` con el que hiciste el backtest: las operaciones se convierten a múltiplos de R y se re-escalan al `--risk` que quieras simular. Ver `python3 tools/montecarlo.py -h` para todas las reglas configurables (`--phases 8` para 1 fase, `--trailing-dd`, `--max-days`…).
+
+### Resultados con parámetros supuestos (aún sin backtest real)
+
+RR 1.5, riesgo 0.4%, coste 0.08R/operación, 15% de cierres en break-even, ~2 operaciones/día, challenge de 2 fases (10% + 5%), 250 días máx. por fase:
+
+| Winrate | Esperanza | Aprueba | Suspende (regla firma) | EA se para (cuenta salvada) | Días mediana |
+|---|---|---|---|---|---|
+| 40% | −0.07R | 0.9% | 0% | 88% | 160 |
+| 42% | −0.03R | 5.5% | 0% | 70% | 188 |
+| 45% | +0.03R | 40% | 0% | 33% | 187 |
+| 48% | +0.10R | 84% | 0% | 8% | 152 |
+| 50% | +0.14R | 96% | 0% | 2% | 122 |
+| 55% | +0.25R | 100% | 0% | 0% | 75 |
+
+Riesgo por operación con winrate 48%:
+
+| Riesgo | Aprueba | EA se para | Días mediana |
+|---|---|---|---|
+| 0.3% | 78% | 3% | 201 |
+| 0.4% | 84% | 8% | 150 |
+| 0.6% | 77% | 21% | 95 |
+| 0.8% | 68% | 32% | 62 |
+| 1.0% | 58% | 42% | 44 |
+
+Conclusiones:
+- Las protecciones funcionan: en ningún escenario se viola una regla de la firma; en el peor caso el EA se detiene antes.
+- **Lo que decide todo es el winrate real** con RR 1.5: por debajo de ~43% no hay ventaja tras costes; a partir de ~48% el challenge se aprueba con alta probabilidad, pero tarda meses con 0.4% de riesgo.
+- Subir el riesgo acorta el tiempo pero aumenta mucho la probabilidad de quemar el intento. 0.4–0.6% es el punto de equilibrio.
+- Limitaciones: asume operaciones independientes (no capta rachas por régimen de mercado), no modela gaps/slippage extremos ni el drawdown flotante dentro de una operación. Repite la simulación con **tu informe real** del backtest.

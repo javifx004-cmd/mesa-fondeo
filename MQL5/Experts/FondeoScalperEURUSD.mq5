@@ -37,6 +37,7 @@ input double InpMaxLots            = 10.0;  // Lotes maximos por operacion
 input int    InpMaxTradesPerDay    = 6;     // Operaciones maximas por dia
 input int    InpMaxConsecLosses    = 3;     // Perdidas seguidas max en el dia
 input int    InpCooldownMinutes    = 30;    // Pausa tras una perdida (min)
+input double InpMinRiskFraction    = 0.25;  // Parar si el riesgo permitido cae bajo x del normal
 
 input group "=== Senal ==="
 input int    InpFastEMA            = 8;     // EMA rapida (M5)
@@ -483,15 +484,26 @@ int GetSignal()
 //+------------------------------------------------------------------+
 double CalcLots(const double slDistance)
 {
-   double balance   = AccountInfoDouble(ACCOUNT_BALANCE);
-   double riskMoney = balance * InpRiskPct / 100.0;
+   double balance    = AccountInfoDouble(ACCOUNT_BALANCE);
+   double normalRisk = balance * InpRiskPct / 100.0;
 
-   // Nunca arriesgar mas de la mitad del margen diario restante
-   double dailyRoom = AccountInfoDouble(ACCOUNT_EQUITY) - DailyFloor();
-   double totalRoom = AccountInfoDouble(ACCOUNT_EQUITY) - DDFloor();
-   riskMoney = MathMin(riskMoney, 0.5 * MathMin(dailyRoom, totalRoom));
-   if(riskMoney <= 0)
+   // Nunca arriesgar mas de la mitad del margen restante (diario y total).
+   // Si eso obliga a operar con un riesgo residual, se para en lugar de
+   // seguir con lotes minimos cerca del limite.
+   double dayRisk   = 0.5 * (AccountInfoDouble(ACCOUNT_EQUITY) - DailyFloor());
+   double totalRisk = 0.5 * (AccountInfoDouble(ACCOUNT_EQUITY) - DDFloor());
+   if(totalRisk < InpMinRiskFraction * normalRisk)
+   {
+      SetPermBlock("Margen de drawdown total agotado");
       return 0;
+   }
+   if(dayRisk < InpMinRiskFraction * normalRisk)
+   {
+      g_dailyBlocked = true;
+      g_blockReason  = "Margen diario agotado";
+      return 0;
+   }
+   double riskMoney = MathMin(normalRisk, MathMin(dayRisk, totalRisk));
 
    double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE_LOSS);
    if(tickValue <= 0)
