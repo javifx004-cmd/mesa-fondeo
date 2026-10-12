@@ -47,7 +47,9 @@ copia de `tarifas_carbonell_2025.csv`):
 - **Piezas**: bancada, frontal o zócalo, con largo, fondo (o alto) y cantos vistos.
   - Bancada y frontal: por metro lineal si el fondo es menor de 75 cm; a partir de 75 cm, por m².
   - Zócalo: por metro lineal (precio de zócalo de la tarifa).
-- **Cantos**: metros de los lados marcados como vistos × precio del tipo de canto de la ficha.
+- **Cantos**: en la ficha se elige sencillo (1,2 o 2 cm) o ingletado (2 a 9 cm), o cualquier otro
+  canto de la tarifa. Metros de los lados vistos × precio: sencillo = «Canto recto»; ingletado de
+  cualquier altura = «Canto ingletado» de la tarifa.
 - **Huecos**: fregadero según su tipo, vitro (hueco sobre encimera), taladros de grifo, jabonera
   y ósmosis (hueco de grifo) y cajas de enchufe y columnas dibujadas en el plano (cada una al precio de «Cajas», 20 €).
 - **Colocación**: de bancada (por trabajo) y de aplacado (por m² de frontales).

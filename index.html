@@ -46,7 +46,19 @@
           <input name="material" list="listaMateriales" autocomplete="off" placeholder="Escribe y elige de la tarifa">
         </label>
         <label>Tipo de canto
-          <input name="canto" list="listaCantos" autocomplete="off" placeholder="Elegir o escribir">
+          <select name="canto">
+            <option value="">— Elegir —</option>
+            <optgroup label="Sencillo">
+              <option>Sencillo 1,2 cm</option>
+              <option>Sencillo 2 cm</option>
+            </optgroup>
+            <optgroup label="Ingletado">
+              <option>Ingletado 2 cm</option><option>Ingletado 3 cm</option><option>Ingletado 4 cm</option>
+              <option>Ingletado 5 cm</option><option>Ingletado 6 cm</option><option>Ingletado 7 cm</option>
+              <option>Ingletado 8 cm</option><option>Ingletado 9 cm</option>
+            </optgroup>
+            <optgroup label="Otros de la tarifa" id="cantosTarifa"></optgroup>
+          </select>
         </label>
         <fieldset class="wide grupo">
           <legend>Vitrocerámica</legend>
@@ -81,7 +93,6 @@
 
       <!-- se rellenan con la tarifa (presupuesto.js) -->
       <datalist id="listaMateriales"></datalist>
-      <datalist id="listaCantos"></datalist>
       <datalist id="listaVitro">
         <option value="Encastrada"><option value="Enrasada"><option value="Sin vitro">
       </datalist>

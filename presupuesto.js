@@ -84,6 +84,25 @@ function cantos() {
   return tarifas.conceptos.filter((c) => normalizar(c.categoria) === 'cantos');
 }
 
+// Opciones del desplegable de canto: sencillos, ingletados y el resto de la tarifa.
+function opcionesCanto() {
+  return [...$('select[name="canto"]').options].map((o) => o.value).filter(Boolean);
+}
+
+// Precio del canto elegido. Sencillo = «Canto recto»; ingletado de cualquier altura = el
+// canto ingletado de la tarifa; los demás, por su nombre.
+function conceptoCanto(nombre) {
+  if (/^sencillo/i.test(nombre || '')) {
+    const c = buscarConcepto('Canto recto');
+    return c && { concepto: `Canto ${nombre.toLowerCase()}`, precio: c.precio };
+  }
+  if (/^ingletado/i.test(nombre || '')) {
+    const c = cantos().find((x) => /inglet/i.test(x.concepto));
+    return c && { concepto: `Canto ${nombre.toLowerCase()}`, precio: c.precio };
+  }
+  return buscarConcepto(nombre);
+}
+
 // Tipos de fregadero = huecos de la tarifa ("Hueco bajo encimera" → "Bajo encimera")
 function tiposFregadero() {
   return tarifas.conceptos
@@ -101,7 +120,15 @@ function llenarListas() {
     return o;
   });
   $('#listaMateriales').replaceChildren(...opciones(tarifas.materiales.map(etiquetaMaterial)));
-  $('#listaCantos').replaceChildren(...opciones(cantos().map((c) => c.concepto)));
+  // cantos de la tarifa que no son el recto ni el ingletado (esos ya están arriba)
+  const sel = $('select[name="canto"]');
+  const otros = cantos().map((c) => c.concepto).filter((n) => !/^canto recto$|inglet/i.test(n));
+  $('#cantosTarifa').replaceChildren(...otros.map((n) => new Option(n, n)));
+  // quita duplicados añadidos antes como valor antiguo y vuelve a poner el valor del trabajo
+  [...sel.options].forEach((o) => {
+    if (o.parentElement === sel && otros.includes(o.value)) o.remove();
+  });
+  if (typeof trabajo !== 'undefined' && trabajo) volcarFormulario();
   $('#listaFregadero').replaceChildren(...opciones([...tiposFregadero(), 'Sin fregadero']));
   $('#nombreTarifa').textContent = tarifas.nombre;
 }
@@ -160,9 +187,10 @@ function calcular(t) {
   });
 
   if (mlCanto) {
-    const canto = buscarConcepto(d.canto);
+    const canto = conceptoCanto(d.canto);
     if (!canto) avisos.push(d.canto ? `El canto «${d.canto}» no está en la tarifa.` : 'Hay cantos vistos pero falta el tipo de canto.');
-    linea(canto ? canto.concepto : 'Canto (falta el tipo)', Math.round(mlCanto * 100) / 100, 'ml', canto ? canto.precio : 0);
+    const nombre = canto ? canto.concepto : d.canto ? `Canto ${d.canto} (sin precio)` : 'Canto (falta el tipo)';
+    linea(nombre, Math.round(mlCanto * 100) / 100, 'ml', canto ? canto.precio : 0);
   }
 
   // Huecos
@@ -651,7 +679,7 @@ Descripción del marmolista:
 ${descripcion || '(sin descripción)'}
 
 Lista de cantos:
-${cantos().map((c) => c.concepto).join('\n')}
+${opcionesCanto().join('\n')}
 
 Lista de fregaderos:
 ${tiposFregadero().join('\n')}
@@ -876,7 +904,7 @@ function aplicarIA(r) {
   const d = trabajo.datos;
   // los datos que ya estaban en la ficha se respetan
   if (r.material && !buscarMaterial(d.material) && buscarMaterial(r.material)) d.material = r.material;
-  if (r.canto && !d.canto && buscarConcepto(r.canto)) d.canto = r.canto;
+  if (r.canto && !d.canto && opcionesCanto().includes(r.canto)) d.canto = r.canto;
   if (r.fregadero && !d.fregadero) d.fregadero = r.fregadero;
   if (r.vitro && !d.vitro) d.vitro = 'Encastrada';
   for (const k of ['grifo', 'jabonera', 'osmosis']) if (r[k]) d[k] = 'sí';

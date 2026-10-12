@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '18';   // cambiar junto con CACHE en sw.js
+const VERSION = '19';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -84,8 +84,14 @@ const form = $('.ficha');
 function volcarFormulario() {
   for (const c of CAMPOS) {
     const el = form.querySelector(`[name="${c}"]`);
-    if (el.type === 'checkbox') el.checked = !!trabajo.datos[c];
-    else el.value = trabajo.datos[c] || '';
+    const v = trabajo.datos[c] || '';
+    if (el.type === 'checkbox') {
+      el.checked = !!v;
+    } else {
+      // en las listas se conserva un valor antiguo que ya no esté entre las opciones
+      if (el.tagName === 'SELECT' && v && ![...el.options].some((o) => o.value === v)) el.add(new Option(v, v));
+      el.value = v;
+    }
   }
 }
 
@@ -904,7 +910,8 @@ async function terminarTrazo(e) {
   } else if (o.tipo === 'inglete' || o.tipo === 'pulido') {
     enCurso = o;
     dibujar();
-    o.texto = await pedirTexto(PREGUNTAS[o.tipo], o.tipo === 'inglete' ? ultimoInglete : '');
+    const deFicha = (/^ingletado\s*([\d,.]+)/i.exec(trabajo.datos.canto || '') || [])[1];
+    o.texto = await pedirTexto(PREGUNTAS[o.tipo], o.tipo === 'inglete' ? (deFicha || ultimoInglete) : '');
     enCurso = null;
     if (o.texto === null) { dibujar(); return; }
     o.texto = o.texto.replace(/\s*cm$/i, '');
