@@ -141,6 +141,12 @@
       <div class="ia">
         <h3>Asistente con IA</h3>
         <p class="ayuda">La IA lee el plano, la ficha y lo que escribas, y rellena las piezas. Los precios salen siempre de tu tarifa.</p>
+        <label class="proveedor">IA:
+          <select id="proveedorIA">
+            <option value="gemini">Gemini (Google) · gratis</option>
+            <option value="claude">Claude (Anthropic) · de pago</option>
+          </select>
+        </label>
         <textarea id="descripcionIA" rows="2" placeholder="Opcional. Ej.: encimera en L de 3200 y 1500, fondo 620, frente visto, con colocación"></textarea>
         <div class="ia-botones">
           <button type="button" id="btnIA" class="primary">Hacer presupuesto con IA</button>

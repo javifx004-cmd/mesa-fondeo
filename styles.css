@@ -141,6 +141,10 @@ body.sin-scroll { overflow: hidden; }
 .ia { margin-top: 12px; padding: 12px; border: 1px dashed var(--active); border-radius: 10px; }
 .ia h3 { margin-top: 0; }
 .ayuda { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.proveedor { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.proveedor select {
+  min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); padding: 0 8px;
+}
 #descripcionIA {
   width: 100%; padding: 9px 10px; font-size: 16px; resize: vertical;
   border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);

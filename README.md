@@ -51,11 +51,17 @@ copia de `tarifas_carbonell_2025.csv`):
 
 ### Asistente con IA
 
-«Hacer presupuesto con IA» envía a Claude (modelo `claude-opus-5-5`) la imagen del plano, la
-ficha, lo que escribas y los nombres de la tarifa, y rellena las piezas y los datos que falten.
-**Los precios los calcula siempre la app**, no la IA. Necesita conexión y una clave de la API de
-Claude (console.anthropic.com), que se guarda solo en el dispositivo; cada uso se paga en la
-cuenta de esa clave. La librería oficial (`@anthropic-ai/sdk` 0.128.0) va incluida en `vendor/`.
+«Hacer presupuesto con IA» envía a la IA la imagen del plano, la ficha, lo que escribas y los
+nombres de la tarifa, y rellena las piezas y los datos que falten. **Los precios los calcula
+siempre la app**, no la IA. Necesita conexión. Se puede elegir la IA:
+
+- **Gemini (Google) · gratis** (por defecto): clave gratuita en aistudio.google.com («Get API key»),
+  sin tarjeta y con un límite de usos al día. Modelo `gemini-flash-latest`; si deja de existir,
+  la app elige otro modelo «flash» disponible.
+- **Claude (Anthropic) · de pago**: clave de console.anthropic.com con saldo. Modelo
+  `claude-opus-5-5`, con la librería oficial (`@anthropic-ai/sdk` 0.128.0) incluida en `vendor/`.
+
+Las claves se guardan solo en el dispositivo.
 
 ## Cómo usarla
 

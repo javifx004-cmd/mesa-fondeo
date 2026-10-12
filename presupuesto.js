@@ -495,7 +495,7 @@ $('#btnPresuImprimir').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Asistente con IA (Claude)
+// Asistente con IA (Gemini gratis o Claude de pago)
 // ---------------------------------------------------------------------------
 // La IA solo propone las piezas y los datos del trabajo; los precios los calcula
 // siempre la app con la tarifa, para que nunca se inventen.
@@ -556,19 +556,51 @@ Reglas:
 - material, canto y fregadero deben copiarse literalmente de las listas que te paso; si no encaja ninguno, deja "".
 - No calcules precios.`;
 
-// Una clave guardada que no tiene forma de clave de la API (p. ej. de versiones antiguas) se descarta.
-function leerClaveIA() {
+// Dos proveedores: Gemini (Google, con nivel gratuito) y Claude (Anthropic, de pago).
+const CLAVE_PROVEEDOR = 'planosCocina.proveedorIA';
+const PROVEEDORES = {
+  gemini: {
+    nombre: 'Gemini',
+    almacen: 'planosCocina.claveGemini',
+    prefijo: 'AIza',
+    pedir: 'Clave de Gemini (empieza por AIza). Se saca gratis en aistudio.google.com y se guarda solo en este dispositivo.',
+    ayuda: 'Para usar la IA gratis hace falta una clave de Gemini: entra en aistudio.google.com con tu cuenta de Google, '
+      + 'pulsa «Get API key» y luego «Create API key», cópiala y pégala con el botón «Clave IA». '
+      + 'Es gratis y no pide tarjeta (tiene un límite de usos al día).',
+  },
+  claude: {
+    nombre: 'Claude',
+    almacen: CLAVE_IA,
+    prefijo: 'sk-ant-api',
+    pedir: 'Clave de la API de Claude (empieza por sk-ant-api). Se saca en console.anthropic.com y se guarda solo en este dispositivo.',
+    ayuda: 'Para usar Claude hace falta una clave de la API de Claude (de pago): entra en console.anthropic.com, '
+      + 'crea una clave en «API Keys», añade saldo en «Billing» y pégala con el botón «Clave IA». '
+      + '(La suscripción de claude.ai no sirve: la API es una cuenta aparte.)',
+  },
+};
+
+function proveedorActual() {
+  try {
+    const p = localStorage.getItem(CLAVE_PROVEEDOR);
+    if (PROVEEDORES[p]) return p;
+  } catch { /* sin almacenamiento */ }
+  return 'gemini';
+}
+
+// Una clave guardada que no tiene la forma de la del proveedor (p. ej. de versiones antiguas) se descarta.
+function leerClaveIA(prov = proveedorActual()) {
+  const cfg = PROVEEDORES[prov];
   let clave = '';
-  try { clave = limpiarClave(localStorage.getItem(CLAVE_IA) || ''); } catch { return ''; }
-  if (clave && !clave.startsWith('sk-ant-api')) {
-    borrarClaveIA();
+  try { clave = limpiarClave(localStorage.getItem(cfg.almacen) || ''); } catch { return ''; }
+  if (clave && !clave.startsWith(cfg.prefijo)) {
+    borrarClaveIA(prov);
     return '';
   }
   return clave;
 }
 
-function borrarClaveIA() {
-  try { localStorage.removeItem(CLAVE_IA); } catch { /* sin almacenamiento */ }
+function borrarClaveIA(prov = proveedorActual()) {
+  try { localStorage.removeItem(PROVEEDORES[prov].almacen); } catch { /* sin almacenamiento */ }
 }
 
 // Al copiar desde el móvil se cuelan espacios, saltos de línea, comillas o caracteres invisibles.
@@ -576,25 +608,26 @@ function limpiarClave(clave) {
   return clave.replace(/[\s"'«»“”‘’`\u200B-\u200D\u2060\uFEFF]/g, '');
 }
 
-// Muestra el principio y el final para poder compararla con la de la consola.
+// Muestra el principio y el final para poder compararla con la original.
 function claveOculta(clave) {
-  return clave.length > 20 ? `${clave.slice(0, 14)}…${clave.slice(-4)}` : clave;
+  return clave.length > 20 ? `${clave.slice(0, 10)}…${clave.slice(-4)}` : clave;
 }
 
-async function pedirClaveIA() {
-  const escrita = await pedirTexto('Clave de la API de Claude (empieza por sk-ant-api). Se saca en console.anthropic.com y se guarda solo en este dispositivo.', leerClaveIA(), true);
+async function pedirClaveIA(prov = proveedorActual()) {
+  const cfg = PROVEEDORES[prov];
+  const escrita = await pedirTexto(cfg.pedir, leerClaveIA(prov), true);
   if (escrita === null) return null;
   const clave = limpiarClave(escrita);
-  if (clave.startsWith('sk-ant-oat')) {
-    $('#estadoIA').textContent = 'Esa clave es de la suscripción de Claude (Claude Code), no de la API, y aquí no sirve. ' + AYUDA_CLAVE;
+  if (prov === 'claude' && clave.startsWith('sk-ant-oat')) {
+    $('#estadoIA').textContent = 'Esa clave es de la suscripción de Claude (Claude Code), no de la API, y aquí no sirve. ' + cfg.ayuda;
     return null;
   }
-  if (clave && !clave.startsWith('sk-ant-api')) {
-    $('#estadoIA').textContent = 'Esa no parece una clave de la API: tiene que empezar por sk-ant-api. ' + AYUDA_CLAVE;
+  if (clave && !clave.startsWith(cfg.prefijo)) {
+    $('#estadoIA').textContent = `Esa no parece una clave de ${cfg.nombre}: tiene que empezar por ${cfg.prefijo}. ` + cfg.ayuda;
     return null;
   }
   try {
-    if (clave) localStorage.setItem(CLAVE_IA, clave); else localStorage.removeItem(CLAVE_IA);
+    if (clave) localStorage.setItem(cfg.almacen, clave); else localStorage.removeItem(cfg.almacen);
   } catch { /* sin almacenamiento */ }
   return clave;
 }
@@ -627,12 +660,19 @@ Lista de materiales:
 ${tarifas.materiales.map(etiquetaMaterial).join('\n')}`;
 }
 
-const AYUDA_CLAVE = 'Para usar la IA hace falta una clave de la API de Claude: entra en console.anthropic.com, '
-  + 'crea una clave en «API Keys», añade saldo en «Billing» y pégala con el botón «Clave IA». '
-  + '(La suscripción de claude.ai no sirve: la API es una cuenta aparte.)';
+// Error con el código HTTP para dar un mensaje claro.
+class ErrorIA extends Error {
+  constructor(status, message, motivo = '') {
+    super(message);
+    this.status = status;
+    this.motivo = motivo;
+  }
+}
 
 async function presupuestoConIA() {
   const estado = $('#estadoIA');
+  const prov = proveedorActual();
+  const cfg = PROVEEDORES[prov];
   if (location.protocol === 'file:') {
     estado.textContent = 'El asistente con IA no funciona abriendo la app desde el ZIP. '
       + 'Ábrela desde la dirección web (https://javifx004-cmd.github.io/mesa-fondeo/).';
@@ -643,72 +683,158 @@ async function presupuestoConIA() {
     return;
   }
   estado.textContent = '';
-  let clave = leerClaveIA();
-  if (!clave) clave = await pedirClaveIA();
+  let clave = leerClaveIA(prov);
+  if (!clave) clave = await pedirClaveIA(prov);
   if (!clave) {
-    estado.textContent ||= AYUDA_CLAVE;   // pedirClaveIA puede haber dejado ya un aviso más concreto
+    estado.textContent ||= cfg.ayuda;   // pedirClaveIA puede haber dejado ya un aviso más concreto
     return;
   }
 
   const boton = $('#btnIA');
   boton.disabled = true;
-  estado.textContent = 'La IA está leyendo el plano…';
-  let modulo;
+  estado.textContent = `${cfg.nombre} está leyendo el plano…`;
   try {
-    modulo = await import('./vendor/anthropic-sdk.js');
-  } catch {
-    estado.textContent = 'No se pudo cargar el asistente. Recarga la página y prueba otra vez.';
-    boton.disabled = false;
-    return;
-  }
-  try {
-    const { Anthropic, jsonSchemaOutputFormat } = modulo;
-    const client = new Anthropic({ apiKey: clave, dangerouslyAllowBrowser: true });
-    const respuesta = await client.beta.messages.parse({
-      model: MODELO_IA,
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'medium', format: jsonSchemaOutputFormat(ESQUEMA_IA) },
-      system: SISTEMA_IA,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imagenPlanoBase64() } },
-          { type: 'text', text: textoParaIA($('#descripcionIA').value.trim()) },
-        ],
-      }],
-    });
-    if (respuesta.stop_reason === 'refusal') throw new Error('La IA no ha podido procesar esta petición.');
-    if (respuesta.stop_reason === 'max_tokens') throw new Error('La respuesta de la IA se ha cortado. Prueba otra vez.');
-    const r = respuesta.parsed_output;
+    const imagen = imagenPlanoBase64();
+    const texto = textoParaIA($('#descripcionIA').value.trim());
+    const r = prov === 'gemini' ? await pedirAGemini(clave, imagen, texto) : await pedirAClaude(clave, imagen, texto);
     if (!r || !Array.isArray(r.piezas)) throw new Error('La IA no ha devuelto piezas.');
     aplicarIA(r);
     estado.textContent = r.notas ? `Notas de la IA: ${r.notas}` : 'Presupuesto preparado. Revisa las piezas.';
   } catch (err) {
-    estado.textContent = mensajeErrorIA(err);
+    estado.textContent = mensajeErrorIA(err, prov);
   } finally {
     boton.disabled = false;
   }
 }
 
-function mensajeErrorIA(err) {
+// --- Gemini (Google) -------------------------------------------------------
+const URL_GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
+let modeloGemini = 'gemini-flash-latest';
+
+// Gemini usa su propio formato de esquema (tipos en mayúsculas, sin additionalProperties).
+function esquemaGemini(e) {
+  const r = { type: e.type.toUpperCase() };
+  if (e.description) r.description = e.description;
+  if (e.enum) r.enum = e.enum;
+  if (e.items) r.items = esquemaGemini(e.items);
+  if (e.properties) {
+    r.properties = Object.fromEntries(Object.entries(e.properties).map(([k, v]) => [k, esquemaGemini(v)]));
+    r.required = e.required;
+    r.propertyOrdering = Object.keys(e.properties);
+  }
+  return r;
+}
+
+async function llamarGemini(clave, cuerpo) {
+  const resp = await fetch(`${URL_GEMINI}/${modeloGemini}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': clave },
+    body: JSON.stringify(cuerpo),
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const er = datos.error || {};
+    const motivo = (er.details || []).map((x) => x.reason).filter(Boolean).join(',');
+    throw new ErrorIA(resp.status, er.message || resp.statusText, motivo);
+  }
+  return datos;
+}
+
+// Si el nombre del modelo deja de existir, se elige otro "flash" de los disponibles.
+async function buscarModeloGemini(clave) {
+  const resp = await fetch(`${URL_GEMINI}?pageSize=200`, { headers: { 'x-goog-api-key': clave } });
+  if (!resp.ok) return null;
+  const { models = [] } = await resp.json();
+  const validos = models
+    .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map((m) => m.name.replace(/^models\//, ''))
+    .filter((n) => /flash/.test(n) && !/lite|image|tts|live|audio|thinking|exp/.test(n));
+  validos.sort().reverse();
+  return validos[0] || null;
+}
+
+async function pedirAGemini(clave, imagen, texto) {
+  const cuerpo = {
+    systemInstruction: { parts: [{ text: SISTEMA_IA }] },
+    contents: [{
+      role: 'user',
+      parts: [{ inline_data: { mime_type: 'image/png', data: imagen } }, { text: texto }],
+    }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: esquemaGemini(ESQUEMA_IA) },
+  };
+  let datos;
+  try {
+    datos = await llamarGemini(clave, cuerpo);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    const otro = await buscarModeloGemini(clave);
+    if (!otro || otro === modeloGemini) throw err;
+    modeloGemini = otro;
+    datos = await llamarGemini(clave, cuerpo);
+  }
+  const cand = (datos.candidates || [])[0];
+  if (!cand) throw new Error('Gemini no ha podido procesar esta petición.');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('La respuesta de la IA se ha cortado. Prueba otra vez.');
+  const json = (cand.content && cand.content.parts || []).map((p) => p.text || '').join('');
+  try {
+    return JSON.parse(json);
+  } catch {
+    throw new Error('La respuesta de la IA no se ha podido leer. Prueba otra vez.');
+  }
+}
+
+// --- Claude (Anthropic) ----------------------------------------------------
+async function pedirAClaude(clave, imagen, texto) {
+  let modulo;
+  try {
+    modulo = await import('./vendor/anthropic-sdk.js');
+  } catch {
+    throw new Error('No se pudo cargar el asistente. Recarga la página y prueba otra vez.');
+  }
+  const { Anthropic, jsonSchemaOutputFormat } = modulo;
+  const client = new Anthropic({ apiKey: clave, dangerouslyAllowBrowser: true });
+  const respuesta = await client.beta.messages.parse({
+    model: MODELO_IA,
+    max_tokens: 16000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: 'medium', format: jsonSchemaOutputFormat(ESQUEMA_IA) },
+    system: SISTEMA_IA,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imagen } },
+        { type: 'text', text: texto },
+      ],
+    }],
+  });
+  if (respuesta.stop_reason === 'refusal') throw new Error('La IA no ha podido procesar esta petición.');
+  if (respuesta.stop_reason === 'max_tokens') throw new Error('La respuesta de la IA se ha cortado. Prueba otra vez.');
+  return respuesta.parsed_output;
+}
+
+function mensajeErrorIA(err, prov) {
+  const cfg = PROVEEDORES[prov];
   const s = err && err.status;
   const texto = (err && err.message) || '';
-  if (s === 401) {
+  const claveMala = s === 401 || (prov === 'gemini' && (/API_KEY_INVALID/.test(err.motivo || '') || /API key not valid/i.test(texto)));
+  if (claveMala) {
     // se borra para que al volver a pulsar se pida una clave nueva
-    const guardada = claveOculta(leerClaveIA());
-    borrarClaveIA();
-    return `Claude dice que la clave no es válida (era ${guardada}) y se ha borrado. `
-      + 'Comprueba en console.anthropic.com, en «API Keys», que la clave existe y no está desactivada; '
-      + 'crea una nueva si hace falta, cópiala con el botón de copiar, pulsa otra vez «Hacer presupuesto con IA» y pégala.';
+    const guardada = claveOculta(leerClaveIA(prov));
+    borrarClaveIA(prov);
+    return `${cfg.nombre} dice que la clave no es válida (era ${guardada}) y se ha borrado. `
+      + 'Pulsa otra vez «Hacer presupuesto con IA» y pega la clave copiándola con el botón de copiar. ' + cfg.ayuda;
   }
-  if (/credit balance/i.test(texto)) return 'La cuenta de la API no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
-  if (s === 403) return 'Esta clave no tiene permiso para usar la IA.';
-  if (s === 429) return 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
-  if (s >= 500) return 'El servicio de IA no responde ahora mismo. Prueba en un rato.';
+  if (/credit balance/i.test(texto)) return 'La cuenta de la API de Claude no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
+  if (s === 403) return `Esta clave no tiene permiso para usar ${cfg.nombre}.`;
+  if (s === 429) {
+    return prov === 'gemini'
+      ? 'Se ha llegado al límite gratuito de Gemini por ahora. Espera un minuto (o hasta mañana si es el límite diario) y prueba otra vez.'
+      : 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
+  }
+  if (s >= 500) return `${cfg.nombre} no responde ahora mismo. Prueba en un rato.`;
   if (!navigator.onLine) return 'Sin conexión a internet: la IA necesita conexión.';
-  if (!s) return 'No se pudo conectar con la IA. Revisa la conexión y prueba otra vez.';
+  if (!s) return texto ? `No se pudo hacer el presupuesto con IA: ${texto}` : 'No se pudo conectar con la IA. Revisa la conexión y prueba otra vez.';
   return `No se pudo hacer el presupuesto con IA (error ${s}): ${texto || 'error desconocido'}`;
 }
 
@@ -739,6 +865,11 @@ $('#btnIA').addEventListener('click', presupuestoConIA);
 $('#btnClaveIA').addEventListener('click', async () => {
   const clave = await pedirClaveIA();
   if (clave !== null) aviso(clave ? 'Clave guardada en este dispositivo' : 'Clave borrada');
+});
+$('#proveedorIA').value = proveedorActual();
+$('#proveedorIA').addEventListener('change', (e) => {
+  try { localStorage.setItem(CLAVE_PROVEEDOR, e.target.value); } catch { /* sin almacenamiento */ }
+  $('#estadoIA').textContent = '';
 });
 
 // ---------------------------------------------------------------------------
