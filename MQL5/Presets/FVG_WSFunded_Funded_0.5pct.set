@@ -1,0 +1,29 @@
+; FondeoFVG_M5 - WSFunded cuenta fondeada (sin objetivo), 0.5% por operacion
+; AVISO: en el backtest 2010-2025 estas reglas tienen esperanza negativa (ver README).
+; Pon InpResetPhase=true la primera vez en cada cuenta nueva y luego vuelve a false.
+; Sesiones en hora del servidor (GMT+2/+3): 10-13 y 15-18 = 9-12 y 14-17 hora de Espana.
+InpAccountSize=100000
+InpMaxDailyLossPct=3.5
+InpMaxTotalDDPct=5.2
+InpProfitTargetPct=0
+InpPhaseMaxDays=0
+InpResetPhase=false
+InpDayResetHour=0
+InpRiskPct=0.5
+InpCommissionPerLot=7.0
+InpMaxLots=50
+InpMaxTradesPerDay=6
+InpMaxConsecLosses=4
+InpEMAPeriod=20
+InpMinGapPips=0.5
+InpEntryFrac=0.0
+InpSLMode=0
+InpSwingBars=10
+InpRR=3.0
+InpOrderValidMinutes=60
+InpMaxTradeMinutes=240
+InpLondonStart=10
+InpLondonEnd=13
+InpNYStart=15
+InpNYEnd=18
+InpMaxSpreadPips=1.2

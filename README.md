@@ -10,7 +10,9 @@ Expert Advisor de **scalping para EURUSD en MetaTrader 5**, diseñado para cuent
 
 | Archivo | Qué es |
 |---|---|
-| `MQL5/Experts/FondeoScalperEURUSD.mq5` | Código del EA |
+| `MQL5/Experts/FondeoScalperEURUSD.mq5` | EA original (pullback M5) |
+| `MQL5/Experts/FondeoFVG_M5.mq5` | EA de continuaciones FVG en M5 + EMA 20 (Londres y NY, SL tras mín./máx., TP 1:3) |
+| `MQL5/Presets/FVG_*.set` | Ajustes del EA FVG para WSFunded |
 | `MQL5/Presets/FondeoScalper_Challenge_100k.set` | Ajustes para la fase de evaluación |
 | `MQL5/Presets/FondeoScalper_Funded_100k.set` | Ajustes más conservadores para cuenta ya fondeada |
 | `tools/montecarlo.py` | Simulador Monte Carlo con las reglas de fondeo y las protecciones del EA |
@@ -270,3 +272,15 @@ Bootstrap de las operaciones del backtest (`--r-file`), reglas WSFunded, ~3–3.
 Cuenta fondeada (Rapid, 0.5%, 12 meses): el 99.9% de las simulaciones acaba con el EA parado por drawdown, rentabilidad mediana −5%.
 
 Con esperanza negativa, subir el riesgo solo aumenta la varianza: aprueba más a menudo por suerte (≈1 de cada 6 intentos a 1.5%), pero la cuenta fondeada se pierde casi siempre después.
+
+### EA FondeoFVG_M5 (MT5)
+
+Implementa las mismas reglas que `run_htf` del backtest:
+
+1. Al cierre de cada vela M5 busca un FVG (vela 3 sin solapar con la vela 1, vela central a favor) con el cierre a favor de la EMA 20.
+2. Coloca una orden limitada en el borde del FVG (`InpEntryFrac=0`) o en su mitad (`0.5`), con SL bajo el mínimo / sobre el máximo de la vela 1 (`InpSLMode=0`) o del swing de `InpSwingBars` velas (`InpSLMode=1`) y TP = `InpRR` × riesgo.
+3. La orden se borra si caduca (`InpOrderValidMinutes`) o si el precio llega al TP sin haberla rellenado. La posición se cierra a los `InpMaxTradeMinutes` si no ha tocado SL/TP.
+4. Solo opera en Londres y Nueva York (`InpLondonStart/End`, `InpNYStart/End`, hora del servidor) y una operación a la vez.
+5. Mantiene todas las protecciones de fondeo del otro EA (pérdida diaria, DD, objetivo, plazo de fase, noticias, viernes, riesgo limitado al margen restante).
+
+Instalación: copia `FondeoFVG_M5.mq5` a `MQL5/Experts`, compílalo en MetaEditor (F7), arrástralo a un gráfico **EURUSD M5**, activa *Algo Trading* y carga un preset `FVG_*.set`. Pruébalo primero en demo y en el Probador de estrategias con *ticks reales*.
