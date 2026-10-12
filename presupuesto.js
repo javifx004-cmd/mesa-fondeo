@@ -557,14 +557,29 @@ Reglas:
 - No calcules precios.`;
 
 function leerClaveIA() {
-  try { return localStorage.getItem(CLAVE_IA) || ''; } catch { return ''; }
+  try { return limpiarClave(localStorage.getItem(CLAVE_IA) || ''); } catch { return ''; }
+}
+
+// Al copiar desde el móvil se cuelan espacios, saltos de línea, comillas o caracteres invisibles.
+function limpiarClave(clave) {
+  return clave.replace(/[\s"'«»“”‘’`\u200B-\u200D\u2060\uFEFF]/g, '');
+}
+
+// Muestra el principio y el final para poder compararla con la de la consola.
+function claveOculta(clave) {
+  return clave.length > 20 ? `${clave.slice(0, 14)}…${clave.slice(-4)}` : clave;
 }
 
 async function pedirClaveIA() {
-  const clave = await pedirTexto('Clave de la API de Claude (empieza por sk-ant-). Se saca en console.anthropic.com y se guarda solo en este dispositivo.', leerClaveIA(), true);
-  if (clave === null) return null;
-  if (clave && !clave.startsWith('sk-ant-')) {
-    aviso('Esa no parece una clave de la API: debe empezar por sk-ant-');
+  const escrita = await pedirTexto('Clave de la API de Claude (empieza por sk-ant-api). Se saca en console.anthropic.com y se guarda solo en este dispositivo.', leerClaveIA(), true);
+  if (escrita === null) return null;
+  const clave = limpiarClave(escrita);
+  if (clave.startsWith('sk-ant-oat')) {
+    $('#estadoIA').textContent = 'Esa clave es de la suscripción de Claude (Claude Code), no de la API, y aquí no sirve. ' + AYUDA_CLAVE;
+    return null;
+  }
+  if (clave && !clave.startsWith('sk-ant-api')) {
+    $('#estadoIA').textContent = 'Esa no parece una clave de la API: tiene que empezar por sk-ant-api. ' + AYUDA_CLAVE;
     return null;
   }
   try {
@@ -616,10 +631,11 @@ async function presupuestoConIA() {
     estado.textContent = 'Sin conexión a internet: la IA necesita conexión.';
     return;
   }
+  estado.textContent = '';
   let clave = leerClaveIA();
   if (!clave) clave = await pedirClaveIA();
   if (!clave) {
-    estado.textContent = AYUDA_CLAVE;
+    estado.textContent ||= AYUDA_CLAVE;   // pedirClaveIA puede haber dejado ya un aviso más concreto
     return;
   }
 
@@ -668,7 +684,11 @@ async function presupuestoConIA() {
 function mensajeErrorIA(err) {
   const s = err && err.status;
   const texto = (err && err.message) || '';
-  if (s === 401) return 'La clave de la API no es válida. Pulsa «Clave IA» y pégala otra vez. ' + AYUDA_CLAVE;
+  if (s === 401) {
+    return `Claude dice que la clave no es válida (la guardada es ${claveOculta(leerClaveIA())}). `
+      + 'Comprueba en console.anthropic.com, en «API Keys», que la clave existe y no está desactivada; '
+      + 'si no se ve entera, crea una nueva, cópiala con el botón de copiar y pégala en «Clave IA».';
+  }
   if (/credit balance/i.test(texto)) return 'La cuenta de la API no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
   if (s === 403) return 'Esta clave no tiene permiso para usar la IA.';
   if (s === 429) return 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
