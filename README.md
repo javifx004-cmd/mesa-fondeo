@@ -255,3 +255,18 @@ FVG detectado en M5 a favor de la EMA 20 de M5, sesiones 10–13 y 15–18 servi
 | Otras sesiones / hueco ≥1.5 pips / desplazamiento ≥1.5 ATR | 27–30% | −0.13 a −0.17R | −0.12 a −0.18R | |
 
 Unas 3–4 operaciones/día. Negativa los 16 años; sin costes queda en ≈ 0R. (Nota: exigir pendiente de la EMA 20 no cambia nada, porque un cierre por encima de la EMA implica que la EMA sube.)
+
+#### Monte Carlo de la estrategia FVG M5 (operaciones reales 2018–2025, RR 1:3)
+
+Bootstrap de las operaciones del backtest (`--r-file`), reglas WSFunded, ~3–3.5 operaciones/día:
+
+| Modelo | Riesgo | Aprueba en 3 días | Aprueba sin límite | Días mediana |
+|---|---|---|---|---|
+| Rapid (10%) | 0.5% | 0–0.1% | 6–7% | 18–23 |
+| Rapid (10%) | 1.0% | 2–3.5% | 14–15% | 6–7 |
+| Rapid (10%) | 1.5% | 7–9% | 16–17% | 3–4 |
+| Classic (8% + 5%) | 1.5% | 3–4% | 9–10% | 6–7 |
+
+Cuenta fondeada (Rapid, 0.5%, 12 meses): el 99.9% de las simulaciones acaba con el EA parado por drawdown, rentabilidad mediana −5%.
+
+Con esperanza negativa, subir el riesgo solo aumenta la varianza: aprueba más a menudo por suerte (≈1 de cada 6 intentos a 1.5%), pero la cuenta fondeada se pierde casi siempre después.
