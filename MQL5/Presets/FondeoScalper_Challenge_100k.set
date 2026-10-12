@@ -1,0 +1,16 @@
+; Fase de evaluacion (challenge) 100k - reglas tipicas: 5% diario / 10% total / objetivo 8-10%
+InpAccountSize=100000
+InpMaxDailyLossPct=4.0
+InpMaxTotalDDPct=8.0
+InpTrailingDD=false
+InpDailyProfitStopPct=1.5
+InpProfitTargetPct=10.0
+InpRiskPct=0.40
+InpCommissionPerLot=7.0
+InpMaxLots=10
+InpMaxTradesPerDay=6
+InpMaxConsecLosses=3
+InpCooldownMinutes=30
+InpMaxSpreadPips=1.2
+InpStartHour=9
+InpEndHour=19

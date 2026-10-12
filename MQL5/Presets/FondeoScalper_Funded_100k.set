@@ -1,0 +1,16 @@
+; Cuenta ya fondeada 100k - prioridad: no perder la cuenta
+InpAccountSize=100000
+InpMaxDailyLossPct=3.0
+InpMaxTotalDDPct=7.0
+InpTrailingDD=false
+InpDailyProfitStopPct=1.0
+InpProfitTargetPct=0
+InpRiskPct=0.25
+InpCommissionPerLot=7.0
+InpMaxLots=10
+InpMaxTradesPerDay=5
+InpMaxConsecLosses=2
+InpCooldownMinutes=45
+InpMaxSpreadPips=1.0
+InpStartHour=9
+InpEndHour=19
