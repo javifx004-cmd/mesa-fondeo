@@ -336,6 +336,7 @@
         <label class="wide">IBAN (para las facturas) <input name="iban" autocomplete="off"></label>
         <label>Tipo medio de IRPF estimado (%) <input name="irpfMedio" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
+        <label>QR de Hacienda en las facturas <select name="qr"><option value="">Sí</option><option value="no">No</option></select></label>
         <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
       </form>
 
@@ -479,6 +480,7 @@
       <label class="campo-notas">Notas <textarea id="docNotas" rows="2"></textarea></label>
       <div class="dlg-foot">
         <button type="button" id="btnDocBorrar" class="peligro">Borrar</button>
+        <button type="button" id="btnDocAnular" class="peligro">Anular</button>
         <button type="button" id="btnDocAlbaran">→ Albarán</button>
         <button type="button" id="btnDocFactura">→ Factura</button>
         <button type="button" id="btnDocImprimir">Imprimir / PDF</button>
@@ -527,6 +529,7 @@
   <script src="tarifas.js"></script>
   <script src="app.js"></script>
   <script src="presupuesto.js"></script>
+  <script src="vendor/qrcode.js"></script>
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
   <script src="sync.js"></script>

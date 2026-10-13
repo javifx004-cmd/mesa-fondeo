@@ -68,7 +68,11 @@ datos, el plano y la leyenda, para el taller.
   listo para **Imprimir / PDF** o **Compartir**.
 - En la lista de documentos: **Aceptar**, **→ Albarán**, **→ Factura** y **Cobrada**.
 - Cada documento lleva su número correlativo por año: P2026-001, A2026-001, F2026-001…
-- Las facturas **no se borran: se anulan**, y conservan su número.
+- Cualquier documento se puede **Borrar** desde su ventana. Una factura ya entregada al cliente es mejor
+  **Anularla**: conserva su número, porque Hacienda no admite huecos en la numeración. Si se borra la última
+  factura, su número se vuelve a usar en la siguiente.
+- Las facturas llevan arriba el **QR tributario** de Hacienda (con tu NIF, el número, la fecha y el importe).
+  Para que salga hay que poner el **NIF en Mi empresa**. Se puede quitar en Mi empresa.
 - En cada factura o presupuesto se ve **cuánto te queda limpio** aproximadamente.
 - **Exportar CSV** saca la lista para el gestor.
 

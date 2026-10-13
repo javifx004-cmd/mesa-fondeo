@@ -405,8 +405,9 @@ function editarDoc(doc, nuevo = false) {
   $('#docPago').value = doc.pago || '';
   $('#docIva').checked = doc.conIva !== false;
   $('#docNotas').value = doc.notas || '';
-  $('#btnDocBorrar').textContent = doc.tipo === 'factura' ? 'Anular' : 'Borrar';
   $('#btnDocBorrar').hidden = nuevo;
+  $('#btnDocAnular').hidden = nuevo || doc.tipo !== 'factura' || doc.estado === 'Anulada';
+  if (doc.tipo === 'factura' && !leerEmpresa().nif && leerEmpresa().qr !== 'no') aviso('Pon tu NIF en Gestión → Mi empresa para que salga el QR de Hacienda');
   $('#btnDocAlbaran').hidden = doc.tipo !== 'presupuesto';
   $('#btnDocFactura').hidden = doc.tipo === 'factura';
   pintarLineas();
@@ -488,6 +489,7 @@ function guardarEditor() {
   guardarDoc(d);
   docEsNuevo = false;
   $('#btnDocBorrar').hidden = false;
+  $('#btnDocAnular').hidden = d.tipo !== 'factura' || d.estado === 'Anulada';
   $('#docTitulo').textContent = `${TIPOS_DOC[d.tipo].nombre} ${d.numero}`;
   pintarDocs();
   return true;
@@ -503,19 +505,44 @@ for (const [id, tipo] of [['#btnDocAlbaran', 'albaran'], ['#btnDocFactura', 'fac
 $('#btnDocGuardar').addEventListener('click', () => {
   if (guardarEditor()) { aviso('Documento guardado'); dlgDoc.close(); }
 });
-$('#btnDocBorrar').addEventListener('click', () => {
+$('#btnDocAnular').addEventListener('click', () => {
   const d = docEditado;
-  if (d.tipo === 'factura') {
-    // las facturas no se borran (numeración correlativa): se anulan
-    if (!confirm(`¿Anular la factura ${d.numero}? Se conserva con su número, marcada como anulada.`)) return;
-    d.estado = 'Anulada';
-    guardarDoc(d);
-  } else {
-    if (!confirm(`¿Borrar ${TIPOS_DOC[d.tipo].nombre.toLowerCase()} ${d.numero}?`)) return;
-    escribirJSON(CLAVE_DOCS, leerDocs().filter((x) => x.id !== d.id));
-  }
+  if (!confirm(`¿Anular la factura ${d.numero}? Se conserva con su número, marcada como anulada.`)) return;
+  d.estado = 'Anulada';
+  guardarDoc(d);
   dlgDoc.close();
   pintarDocs();
+});
+$('#btnDocBorrar').addEventListener('click', () => {
+  const d = docEditado;
+  const nombre = `${TIPOS_DOC[d.tipo].nombre.toLowerCase()} ${d.numero}`;
+  let pregunta = `¿Borrar ${nombre}? No se puede deshacer.`;
+  if (d.tipo === 'factura') {
+    // Hacienda pide numeración correlativa: si no es la última, queda un hueco
+    const prefijo = String(d.numero).replace(/\d+$/, '');
+    const posteriores = leerDocs().filter((x) => x.tipo === 'factura' && x.id !== d.id
+      && String(x.numero).startsWith(prefijo) && String(x.numero) > String(d.numero));
+    pregunta = posteriores.length
+      ? `¿Borrar la factura ${d.numero}?\n\nOJO: hay facturas posteriores y quedará un hueco en la numeración, `
+        + 'que Hacienda no admite. Si ya la has entregado al cliente, es mejor ANULARLA.\n\nNo se puede deshacer.'
+      : `¿Borrar la factura ${d.numero}? Su número se volverá a usar en la siguiente factura.\n\n`
+        + 'Si ya la has entregado al cliente, es mejor ANULARLA. No se puede deshacer.';
+  }
+  if (!confirm(pregunta)) return;
+  const docs = leerDocs().filter((x) => x.id !== d.id);
+  // el documento del que salió vuelve a quedar pendiente
+  if (d.origen && d.estado !== 'Anulada') {
+    const origen = docs.find((x) => x.id === d.origen.id);
+    const otro = docs.some((x) => x.origen && x.origen.id === d.origen.id && x.tipo === d.tipo && x.estado !== 'Anulada');
+    if (origen && !otro && origen.tipo === 'albaran' && d.tipo === 'factura') {
+      origen.estado = 'Pendiente de facturar';
+      origen.modificado = Date.now();
+    }
+  }
+  escribirJSON(CLAVE_DOCS, docs);
+  dlgDoc.close();
+  pintarDocs();
+  aviso(`${TIPOS_DOC[d.tipo].nombre} ${d.numero} borrado`);
 });
 
 async function hojaDocBlob() {
@@ -548,6 +575,44 @@ $('#btnDocCompartir').addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 // Hoja A4 del documento
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// QR tributario (Reglamento de sistemas de facturación, Orden HAC/1177/2024).
+// Esta app no envía las facturas a Hacienda, así que usa el QR de los sistemas
+// «No VERI*FACTU»: al escanearlo, el cliente puede consultar y comunicar la factura a la AEAT.
+// ---------------------------------------------------------------------------
+const URL_QR_AEAT = 'https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQRNoVerifactu';
+
+function urlQrTributario(doc, emp) {
+  if (doc.tipo !== 'factura' || emp.qr === 'no' || typeof qrcode !== 'function') return '';
+  const nif = String(emp.nif || '').replace(/[\s.-]/g, '').toUpperCase();
+  if (!nif || !doc.numero || !doc.fecha) return '';
+  const [a, m, d] = String(doc.fecha).split('-');
+  const p = new URLSearchParams({ nif, numserie: String(doc.numero), fecha: `${d}-${m}-${a}`, importe: totales(doc).total.toFixed(2) });
+  return `${URL_QR_AEAT}?${p}`;
+}
+
+function pintarQr(c, url, x, y, lado) {
+  const q = qrcode(0, 'M');   // nivel de corrección M, como pide la norma
+  q.addData(url);
+  q.make();
+  const n = q.getModuleCount();
+  const titulo = 34;
+  const modulo = (lado - titulo) / (n + 2);   // con margen blanco de un módulo
+  c.fillStyle = '#111';
+  c.font = '600 24px system-ui, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'top';
+  c.fillText('QR tributario:', x + lado / 2, y);
+  const x0 = x + (lado - modulo * n) / 2;
+  const y0 = y + titulo + modulo;
+  for (let f = 0; f < n; f++) {
+    for (let k = 0; k < n; k++) {
+      if (q.isDark(f, k)) c.fillRect(x0 + k * modulo, y0 + f * modulo, Math.ceil(modulo), Math.ceil(modulo));
+    }
+  }
+  c.textAlign = 'left';
+}
+
 function componerDocumento(doc) {
   const tipoInfo = TIPOS_DOC[doc.tipo];
   const emp = leerEmpresa();
@@ -566,7 +631,7 @@ function componerDocumento(doc) {
   let y = M + cab + 10;
 
   // datos del emisor y del cliente
-  const anchoBloque = (W - M * 2 - 40) / 2;
+  let anchoBloque = (W - M * 2 - 40) / 2;
   const bloque = (x, titulo, filas) => {
     c.textAlign = 'left';
     c.textBaseline = 'top';
@@ -579,7 +644,12 @@ function componerDocumento(doc) {
       c.fillText(f, x + 20, y + 54 + i * 38, anchoBloque - 40);
     });
   };
-  const altoBloque = 54 + 5 * 38 + 16;
+  // QR tributario de las facturas: al principio de la factura, de 30 a 40 mm (unos 34 mm en A4)
+  const qr = urlQrTributario(doc, emp);
+  const ladoQr = 360;
+  if (qr) anchoBloque = (W - M * 2 - 80 - ladoQr) / 2;
+  const altoBloque = qr ? ladoQr + 40 : 54 + 5 * 38 + 16;
+  if (qr) pintarQr(c, qr, W - M - ladoQr, y, ladoQr);
   c.strokeStyle = '#c9d0d6';
   c.lineWidth = 2;
   c.strokeRect(M, y, anchoBloque, altoBloque);
