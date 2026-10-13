@@ -351,7 +351,7 @@ dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 
 .dlg-foot.tipos { justify-content: stretch; }
 .dlg-foot.tipos button { flex: 1; }
 .tabla-balance { overflow-x: auto; }
-.tabla-balance table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px; }
+.tabla-balance table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 860px; }
 .tabla-balance th, .tabla-balance td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
 .tabla-balance .num { text-align: right; white-space: nowrap; }
 .tabla-balance tr.total td { font-weight: 700; border-top: 2px solid var(--text); }
@@ -383,6 +383,26 @@ dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 
 }
 .aviso-copia > span:first-child { font-weight: 700; font-size: 15px; }
 .aviso-copia div { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* --- Gastos e impuestos --- */
+.resumen { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.resumen b { color: var(--text); }
+.bloques-imp { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.bloque-imp { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--suave); }
+.bloque-imp h3 { margin: 0 0 8px; font-size: 15px; }
+.bloque-imp h3 small { color: var(--muted); font-weight: 500; }
+.bloque-imp table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.bloque-imp td { padding: 5px 0; border-bottom: 1px solid var(--border); }
+.bloque-imp .num { text-align: right; white-space: nowrap; }
+.bloque-imp tr.total td { font-weight: 700; font-size: 16px; border-bottom: 0; border-top: 2px solid var(--text); }
+.bloque-imp .ayuda { margin: 8px 0 0; font-size: 13px; }
+#pImpuestos > div > h3 { margin: 6px 0 0; font-size: 16px; }
+.rentabilidad {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 14px;
+  background: var(--suave); border: 1px solid var(--border); border-left: 4px solid var(--active);
+}
+.rentabilidad .enlace { margin-left: 6px; font-size: 14px; }
+.casillas-gasto { margin: 10px 0 0; }
 
 #aviso {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);

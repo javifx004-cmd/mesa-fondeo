@@ -253,6 +253,8 @@
     <nav class="pestanas" aria-label="Gestión">
       <button type="button" data-pestana="documentos" class="active">Documentos</button>
       <button type="button" data-pestana="clientes">Clientes</button>
+      <button type="button" data-pestana="gastos">Gastos</button>
+      <button type="button" data-pestana="impuestos">Impuestos y beneficio</button>
       <button type="button" data-pestana="balance">Balance</button>
       <button type="button" data-pestana="empresa">Mi empresa</button>
     </nav>
@@ -283,6 +285,30 @@
       <div id="listaClientes"></div>
     </section>
 
+    <section class="panel-g" id="pGastos" hidden>
+      <div class="barra-filtros">
+        <select id="gastosAnio" aria-label="Año"></select>
+        <select id="gastosTrim" aria-label="Trimestre">
+          <option value="">Todo el año</option><option value="1">1.º trimestre</option><option value="2">2.º trimestre</option>
+          <option value="3">3.º trimestre</option><option value="4">4.º trimestre</option>
+        </select>
+        <input type="search" id="gastosTexto" placeholder="Buscar proveedor o concepto…">
+        <button type="button" id="btnNuevoGasto" class="primary">+ Nuevo gasto</button>
+      </div>
+      <div id="resumenGastos" class="resumen"></div>
+      <div id="listaGastos"></div>
+    </section>
+
+    <section class="panel-g" id="pImpuestos" hidden>
+      <div class="barra-filtros">
+        <label>Año <select id="impAnio"></select></label>
+        <label>Trimestre
+          <select id="impTrim"><option value="1">1.º</option><option value="2">2.º</option><option value="3">3.º</option><option value="4">4.º</option></select>
+        </label>
+      </div>
+      <div id="impuestos"></div>
+    </section>
+
     <section class="panel-g" id="pBalance" hidden>
       <div class="barra-filtros">
         <label>Año <select id="balanceAnio"></select></label>
@@ -307,6 +333,8 @@
         <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
         <label>Correo <input name="email" type="email" autocomplete="off"></label>
         <label class="wide">IBAN (para las facturas) <input name="iban" autocomplete="off"></label>
+        <label>Tipo medio de IRPF estimado (%) <input name="irpfMedio" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
+        <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
       </form>
     </section>
@@ -420,6 +448,7 @@
         <label class="chk"><input type="checkbox" id="docIva" checked> Añadir IVA 21 %</label>
         <div id="docTotales"></div>
       </div>
+      <p id="docRentabilidad" class="rentabilidad" hidden></p>
       <label class="campo-notas">Notas <textarea id="docNotas" rows="2"></textarea></label>
       <div class="dlg-foot">
         <button type="button" id="btnDocBorrar" class="peligro">Borrar</button>
@@ -441,11 +470,37 @@
       <button type="button" id="btnCopiaLuego">Mañana</button>
     </div>
   </div>
+  <dialog id="dlgGasto">
+    <form method="dialog" id="formGasto">
+      <div class="dlg-head"><h2>Gasto</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid doc-cab">
+        <label>Fecha <input type="date" name="fecha"></label>
+        <label>Categoría <select name="categoria"></select></label>
+        <label class="wide">Proveedor <input name="proveedor" autocomplete="off" list="listaProveedores"></label>
+        <label class="wide">Concepto <input name="concepto" autocomplete="off" placeholder="Ej.: tabla Silestone Blanco Zeus"></label>
+        <label>Base imponible (€) <input name="base" type="number" step="0.01" inputmode="decimal"></label>
+        <label>IVA <select name="tipoIva"><option value="21">21 %</option><option value="10">10 %</option><option value="4">4 %</option><option value="0">Sin IVA</option></select></label>
+        <label class="wide">Es de una cocina (opcional) <select name="docId"></select></label>
+      </div>
+      <p class="casillas-gasto">
+        <label class="chk"><input type="checkbox" name="deducible" checked> Deducible (tengo factura a mi nombre)</label>
+      </p>
+      <p id="gastoTotal" class="ayuda"></p>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarGasto" class="peligro">Borrar</button>
+        <button type="button" id="btnDuplicarGasto">Repetir el mes que viene</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+  <datalist id="listaProveedores"></datalist>
+
   <div id="aviso" role="status" aria-live="polite"></div>
 
   <script src="tarifas.js"></script>
   <script src="app.js"></script>
   <script src="presupuesto.js"></script>
   <script src="gestion.js"></script>
+  <script src="contabilidad.js"></script>
 </body>
 </html>

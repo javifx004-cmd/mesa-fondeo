@@ -69,14 +69,34 @@ datos, el plano y la leyenda, para el taller.
 - En la lista de documentos: **Aceptar**, **→ Albarán**, **→ Factura** y **Cobrada**.
 - Cada documento lleva su número correlativo por año: P2026-001, A2026-001, F2026-001…
 - Las facturas **no se borran: se anulan**, y conservan su número.
+- En cada factura o presupuesto se ve **cuánto te queda limpio** aproximadamente.
 - **Exportar CSV** saca la lista para el gestor.
 
 | Pestaña | Para qué sirve |
 |---|---|
 | Documentos | Todos los presupuestos, albaranes y facturas, con filtros y buscador. |
 | Clientes | Datos de cada cliente (NIF, dirección…), lo facturado y lo pendiente, y albarán o factura rápida. |
-| Balance | Por meses: facturas, base, IVA, facturado, cobrado, pendiente y presupuestos aceptados. |
+| Gastos | Compras y pagos con su IVA, generales o asignados a una cocina. |
+| Impuestos y beneficio | IVA y IRPF de cada trimestre, resumen del año y beneficio limpio por cocina. |
+| Balance | Por meses: facturas, base, IVA, facturado, cobrado, pendiente, gastos, beneficio y presupuestos. |
 | Mi empresa | Nombre, NIF, dirección, IBAN, texto del pie y logo. **Rellénala lo primero.** |
+
+### Gastos, impuestos y beneficio
+
+- **Gastos:** apunta cada compra o pago con su factura: tablas, fregaderos, portes, gasoil, cuota de autónomos,
+  gestoría… Si el gasto es de una cocina concreta, elígela en «Es de una cocina». Para los gastos de todos los
+  meses (cuota, alquiler, gestoría) usa **Repetir el mes que viene**. En cada factura también puedes pulsar
+  **+ Apuntar un gasto de esta cocina**.
+- **Impuestos y beneficio**, por trimestre:
+  - **IVA (modelo 303):** IVA de tus facturas − IVA de tus gastos.
+  - **IRPF (modelo 130):** 20 % de (ingresos − gastos − 5 % de difícil justificación, máximo 2.000 €/año) desde el
+    1 de enero, menos lo ya pagado.
+  - **Resumen del año** y **beneficio por cocina**: lo que queda limpio de cada factura después de sus gastos,
+    su parte de los gastos generales y el IRPF aproximado.
+  - Plazos: 1.º trimestre del 1 al 20 de abril; 2.º del 1 al 20 de julio; 3.º del 1 al 20 de octubre;
+    4.º del 1 al 30 de enero.
+- En **Mi empresa** se ajusta el tipo medio de IRPF estimado (20 % por defecto).
+- Son cálculos orientativos para estimación directa simplificada: **el importe exacto lo confirma el gestor**.
 
 ## 4. Copias de seguridad
 

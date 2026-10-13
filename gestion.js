@@ -237,11 +237,13 @@ $('#btnVistaPlanos').addEventListener('click', () => { if (!vistaGestion.hidden)
 
 function mostrarPestana(nombre) {
   $$('.pestanas [data-pestana]').forEach((b) => b.classList.toggle('active', b.dataset.pestana === nombre));
-  const paneles = { documentos: '#pDocumentos', clientes: '#pClientes', balance: '#pBalance', empresa: '#pEmpresa' };
+  const paneles = { documentos: '#pDocumentos', clientes: '#pClientes', gastos: '#pGastos', impuestos: '#pImpuestos', balance: '#pBalance', empresa: '#pEmpresa' };
   for (const [k, sel] of Object.entries(paneles)) $(sel).hidden = k !== nombre;
   if (nombre === 'documentos') pintarDocs();
   if (nombre === 'clientes') pintarClientes();
   if (nombre === 'balance') pintarBalance();
+  if (nombre === 'gastos' && typeof pintarGastos === 'function') pintarGastos();
+  if (nombre === 'impuestos' && typeof pintarImpuestos === 'function') pintarImpuestos();
   if (nombre === 'empresa') volcarEmpresa();
 }
 $$('.pestanas [data-pestana]').forEach((b) => b.addEventListener('click', () => mostrarPestana(b.dataset.pestana)));
@@ -434,6 +436,7 @@ function pintarTotalesDoc() {
   $('#docTotales').innerHTML = `<div>Base imponible <b>${fmtEuro(t.base)}</b></div>`
     + (docEditado.conIva ? `<div>IVA 21 % <b>${fmtEuro(t.iva)}</b></div>` : '')
     + `<div class="total">Total <b>${fmtEuro(t.total)}</b></div>`;
+  if (typeof pintarRentabilidadDoc === 'function') pintarRentabilidadDoc(docEditado);
 }
 
 $('#docLineas').addEventListener('input', (e) => {
@@ -770,7 +773,12 @@ function pintarBalance() {
   const docs = leerDocs();
   llenarAnios($('#balanceAnio'), docs);
   const anio = Number($('#balanceAnio').value);
-  const meses = MESES.map((nombre) => ({ nombre, nFact: 0, base: 0, iva: 0, total: 0, cobrado: 0, pendiente: 0, presu: 0, aceptado: 0 }));
+  const meses = MESES.map((nombre) => ({ nombre, nFact: 0, base: 0, iva: 0, total: 0, cobrado: 0, pendiente: 0, presu: 0, aceptado: 0, gastos: 0 }));
+  for (const g of (typeof leerGastos === 'function' ? leerGastos() : [])) {
+    if (anioDe(g.fecha) !== anio || !g.deducible) continue;
+    const m = meses[Number(g.fecha.slice(5, 7)) - 1];
+    if (m) m.gastos += Number(g.base) || 0;
+  }
   for (const d of docs) {
     if (anioDe(d.fecha) !== anio) continue;
     const m = meses[Number(d.fecha.slice(5, 7)) - 1];
@@ -795,14 +803,16 @@ function pintarBalance() {
   const fila = (m, clase = '') => `<tr class="${clase}"><td>${m.nombre}</td><td class="num">${m.nFact}</td>`
     + `<td class="num">${fmtEuro(m.base)}</td><td class="num">${fmtEuro(m.iva)}</td><td class="num"><b>${fmtEuro(m.total)}</b></td>`
     + `<td class="num">${fmtEuro(m.cobrado)}</td><td class="num${m.pendiente ? ' mal-txt' : ''}">${fmtEuro(m.pendiente)}</td>`
+    + `<td class="num">${fmtEuro(m.gastos)}</td><td class="num"><b>${fmtEuro(m.base - m.gastos)}</b></td>`
     + `<td class="num">${m.presu}</td><td class="num">${fmtEuro(m.aceptado)}</td></tr>`;
   $('#tablaBalance').innerHTML = `<div class="tabla-balance"><table>
     <thead><tr><th>Mes</th><th class="num">Facturas</th><th class="num">Base</th><th class="num">IVA</th><th class="num">Facturado</th>
-      <th class="num">Cobrado</th><th class="num">Pendiente</th><th class="num">Presupuestos</th><th class="num">Aceptados</th></tr></thead>
+      <th class="num">Cobrado</th><th class="num">Pendiente</th><th class="num">Gastos</th><th class="num">Beneficio*</th><th class="num">Presupuestos</th><th class="num">Aceptados</th></tr></thead>
     <tbody>${meses.map((m) => fila(m)).join('')}</tbody>
     <tfoot>${fila(suma, 'total')}</tfoot>
   </table></div>
-  <p class="ayuda">Facturas anuladas no cuentan. «Aceptados» es el importe de los presupuestos aceptados ese mes.</p>`;
+  <p class="ayuda">Facturas anuladas no cuentan. «Aceptados» es el importe de los presupuestos aceptados ese mes.
+    *Beneficio = base facturada − gastos deducibles (sin IVA y antes de IRPF). Más detalle en «Impuestos y beneficio».</p>`;
 }
 $('#balanceAnio').addEventListener('change', pintarBalance);
 
@@ -824,7 +834,8 @@ formEmpresa.addEventListener('input', () => {
 // Copia de seguridad (la usa app.js)
 // ---------------------------------------------------------------------------
 function exportarGestion() {
-  return { clientes: leerClientes(), documentos: leerDocs(), empresa: leerEmpresa() };
+  return { clientes: leerClientes(), documentos: leerDocs(), empresa: leerEmpresa(),
+    gastos: typeof leerGastos === 'function' ? leerGastos() : [] };
 }
 
 function importarGestion(g) {
@@ -841,6 +852,7 @@ function importarGestion(g) {
   };
   escribirJSON(CLAVE_CLIENTES, unir(leerClientes(), g.clientes));
   escribirJSON(CLAVE_DOCS, unir(leerDocs(), g.documentos));
+  if (g.gastos && typeof leerGastos === 'function') escribirJSON(CLAVE_GASTOS, unir(leerGastos(), g.gastos));
   if (g.empresa && !Object.values(leerEmpresa()).some(Boolean)) escribirJSON(CLAVE_EMPRESA, g.empresa);
   return (g.documentos || []).length;
 }

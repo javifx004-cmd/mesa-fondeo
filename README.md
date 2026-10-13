@@ -91,6 +91,10 @@ Botón **«Gestión»** arriba. Todo se guarda en el dispositivo y entra en la c
   - «Exportar CSV» de los documentos que se ven, para el gestor.
 - **Clientes**: se crean solos al pasar un presupuesto; se pueden completar (NIF, dirección…) y
   hacer un albarán o una factura rápida. En la ficha del plano, el campo Cliente sugiere los guardados.
+- **Gastos**: compras y pagos con su IVA, generales o asignados a una cocina; «Repetir el mes que viene».
+- **Impuestos y beneficio**: IVA trimestral (303), pago a cuenta de IRPF (130, con 5 % de gastos de difícil
+  justificación hasta 2.000 €), resumen del año y beneficio limpio por cocina (estimaciones para estimación
+  directa simplificada).
 - **Balance**: por meses del año, facturas, base, IVA, facturado, cobrado, pendiente y presupuestos.
 - **Mi empresa**: nombre, NIF, dirección, IBAN y texto de pie para los documentos.
 - Aviso: no es un programa certificado Verifactu (obligatorio desde 2027).
