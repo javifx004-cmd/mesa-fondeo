@@ -71,6 +71,24 @@ siempre la app**, no la IA. Necesita conexión. Se puede elegir la IA:
 
 Las claves se guardan solo en el dispositivo.
 
+## Gestión (presupuestos, albaranes, facturas)
+
+Botón **«Gestión»** arriba. Todo se guarda en el dispositivo y entra en la copia de seguridad.
+
+- **Documentos**: presupuestos (P2026-001…), albaranes (A…) y facturas (F…), con numeración
+  correlativa por año, líneas editables, IVA opcional, estado y hoja A4 con los datos del emisor y
+  del cliente (imprimir/PDF, descargar o compartir).
+  - Desde el presupuesto de un plano: «Pasar a Gestión» crea el presupuesto con sus líneas y el
+    cliente.
+  - Presupuesto → «Aceptar», «→ Albarán» o «→ Factura»; albarán → «→ Factura»; factura →
+    «Cobrada». Las facturas no se borran: se anulan y conservan su número.
+  - «Exportar CSV» de los documentos que se ven, para el gestor.
+- **Clientes**: se crean solos al pasar un presupuesto; se pueden completar (NIF, dirección…) y
+  hacer un albarán o una factura rápida. En la ficha del plano, el campo Cliente sugiere los guardados.
+- **Balance**: por meses del año, facturas, base, IVA, facturado, cobrado, pendiente y presupuestos.
+- **Mi empresa**: nombre, NIF, dirección, IBAN y texto de pie para los documentos.
+- Aviso: no es un programa certificado Verifactu (obligatorio desde 2027).
+
 ## Cómo usarla
 
 Abrir `index.html` en el navegador basta para probarla. Para tenerla en el móvil y en el PC

@@ -18,13 +18,14 @@
       <h1>Planos Cocina</h1>
     </div>
     <div class="topbar-actions">
+      <button id="btnGestion" type="button">Gestión</button>
       <button id="btnNuevo" type="button">Nuevo</button>
       <button id="btnTrabajos" type="button">Trabajos</button>
       <button id="btnGuardar" type="button" class="primary">Guardar</button>
     </div>
   </header>
 
-  <main>
+  <main id="planos">
     <section class="ficha" aria-label="Datos del trabajo">
       <div class="grid">
         <label>Cliente
@@ -189,6 +190,7 @@
         <button type="button" id="btnPresuImagen">Descargar presupuesto</button>
         <button type="button" id="btnPresuCompartir">Compartir presupuesto</button>
         <button type="button" id="btnPresuImprimir">Imprimir / PDF</button>
+        <button type="button" id="btnPresuGestion" class="primary">Pasar a Gestión</button>
       </div>
     </section>
 
@@ -197,13 +199,73 @@
       <button type="button" id="btnCompartir">Compartir</button>
       <button type="button" id="btnImprimir">Imprimir / PDF</button>
     </section>
+  </main>
+
+  <!-- Gestión: clientes, documentos (presupuestos, albaranes, facturas) y balance -->
+  <div id="gestion" class="contenido" hidden>
+    <nav class="pestanas" aria-label="Gestión">
+      <button type="button" data-pestana="documentos" class="active">Documentos</button>
+      <button type="button" data-pestana="clientes">Clientes</button>
+      <button type="button" data-pestana="balance">Balance</button>
+      <button type="button" data-pestana="empresa">Mi empresa</button>
+    </nav>
+
+    <section class="panel-g" id="pDocumentos">
+      <div class="barra-filtros">
+        <select id="filtroTipo" aria-label="Tipo de documento">
+          <option value="">Todos</option>
+          <option value="presupuesto">Presupuestos</option>
+          <option value="albaran">Albaranes</option>
+          <option value="factura">Facturas</option>
+        </select>
+        <select id="filtroAnio" aria-label="Año"></select>
+        <input type="search" id="filtroTexto" placeholder="Buscar cliente o número…">
+        <button type="button" id="btnNuevoDoc" class="primary">+ Nuevo</button>
+        <button type="button" id="btnExportarCSV">Exportar CSV</button>
+      </div>
+      <div id="listaDocs"></div>
+      <p class="aviso-legal">Esta app no es un programa de facturación certificado (Verifactu). Comprueba con tu
+        gestor si puedes usar sus facturas como oficiales a partir de la fecha en que te sea obligatorio.</p>
+    </section>
+
+    <section class="panel-g" id="pClientes" hidden>
+      <div class="barra-filtros">
+        <input type="search" id="buscarCliente" placeholder="Buscar nombre, NIF o teléfono…">
+        <button type="button" id="btnNuevoCliente" class="primary">+ Nuevo cliente</button>
+      </div>
+      <div id="listaClientes"></div>
+    </section>
+
+    <section class="panel-g" id="pBalance" hidden>
+      <div class="barra-filtros">
+        <label>Año <select id="balanceAnio"></select></label>
+      </div>
+      <div id="tablaBalance"></div>
+    </section>
+
+    <section class="panel-g" id="pEmpresa" hidden>
+      <p class="ayuda">Estos datos salen en presupuestos, albaranes y facturas.</p>
+      <form id="formEmpresa" class="grid">
+        <label class="wide">Nombre o razón social <input name="nombre" autocomplete="off" placeholder="MÁRMOLES CARBONELL"></label>
+        <label>NIF / CIF <input name="nif" autocomplete="off"></label>
+        <label>Teléfono <input name="telefono" type="tel" autocomplete="off"></label>
+        <label class="wide">Dirección <input name="direccion" autocomplete="off"></label>
+        <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
+        <label>Correo <input name="email" type="email" autocomplete="off"></label>
+        <label class="wide">IBAN (para las facturas) <input name="iban" autocomplete="off"></label>
+        <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
+      </form>
+    </section>
+  </div>
+
+  <div id="pie-app" class="contenido">
     <p class="ajustes">
       Logo de la empresa:
       <label class="enlace">Cambiar logo<input type="file" id="fileLogo" accept="image/*" hidden></label>
       <button type="button" id="btnQuitarLogo" class="enlace">Volver al de serie</button>
     </p>
     <p id="version"></p>
-  </main>
+  </div>
 
   <!-- Hoja usada solo al imprimir -->
   <div id="hojaImpresion" aria-hidden="true"><img id="imgImpresion" alt=""></div>
@@ -251,10 +313,79 @@
     </form>
   </dialog>
 
+  <dialog id="dlgCliente">
+    <form method="dialog" id="formCliente">
+      <div class="dlg-head"><h2>Cliente</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid una-col">
+        <label>Nombre o razón social <input name="nombre" autocomplete="off" required></label>
+        <label>NIF / CIF <input name="nif" autocomplete="off"></label>
+        <label>Teléfono <input name="telefono" type="tel" autocomplete="off"></label>
+        <label>Correo <input name="email" type="email" autocomplete="off"></label>
+        <label>Dirección <input name="direccion" autocomplete="off"></label>
+        <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
+        <label>Notas <textarea name="notas" rows="2"></textarea></label>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarCliente" class="peligro">Borrar</button>
+        <button value="cancel" type="submit">Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgTipo">
+    <form method="dialog">
+      <div class="dlg-head"><h2>Nuevo documento</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="dlg-foot tipos">
+        <button value="presupuesto" type="submit">Presupuesto</button>
+        <button value="albaran" type="submit">Albarán</button>
+        <button value="factura" type="submit" class="primary">Factura</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgDocumento" class="grande">
+    <form method="dialog" id="formDoc">
+      <div class="dlg-head"><h2 id="docTitulo">Documento</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid doc-cab">
+        <label>Fecha <input type="date" id="docFecha"></label>
+        <label>Estado <select id="docEstado"></select></label>
+        <label class="wide">Cliente
+          <span class="fila-cliente">
+            <select id="docCliente"></select>
+            <button type="button" id="btnDocNuevoCliente" title="Nuevo cliente">+</button>
+          </span>
+        </label>
+        <label class="wide" id="docPagoCampo">Forma de pago <input id="docPago" autocomplete="off" placeholder="Transferencia, contado…"></label>
+      </div>
+      <p id="docClienteInfo" class="ayuda"></p>
+      <div class="tabla-lineas">
+        <table>
+          <thead><tr><th>Concepto</th><th>Cant.</th><th>Ud.</th><th>Precio</th><th class="num">Importe</th><th></th></tr></thead>
+          <tbody id="docLineas"></tbody>
+        </table>
+      </div>
+      <button type="button" id="btnAnadirLinea">+ Añadir línea</button>
+      <div class="doc-pie">
+        <label class="chk"><input type="checkbox" id="docIva" checked> Añadir IVA 21 %</label>
+        <div id="docTotales"></div>
+      </div>
+      <label class="campo-notas">Notas <textarea id="docNotas" rows="2"></textarea></label>
+      <div class="dlg-foot">
+        <button type="button" id="btnDocBorrar" class="peligro">Borrar</button>
+        <button type="button" id="btnDocImprimir">Imprimir / PDF</button>
+        <button type="button" id="btnDocDescargar">Descargar</button>
+        <button type="button" id="btnDocCompartir">Compartir</button>
+        <button type="button" id="btnDocGuardar" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="aviso" role="status" aria-live="polite"></div>
 
   <script src="tarifas.js"></script>
   <script src="app.js"></script>
   <script src="presupuesto.js"></script>
+  <script src="gestion.js"></script>
 </body>
 </html>

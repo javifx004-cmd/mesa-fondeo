@@ -1,0 +1,811 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Gestión: clientes, presupuestos, albaranes, facturas y balance mensual.
+// Usa utilidades de app.js ($, aviso, descargar, pintarCabecera…) y de
+// presupuesto.js (calcular, fmtEuro, fmtCant, escapar, IVA).
+// ---------------------------------------------------------------------------
+const CLAVE_CLIENTES = 'planosCocina.clientes';
+const CLAVE_DOCS = 'planosCocina.documentos';
+const CLAVE_EMPRESA = 'planosCocina.empresa';
+
+const TIPOS_DOC = {
+  presupuesto: { nombre: 'Presupuesto', plural: 'Presupuestos', prefijo: 'P', titulo: 'PRESUPUESTO',
+    estados: ['Pendiente', 'Aceptado', 'Rechazado'] },
+  albaran: { nombre: 'Albarán', plural: 'Albaranes', prefijo: 'A', titulo: 'ALBARÁN',
+    estados: ['Pendiente de facturar', 'Facturado'] },
+  factura: { nombre: 'Factura', plural: 'Facturas', prefijo: 'F', titulo: 'FACTURA',
+    estados: ['Pendiente de cobro', 'Cobrada', 'Anulada'] },
+};
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
+  'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+// ---------------------------------------------------------------------------
+// Almacenamiento
+// ---------------------------------------------------------------------------
+function leerJSON(clave, defecto) {
+  try {
+    const v = JSON.parse(localStorage.getItem(clave));
+    return v ?? defecto;
+  } catch {
+    return defecto;
+  }
+}
+function escribirJSON(clave, valor) {
+  try {
+    localStorage.setItem(clave, JSON.stringify(valor));
+    return true;
+  } catch {
+    aviso('No se pudo guardar en este dispositivo');
+    return false;
+  }
+}
+const leerClientes = () => leerJSON(CLAVE_CLIENTES, []);
+const leerDocs = () => leerJSON(CLAVE_DOCS, []);
+const leerEmpresa = () => leerJSON(CLAVE_EMPRESA, {});
+
+function guardarCliente(cli) {
+  const lista = leerClientes();
+  const i = lista.findIndex((c) => c.id === cli.id);
+  if (i >= 0) lista[i] = cli; else lista.push(cli);
+  escribirJSON(CLAVE_CLIENTES, lista);
+}
+
+function guardarDoc(doc) {
+  doc.modificado = Date.now();
+  const lista = leerDocs();
+  const i = lista.findIndex((d) => d.id === doc.id);
+  if (i >= 0) lista[i] = doc; else lista.push(doc);
+  escribirJSON(CLAVE_DOCS, lista);
+}
+
+const redondear = (n) => Math.round(n * 100) / 100;
+const anioDe = (fecha) => Number(String(fecha || hoy()).slice(0, 4));
+
+function totales(doc) {
+  const base = redondear(doc.lineas.reduce((s, l) => s + redondear((Number(l.cantidad) || 0) * (Number(l.precio) || 0)), 0));
+  const iva = doc.conIva ? redondear(base * IVA) : 0;
+  return { base, iva, total: redondear(base + iva) };
+}
+
+// Número correlativo por tipo y año: F2026-001, F2026-002…
+function siguienteNumero(tipo, fecha) {
+  const anio = anioDe(fecha);
+  const prefijo = `${TIPOS_DOC[tipo].prefijo}${anio}-`;
+  const usados = leerDocs()
+    .filter((d) => d.tipo === tipo && String(d.numero).startsWith(prefijo))
+    .map((d) => Number(String(d.numero).slice(prefijo.length)) || 0);
+  return prefijo + String(Math.max(0, ...usados) + 1).padStart(3, '0');
+}
+
+function nuevoDoc(tipo, base = {}) {
+  const fecha = base.fecha || hoy();
+  return {
+    id: nuevoId(), tipo, fecha, numero: siguienteNumero(tipo, fecha),
+    estado: TIPOS_DOC[tipo].estados[0], clienteId: base.clienteId || '',
+    lineas: base.lineas || [], conIva: base.conIva !== false, pago: base.pago || '',
+    notas: base.notas || '', origen: base.origen || null, trabajoId: base.trabajoId || '',
+    creado: Date.now(), modificado: Date.now(),
+  };
+}
+
+const clientePorId = (id) => leerClientes().find((c) => c.id === id) || null;
+
+// ---------------------------------------------------------------------------
+// Clientes desde la ficha del plano
+// ---------------------------------------------------------------------------
+// Busca el cliente del trabajo (por nombre o teléfono) y si no existe lo crea.
+function clienteDeTrabajo(t) {
+  const d = t.datos;
+  const nombre = (d.cliente || '').trim();
+  if (!nombre) return null;
+  const lista = leerClientes();
+  let cli = lista.find((c) => c.id === t.clienteId) ||
+    lista.find((c) => normalizar(c.nombre) === normalizar(nombre)) ||
+    (d.telefono && lista.find((c) => c.telefono && c.telefono.replace(/\D/g, '') === d.telefono.replace(/\D/g, '')));
+  if (!cli) {
+    cli = { id: nuevoId(), nombre, nif: '', telefono: d.telefono || '', email: '', direccion: d.direccion || '', poblacion: '', notas: '' };
+    guardarCliente(cli);
+  } else {
+    // completa lo que falte con los datos de la ficha
+    let cambiado = false;
+    for (const [k, v] of [['telefono', d.telefono], ['direccion', d.direccion]]) {
+      if (!cli[k] && v) { cli[k] = v; cambiado = true; }
+    }
+    if (cambiado) guardarCliente(cli);
+  }
+  t.clienteId = cli.id;
+  return cli;
+}
+
+// Sugerencias de clientes guardados en el campo «Cliente» de la ficha.
+function llenarSugerenciasClientes() {
+  let dl = $('#listaClientesFicha');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'listaClientesFicha';
+    document.body.appendChild(dl);
+    form.querySelector('[name="cliente"]').setAttribute('list', dl.id);
+  }
+  dl.replaceChildren(...leerClientes().map((c) => new Option(c.nombre, c.nombre)));
+}
+
+// Al elegir un cliente guardado se rellenan teléfono y dirección si están vacíos.
+form.querySelector('[name="cliente"]').addEventListener('change', (e) => {
+  const cli = leerClientes().find((c) => normalizar(c.nombre) === normalizar(e.target.value));
+  if (!cli) return;
+  trabajo.clienteId = cli.id;
+  const d = trabajo.datos;
+  if (!d.telefono && cli.telefono) d.telefono = cli.telefono;
+  if (!d.direccion && cli.direccion) d.direccion = [cli.direccion, cli.poblacion].filter(Boolean).join(', ');
+  volcarFormulario();
+  cambio();
+});
+
+// ---------------------------------------------------------------------------
+// Del plano a Gestión
+// ---------------------------------------------------------------------------
+$('#btnPresuGestion').addEventListener('click', () => {
+  const r = calcular(trabajo);
+  if (!r.lineas.length) { aviso('El presupuesto está vacío: añade piezas primero'); return; }
+  if (!(trabajo.datos.cliente || '').trim()) { aviso('Pon el nombre del cliente en la ficha'); return; }
+  const cli = clienteDeTrabajo(trabajo);
+  const material = r.material ? etiquetaMaterial(r.material) : trabajo.datos.material;
+  const lineas = [
+    ...(material ? [{ concepto: `Material: ${material}`, cantidad: '', unidad: '', precio: '' }] : []),
+    ...r.lineas.map((l) => ({ concepto: l.concepto, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio })),
+  ];
+  // si ya se pasó y sigue pendiente, se actualiza en vez de crear otro
+  const previo = leerDocs().find((d) => d.id === trabajo.presupuestoId && d.tipo === 'presupuesto');
+  let doc;
+  if (previo && previo.estado === 'Pendiente') {
+    doc = Object.assign(previo, { clienteId: cli.id, lineas, conIva: r.conIva });
+  } else {
+    doc = nuevoDoc('presupuesto', {
+      clienteId: cli.id, lineas, conIva: r.conIva, trabajoId: trabajo.id,
+      notas: trabajo.datos.referencia ? `Ref. ${trabajo.datos.referencia}` : '',
+    });
+  }
+  guardarDoc(doc);
+  trabajo.presupuestoId = doc.id;
+  cambio();
+  guardar();
+  aviso(`Presupuesto ${doc.numero} guardado en Gestión`);
+  abrirGestion('documentos');
+  editarDoc(doc);
+});
+
+// ---------------------------------------------------------------------------
+// Vista de Gestión
+// ---------------------------------------------------------------------------
+const vistaGestion = $('#gestion');
+const vistaPlanos = $('#planos');
+
+function abrirGestion(pestana = 'documentos') {
+  guardar();
+  vistaPlanos.hidden = true;
+  vistaGestion.hidden = false;
+  $('#btnGestion').textContent = 'Planos';
+  $('#btnNuevo').hidden = true;
+  $('#btnGuardar').hidden = true;
+  mostrarPestana(pestana);
+  window.scrollTo({ top: 0 });
+}
+
+function cerrarGestion() {
+  vistaGestion.hidden = true;
+  vistaPlanos.hidden = false;
+  $('#btnGestion').textContent = 'Gestión';
+  $('#btnNuevo').hidden = false;
+  $('#btnGuardar').hidden = false;
+  llenarSugerenciasClientes();
+  ajustarLienzo();
+}
+
+$('#btnGestion').addEventListener('click', () => {
+  if (vistaGestion.hidden) abrirGestion(); else cerrarGestion();
+});
+
+function mostrarPestana(nombre) {
+  $$('.pestanas [data-pestana]').forEach((b) => b.classList.toggle('active', b.dataset.pestana === nombre));
+  const paneles = { documentos: '#pDocumentos', clientes: '#pClientes', balance: '#pBalance', empresa: '#pEmpresa' };
+  for (const [k, sel] of Object.entries(paneles)) $(sel).hidden = k !== nombre;
+  if (nombre === 'documentos') pintarDocs();
+  if (nombre === 'clientes') pintarClientes();
+  if (nombre === 'balance') pintarBalance();
+  if (nombre === 'empresa') volcarEmpresa();
+}
+$$('.pestanas [data-pestana]').forEach((b) => b.addEventListener('click', () => mostrarPestana(b.dataset.pestana)));
+
+// ---------------------------------------------------------------------------
+// Lista de documentos
+// ---------------------------------------------------------------------------
+function llenarAnios(select, docs) {
+  const actual = anioDe(hoy());
+  const anios = [...new Set([actual, ...docs.map((d) => anioDe(d.fecha))])].sort((a, b) => b - a);
+  const elegido = select.value || String(actual);
+  select.replaceChildren(...anios.map((a) => new Option(String(a), String(a))));
+  if (select.id === 'filtroAnio') select.prepend(new Option('Todos los años', 'todos'));
+  select.value = [...select.options].some((o) => o.value === elegido) ? elegido : String(actual);
+}
+
+function claseEstado(estado) {
+  if (/cobrada|aceptado|facturado/i.test(estado)) return 'ok';
+  if (/anulada|rechazado/i.test(estado)) return 'mal';
+  return 'pendiente';
+}
+
+function pintarDocs() {
+  const docs = leerDocs();
+  llenarAnios($('#filtroAnio'), docs);
+  const tipo = $('#filtroTipo').value;
+  const anio = $('#filtroAnio').value;
+  const texto = normalizar($('#filtroTexto').value);
+  const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c]));
+  const lista = docs
+    .filter((d) => !tipo || d.tipo === tipo)
+    .filter((d) => anio === 'todos' || String(anioDe(d.fecha)) === anio)
+    .filter((d) => !texto || normalizar(`${d.numero} ${(clientes[d.clienteId] || {}).nombre || ''}`).includes(texto))
+    .sort((a, b) => (b.fecha + b.numero).localeCompare(a.fecha + a.numero));
+  const cont = $('#listaDocs');
+  if (!lista.length) {
+    cont.innerHTML = '<p class="vacio">No hay documentos. Crea uno con «+ Nuevo» o desde el presupuesto de un plano con «Pasar a Gestión».</p>';
+    return;
+  }
+  cont.innerHTML = lista.map((d) => {
+    const cli = clientes[d.clienteId];
+    const acciones = [];
+    if (d.tipo === 'presupuesto') {
+      if (d.estado === 'Pendiente') acciones.push(['aceptar', 'Aceptar']);
+      acciones.push(['albaran', '→ Albarán'], ['factura', '→ Factura']);
+    }
+    if (d.tipo === 'albaran' && d.estado !== 'Facturado') acciones.push(['factura', '→ Factura']);
+    if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro') acciones.push(['cobrar', 'Cobrada']);
+    return `<div class="doc" data-id="${d.id}">
+      <div class="doc-info" data-accion="abrir">
+        <strong>${TIPOS_DOC[d.tipo].nombre} ${escapar(d.numero)}</strong>
+        <span>${escapar(cli ? cli.nombre : 'Sin cliente')} · ${fechaLegible(d.fecha)}</span>
+      </div>
+      <span class="estado ${claseEstado(d.estado)}">${escapar(d.estado)}</span>
+      <strong class="doc-total">${fmtEuro(totales(d).total)}</strong>
+      <div class="doc-acciones">${acciones.map(([a, t]) => `<button type="button" data-accion="${a}">${t}</button>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+['#filtroTipo', '#filtroAnio'].forEach((s) => $(s).addEventListener('change', pintarDocs));
+$('#filtroTexto').addEventListener('input', pintarDocs);
+
+$('#listaDocs').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-accion]');
+  if (!el) return;
+  const doc = leerDocs().find((d) => d.id === el.closest('.doc').dataset.id);
+  if (!doc) return;
+  const accion = el.dataset.accion;
+  if (accion === 'abrir') editarDoc(doc);
+  if (accion === 'aceptar') { doc.estado = 'Aceptado'; guardarDoc(doc); pintarDocs(); aviso(`Presupuesto ${doc.numero} aceptado`); }
+  if (accion === 'cobrar') { doc.estado = 'Cobrada'; doc.fechaCobro = hoy(); guardarDoc(doc); pintarDocs(); aviso(`Factura ${doc.numero} cobrada`); }
+  if (accion === 'albaran' || accion === 'factura') convertir(doc, accion);
+});
+
+// Crea un albarán o una factura a partir de otro documento.
+function convertir(origen, tipo) {
+  const yaHecho = leerDocs().find((d) => d.origen && d.origen.id === origen.id && d.tipo === tipo && d.estado !== 'Anulada');
+  if (yaHecho && !confirm(`Ya existe ${TIPOS_DOC[tipo].nombre.toLowerCase()} ${yaHecho.numero} de este documento. ¿Hacer otro?`)) return;
+  const doc = nuevoDoc(tipo, {
+    clienteId: origen.clienteId, lineas: structuredClone(origen.lineas), conIva: origen.conIva,
+    pago: origen.pago, trabajoId: origen.trabajoId,
+    notas: [origen.notas, `Según ${TIPOS_DOC[origen.tipo].nombre.toLowerCase()} ${origen.numero}`].filter(Boolean).join(' · '),
+    origen: { id: origen.id, tipo: origen.tipo, numero: origen.numero },
+  });
+  guardarDoc(doc);
+  if (origen.tipo === 'presupuesto' && origen.estado === 'Pendiente') origen.estado = 'Aceptado';
+  if (origen.tipo === 'albaran' && tipo === 'factura') origen.estado = 'Facturado';
+  guardarDoc(origen);
+  pintarDocs();
+  aviso(`${TIPOS_DOC[tipo].nombre} ${doc.numero} creado`);
+  editarDoc(doc);
+}
+
+$('#btnNuevoDoc').addEventListener('click', async () => {
+  const tipo = $('#filtroTipo').value || await elegirTipo();
+  if (!tipo) return;
+  const doc = nuevoDoc(tipo, { lineas: [{ concepto: '', cantidad: 1, unidad: 'ud', precio: '' }] });
+  editarDoc(doc, true);
+});
+
+function elegirTipo() {
+  const dlg = $('#dlgTipo');
+  dlg.returnValue = '';
+  dlg.showModal();
+  return new Promise((ok) => {
+    dlg.addEventListener('close', () => ok(TIPOS_DOC[dlg.returnValue] ? dlg.returnValue : null), { once: true });
+  });
+}
+
+// Exporta los documentos que se ven (para el gestor), en formato para Excel.
+$('#btnExportarCSV').addEventListener('click', () => {
+  const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c]));
+  const filas = [...$('#listaDocs').querySelectorAll('.doc')].map((el) => leerDocs().find((d) => d.id === el.dataset.id)).filter(Boolean);
+  if (!filas.length) { aviso('No hay documentos que exportar'); return; }
+  const num = (n) => n.toFixed(2).replace('.', ',');
+  const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lineas = [['Tipo', 'Número', 'Fecha', 'Cliente', 'NIF', 'Base', 'IVA', 'Total', 'Estado'].map(celda).join(';')];
+  for (const d of filas) {
+    const c = clientes[d.clienteId] || {};
+    const t = totales(d);
+    lineas.push([TIPOS_DOC[d.tipo].nombre, d.numero, fechaLegible(d.fecha), c.nombre, c.nif, num(t.base), num(t.iva), num(t.total), d.estado].map(celda).join(';'));
+  }
+  descargar(new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv' }), `documentos-${hoy()}.csv`);
+});
+
+// ---------------------------------------------------------------------------
+// Editor de documento
+// ---------------------------------------------------------------------------
+const dlgDoc = $('#dlgDocumento');
+let docEditado = null;
+let docEsNuevo = false;
+
+function llenarSelectClientes(sel, elegido) {
+  const lista = leerClientes().sort((a, b) => a.nombre.localeCompare(b.nombre));
+  sel.replaceChildren(new Option('— Elegir cliente —', ''), ...lista.map((c) => new Option(c.nombre, c.id)));
+  sel.value = elegido || '';
+}
+
+function infoCliente() {
+  const cli = clientePorId($('#docCliente').value);
+  $('#docClienteInfo').textContent = cli
+    ? [cli.nif && `NIF ${cli.nif}`, cli.direccion, cli.poblacion, cli.telefono].filter(Boolean).join(' · ') || 'Sin datos fiscales: complétalos en Clientes.'
+    : '';
+}
+
+function editarDoc(doc, nuevo = false) {
+  docEditado = structuredClone(doc);
+  docEsNuevo = nuevo;
+  const tipoInfo = TIPOS_DOC[doc.tipo];
+  $('#docTitulo').textContent = `${tipoInfo.nombre} ${doc.numero}`;
+  $('#docFecha').value = doc.fecha;
+  $('#docEstado').replaceChildren(...tipoInfo.estados.map((e) => new Option(e, e)));
+  $('#docEstado').value = doc.estado;
+  llenarSelectClientes($('#docCliente'), doc.clienteId);
+  infoCliente();
+  $('#docPagoCampo').hidden = doc.tipo !== 'factura';
+  $('#docPago').value = doc.pago || '';
+  $('#docIva').checked = doc.conIva !== false;
+  $('#docNotas').value = doc.notas || '';
+  $('#btnDocBorrar').textContent = doc.tipo === 'factura' ? 'Anular' : 'Borrar';
+  $('#btnDocBorrar').hidden = nuevo;
+  pintarLineas();
+  if (!dlgDoc.open) dlgDoc.showModal();
+}
+
+// Importe de una línea; en blanco si es solo texto (sin cantidad o sin precio).
+function importeLinea(l) {
+  if (l.cantidad === '' || l.precio === '' || l.cantidad == null || l.precio == null) return '';
+  return fmtEuro(redondear((Number(l.cantidad) || 0) * (Number(l.precio) || 0)));
+}
+
+function pintarLineas() {
+  $('#docLineas').innerHTML = docEditado.lineas.map((l, i) => `<tr data-i="${i}">
+    <td><input data-k="concepto" placeholder="Concepto" value="${escapar(l.concepto ?? '')}" aria-label="Concepto"></td>
+    <td><input data-k="cantidad" placeholder="Cant." type="number" step="any" inputmode="decimal" value="${l.cantidad ?? ''}" aria-label="Cantidad"></td>
+    <td><input data-k="unidad" placeholder="Ud." value="${escapar(l.unidad ?? '')}" aria-label="Unidad"></td>
+    <td><input data-k="precio" placeholder="Precio" type="number" step="any" inputmode="decimal" value="${l.precio ?? ''}" aria-label="Precio"></td>
+    <td class="num importe">${importeLinea(l)}</td>
+    <td><button type="button" class="quitar" aria-label="Quitar línea">✕</button></td>
+  </tr>`).join('');
+  pintarTotalesDoc();
+}
+
+function pintarTotalesDoc() {
+  docEditado.conIva = $('#docIva').checked;
+  const t = totales(docEditado);
+  $('#docTotales').innerHTML = `<div>Base imponible <b>${fmtEuro(t.base)}</b></div>`
+    + (docEditado.conIva ? `<div>IVA 21 % <b>${fmtEuro(t.iva)}</b></div>` : '')
+    + `<div class="total">Total <b>${fmtEuro(t.total)}</b></div>`;
+}
+
+$('#docLineas').addEventListener('input', (e) => {
+  const fila = e.target.closest('tr');
+  const k = e.target.dataset.k;
+  if (!fila || !k) return;
+  const l = docEditado.lineas[Number(fila.dataset.i)];
+  l[k] = e.target.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value;
+  fila.querySelector('.importe').textContent = importeLinea(l);
+  pintarTotalesDoc();
+});
+$('#docLineas').addEventListener('click', (e) => {
+  const b = e.target.closest('.quitar');
+  if (!b) return;
+  docEditado.lineas.splice(Number(b.closest('tr').dataset.i), 1);
+  pintarLineas();
+});
+$('#btnAnadirLinea').addEventListener('click', () => {
+  docEditado.lineas.push({ concepto: '', cantidad: 1, unidad: 'ud', precio: '' });
+  pintarLineas();
+  $('#docLineas tr:last-child [data-k="concepto"]').focus();
+});
+$('#docIva').addEventListener('change', pintarTotalesDoc);
+$('#docCliente').addEventListener('change', infoCliente);
+$('#btnDocNuevoCliente').addEventListener('click', async () => {
+  const cli = await editarCliente(null);
+  if (cli) { llenarSelectClientes($('#docCliente'), cli.id); infoCliente(); }
+});
+
+function leerEditor() {
+  const d = docEditado;
+  const fechaNueva = $('#docFecha').value || hoy();
+  // un documento nuevo que cambia de año toma el número de ese año
+  if (docEsNuevo && anioDe(fechaNueva) !== anioDe(d.fecha)) d.numero = siguienteNumero(d.tipo, fechaNueva);
+  d.fecha = fechaNueva;
+  d.estado = $('#docEstado').value;
+  d.clienteId = $('#docCliente').value;
+  d.pago = $('#docPago').value.trim();
+  d.notas = $('#docNotas').value.trim();
+  d.conIva = $('#docIva').checked;
+  if (d.estado === 'Cobrada' && !d.fechaCobro) d.fechaCobro = hoy();
+  return d;
+}
+
+function guardarEditor() {
+  const d = leerEditor();
+  if (d.tipo === 'factura' && !d.clienteId) { aviso('Una factura necesita un cliente'); return false; }
+  guardarDoc(d);
+  docEsNuevo = false;
+  $('#btnDocBorrar').hidden = false;
+  $('#docTitulo').textContent = `${TIPOS_DOC[d.tipo].nombre} ${d.numero}`;
+  pintarDocs();
+  return true;
+}
+
+$('#btnDocGuardar').addEventListener('click', () => {
+  if (guardarEditor()) { aviso('Documento guardado'); dlgDoc.close(); }
+});
+$('#btnDocBorrar').addEventListener('click', () => {
+  const d = docEditado;
+  if (d.tipo === 'factura') {
+    // las facturas no se borran (numeración correlativa): se anulan
+    if (!confirm(`¿Anular la factura ${d.numero}? Se conserva con su número, marcada como anulada.`)) return;
+    d.estado = 'Anulada';
+    guardarDoc(d);
+  } else {
+    if (!confirm(`¿Borrar ${TIPOS_DOC[d.tipo].nombre.toLowerCase()} ${d.numero}?`)) return;
+    escribirJSON(CLAVE_DOCS, leerDocs().filter((x) => x.id !== d.id));
+  }
+  dlgDoc.close();
+  pintarDocs();
+});
+
+async function hojaDocBlob() {
+  await logoListo();
+  return new Promise((ok) => componerDocumento(leerEditor()).toBlob(ok, 'image/png'));
+}
+const nombreDoc = (d) => `${TIPOS_DOC[d.tipo].nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}_${d.numero}.png`;
+
+$('#btnDocImprimir').addEventListener('click', () => {
+  if (!guardarEditor()) return;
+  const d = structuredClone(docEditado);
+  imprimirHoja(() => componerDocumento(d));
+});
+$('#btnDocDescargar').addEventListener('click', async () => {
+  if (!guardarEditor()) return;
+  descargar(await hojaDocBlob(), nombreDoc(docEditado));
+});
+$('#btnDocCompartir').addEventListener('click', async () => {
+  if (!guardarEditor()) return;
+  const blob = await hojaDocBlob();
+  const archivo = new File([blob], nombreDoc(docEditado), { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try { await navigator.share({ files: [archivo], title: `${TIPOS_DOC[docEditado.tipo].nombre} ${docEditado.numero}` }); } catch { /* cancelado */ }
+  } else {
+    descargar(blob, archivo.name);
+    aviso('Este navegador no permite compartir: se ha descargado la imagen');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Hoja A4 del documento
+// ---------------------------------------------------------------------------
+function componerDocumento(doc) {
+  const tipoInfo = TIPOS_DOC[doc.tipo];
+  const emp = leerEmpresa();
+  const cli = clientePorId(doc.clienteId) || {};
+  const t = totales(doc);
+  const M = 110;
+  const hoja = document.createElement('canvas');
+  hoja.width = W;
+  hoja.height = HOJA_H;
+  const c = hoja.getContext('2d');
+  c.fillStyle = '#fff';
+  c.fillRect(0, 0, W, HOJA_H);
+
+  const cab = pintarCabecera(c, M, [`${tipoInfo.titulo} Nº ${doc.numero}`, `Fecha: ${fechaLegible(doc.fecha)}`,
+    doc.estado === 'Anulada' ? 'ANULADA' : '']);
+  let y = M + cab + 10;
+
+  // datos del emisor y del cliente
+  const anchoBloque = (W - M * 2 - 40) / 2;
+  const bloque = (x, titulo, filas) => {
+    c.textAlign = 'left';
+    c.textBaseline = 'top';
+    c.fillStyle = '#5f6b75';
+    c.font = '600 24px system-ui, sans-serif';
+    c.fillText(titulo, x + 20, y + 16);
+    c.fillStyle = '#111';
+    filas.filter(Boolean).forEach((f, i) => {
+      c.font = `${i === 0 ? 700 : 400} 28px system-ui, sans-serif`;
+      c.fillText(f, x + 20, y + 54 + i * 38, anchoBloque - 40);
+    });
+  };
+  const altoBloque = 54 + 5 * 38 + 16;
+  c.strokeStyle = '#c9d0d6';
+  c.lineWidth = 2;
+  c.strokeRect(M, y, anchoBloque, altoBloque);
+  c.strokeRect(M + anchoBloque + 40, y, anchoBloque, altoBloque);
+  bloque(M, 'EMISOR', [emp.nombre || nombreEmpresa(), emp.nif && `NIF ${emp.nif}`, emp.direccion, emp.poblacion,
+    [emp.telefono, emp.email].filter(Boolean).join(' · ')]);
+  bloque(M + anchoBloque + 40, 'CLIENTE', [cli.nombre || '—', cli.nif && `NIF ${cli.nif}`, cli.direccion, cli.poblacion,
+    [cli.telefono, cli.email].filter(Boolean).join(' · ')]);
+  y += altoBloque + 40;
+
+  // líneas: si hay muchas, las filas se estrechan para que quepan en la página
+  const reservaPie = 420;
+  const disponible = HOJA_H - M - reservaPie - y - 64;
+  const filaH = Math.max(36, Math.min(60, disponible / Math.max(1, doc.lineas.length)));
+  const tam = filaH < 48 ? 22 : 26;
+  const xCant = W - M - 700;
+  const xPrecio = W - M - 380;
+  c.fillStyle = '#2f3b45';
+  c.fillRect(M, y, W - M * 2, 60);
+  c.fillStyle = '#fff';
+  c.font = '600 26px system-ui, sans-serif';
+  c.textBaseline = 'middle';
+  c.textAlign = 'left';
+  c.fillText('Concepto', M + 20, y + 30);
+  c.textAlign = 'right';
+  c.fillText('Cantidad', xCant + 200, y + 30);
+  c.fillText('Precio', xPrecio + 160, y + 30);
+  c.fillText('Importe', W - M - 20, y + 30);
+  y += 60;
+  doc.lineas.forEach((l, i) => {
+    if (i % 2) {
+      c.fillStyle = '#f2f4f6';
+      c.fillRect(M, y, W - M * 2, filaH);
+    }
+    const cant = Number(l.cantidad);
+    const precio = Number(l.precio);
+    const conImporte = l.cantidad !== '' && l.precio !== '' && Number.isFinite(cant) && Number.isFinite(precio);
+    c.fillStyle = '#111';
+    c.font = `400 ${tam}px system-ui, sans-serif`;
+    c.textAlign = 'left';
+    c.fillText(String(l.concepto || ''), M + 20, y + filaH / 2, xCant - M - 40);
+    c.textAlign = 'right';
+    if (conImporte) {
+      c.fillText(fmtCant(cant, l.unidad || 'ud').trim(), xCant + 200, y + filaH / 2);
+      c.fillText(fmtEuro(precio), xPrecio + 160, y + filaH / 2);
+      c.fillText(fmtEuro(redondear(cant * precio)), W - M - 20, y + filaH / 2);
+    }
+    y += filaH;
+  });
+  c.strokeStyle = '#2f3b45';
+  linea(c, [M, y], [W - M, y]);
+
+  // totales
+  y += 24;
+  const fila = (texto, valor, fuerte) => {
+    c.font = `${fuerte ? 700 : 400} ${fuerte ? 40 : 30}px system-ui, sans-serif`;
+    c.fillStyle = '#111';
+    c.textAlign = 'right';
+    c.textBaseline = 'top';
+    c.fillText(texto, W - M - 330, y);
+    c.fillText(valor, W - M - 20, y);
+    y += fuerte ? 64 : 48;
+  };
+  fila('Base imponible', fmtEuro(t.base));
+  if (doc.conIva) fila('IVA 21 %', fmtEuro(t.iva));
+  fila(doc.conIva ? 'TOTAL' : 'TOTAL (IVA no incluido)', fmtEuro(t.total), true);
+
+  // pie: notas, forma de pago, firma del albarán y texto de la empresa
+  c.textAlign = 'left';
+  c.textBaseline = 'top';
+  let yp = HOJA_H - M - reservaPie + 40;
+  const textoPie = (txt, color = '#4a5058', tamPie = 26) => {
+    c.font = `400 ${tamPie}px system-ui, sans-serif`;
+    c.fillStyle = color;
+    for (const l of partirTexto(c, txt, doc.tipo === 'albaran' ? W - M * 2 - 620 : W - M * 2)) {
+      c.fillText(l, M, yp);
+      yp += tamPie * 1.35;
+    }
+  };
+  if (doc.notas) textoPie(`Notas: ${doc.notas}`);
+  if (doc.tipo === 'factura') {
+    if (doc.pago) textoPie(`Forma de pago: ${doc.pago}`);
+    if (emp.iban) textoPie(`IBAN: ${emp.iban}`);
+  }
+  if (emp.pie) textoPie(emp.pie, '#5f6b75', 24);
+  if (doc.tipo === 'albaran') {
+    const fx = W - M - 580;
+    const fy = HOJA_H - M - reservaPie + 40;
+    c.strokeStyle = '#c9d0d6';
+    c.strokeRect(fx, fy, 580, 260);
+    c.fillStyle = '#5f6b75';
+    c.font = '600 24px system-ui, sans-serif';
+    c.fillText('RECIBÍ CONFORME (firma y DNI)', fx + 20, fy + 16);
+  }
+  return hoja;
+}
+
+// ---------------------------------------------------------------------------
+// Clientes
+// ---------------------------------------------------------------------------
+function pintarClientes() {
+  const texto = normalizar($('#buscarCliente').value);
+  const docs = leerDocs();
+  const lista = leerClientes()
+    .filter((c) => !texto || normalizar(`${c.nombre} ${c.nif} ${c.telefono}`).includes(texto))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const cont = $('#listaClientes');
+  if (!lista.length) {
+    cont.innerHTML = '<p class="vacio">Todavía no hay clientes. Se crean solos al pasar un presupuesto a Gestión, o con «+ Nuevo cliente».</p>';
+    return;
+  }
+  cont.innerHTML = lista.map((c) => {
+    const suyos = docs.filter((d) => d.clienteId === c.id && d.tipo === 'factura' && d.estado !== 'Anulada');
+    const facturado = suyos.reduce((s, d) => s + totales(d).total, 0);
+    const pendiente = suyos.filter((d) => d.estado === 'Pendiente de cobro').reduce((s, d) => s + totales(d).total, 0);
+    return `<div class="doc" data-id="${c.id}">
+      <div class="doc-info" data-accion="editar">
+        <strong>${escapar(c.nombre)}</strong>
+        <span>${escapar([c.nif, c.telefono, c.poblacion].filter(Boolean).join(' · ') || 'Sin datos')}</span>
+      </div>
+      <span class="cli-cifras">Facturado ${fmtEuro(facturado)}${pendiente ? ` · <b class="mal-txt">pendiente ${fmtEuro(pendiente)}</b>` : ''}</span>
+      <div class="doc-acciones">
+        <button type="button" data-accion="albaran">Albarán</button>
+        <button type="button" data-accion="factura">Factura</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+$('#buscarCliente').addEventListener('input', pintarClientes);
+$('#listaClientes').addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-accion]');
+  if (!el) return;
+  const cli = clientePorId(el.closest('.doc').dataset.id);
+  if (!cli) return;
+  if (el.dataset.accion === 'editar') {
+    await editarCliente(cli);
+    pintarClientes();
+  } else {
+    // albarán o factura rápida para este cliente
+    abrirGestion('documentos');
+    editarDoc(nuevoDoc(el.dataset.accion, { clienteId: cli.id, lineas: [{ concepto: '', cantidad: 1, unidad: 'ud', precio: '' }] }), true);
+  }
+});
+$('#btnNuevoCliente').addEventListener('click', async () => {
+  await editarCliente(null);
+  pintarClientes();
+});
+
+const dlgCliente = $('#dlgCliente');
+const formCliente = $('#formCliente');
+const CAMPOS_CLIENTE = ['nombre', 'nif', 'telefono', 'email', 'direccion', 'poblacion', 'notas'];
+
+let clienteEditadoId = null;
+function editarCliente(cli) {
+  const actual = cli ? { ...cli } : { id: nuevoId() };
+  clienteEditadoId = cli ? cli.id : null;
+  for (const k of CAMPOS_CLIENTE) formCliente.elements[k].value = actual[k] || '';
+  $('#btnBorrarCliente').hidden = !cli;
+  dlgCliente.returnValue = '';
+  dlgCliente.showModal();
+  formCliente.elements.nombre.focus();
+  return new Promise((ok) => {
+    dlgCliente.addEventListener('close', () => {
+      if (dlgCliente.returnValue !== 'ok') return ok(null);
+      for (const k of CAMPOS_CLIENTE) actual[k] = formCliente.elements[k].value.trim();
+      if (!actual.nombre) return ok(null);
+      guardarCliente(actual);
+      aviso('Cliente guardado');
+      ok(actual);
+    }, { once: true });
+  });
+}
+
+$('#btnBorrarCliente').addEventListener('click', () => {
+  const lista = leerClientes();
+  const cli = lista.find((c) => c.id === clienteEditadoId);
+  if (!cli) return;
+  if (leerDocs().some((d) => d.clienteId === cli.id)) {
+    aviso('No se puede borrar: tiene documentos');
+    return;
+  }
+  if (!confirm(`¿Borrar el cliente ${cli.nombre}?`)) return;
+  escribirJSON(CLAVE_CLIENTES, lista.filter((c) => c.id !== cli.id));
+  dlgCliente.close();
+  pintarClientes();
+});
+
+// ---------------------------------------------------------------------------
+// Balance mensual
+// ---------------------------------------------------------------------------
+function pintarBalance() {
+  const docs = leerDocs();
+  llenarAnios($('#balanceAnio'), docs);
+  const anio = Number($('#balanceAnio').value);
+  const meses = MESES.map((nombre) => ({ nombre, nFact: 0, base: 0, iva: 0, total: 0, cobrado: 0, pendiente: 0, presu: 0, aceptado: 0 }));
+  for (const d of docs) {
+    if (anioDe(d.fecha) !== anio) continue;
+    const m = meses[Number(d.fecha.slice(5, 7)) - 1];
+    if (!m) continue;
+    const t = totales(d);
+    if (d.tipo === 'factura' && d.estado !== 'Anulada') {
+      m.nFact++;
+      m.base += t.base;
+      m.iva += t.iva;
+      m.total += t.total;
+      if (d.estado === 'Cobrada') m.cobrado += t.total; else m.pendiente += t.total;
+    }
+    if (d.tipo === 'presupuesto') {
+      m.presu++;
+      if (d.estado === 'Aceptado') m.aceptado += t.total;
+    }
+  }
+  const suma = meses.reduce((s, m) => {
+    for (const k of Object.keys(m)) if (k !== 'nombre') s[k] = (s[k] || 0) + m[k];
+    return s;
+  }, { nombre: 'Total año' });
+  const fila = (m, clase = '') => `<tr class="${clase}"><td>${m.nombre}</td><td class="num">${m.nFact}</td>`
+    + `<td class="num">${fmtEuro(m.base)}</td><td class="num">${fmtEuro(m.iva)}</td><td class="num"><b>${fmtEuro(m.total)}</b></td>`
+    + `<td class="num">${fmtEuro(m.cobrado)}</td><td class="num${m.pendiente ? ' mal-txt' : ''}">${fmtEuro(m.pendiente)}</td>`
+    + `<td class="num">${m.presu}</td><td class="num">${fmtEuro(m.aceptado)}</td></tr>`;
+  $('#tablaBalance').innerHTML = `<div class="tabla-balance"><table>
+    <thead><tr><th>Mes</th><th class="num">Facturas</th><th class="num">Base</th><th class="num">IVA</th><th class="num">Facturado</th>
+      <th class="num">Cobrado</th><th class="num">Pendiente</th><th class="num">Presupuestos</th><th class="num">Aceptados</th></tr></thead>
+    <tbody>${meses.map((m) => fila(m)).join('')}</tbody>
+    <tfoot>${fila(suma, 'total')}</tfoot>
+  </table></div>
+  <p class="ayuda">Facturas anuladas no cuentan. «Aceptados» es el importe de los presupuestos aceptados ese mes.</p>`;
+}
+$('#balanceAnio').addEventListener('change', pintarBalance);
+
+// ---------------------------------------------------------------------------
+// Mi empresa
+// ---------------------------------------------------------------------------
+const formEmpresa = $('#formEmpresa');
+function volcarEmpresa() {
+  const e = leerEmpresa();
+  for (const el of formEmpresa.elements) if (el.name) el.value = e[el.name] || '';
+}
+formEmpresa.addEventListener('input', () => {
+  const e = {};
+  for (const el of formEmpresa.elements) if (el.name) e[el.name] = el.value.trim();
+  escribirJSON(CLAVE_EMPRESA, e);
+});
+
+// ---------------------------------------------------------------------------
+// Copia de seguridad (la usa app.js)
+// ---------------------------------------------------------------------------
+function exportarGestion() {
+  return { clientes: leerClientes(), documentos: leerDocs(), empresa: leerEmpresa() };
+}
+
+function importarGestion(g) {
+  if (!g) return 0;
+  const unir = (actuales, nuevos) => {
+    const lista = [...actuales];
+    for (const n of nuevos || []) {
+      if (!n || !n.id) continue;
+      const i = lista.findIndex((x) => x.id === n.id);
+      if (i < 0) lista.push(n);
+      else if ((n.modificado || 0) >= (lista[i].modificado || 0)) lista[i] = n;
+    }
+    return lista;
+  };
+  escribirJSON(CLAVE_CLIENTES, unir(leerClientes(), g.clientes));
+  escribirJSON(CLAVE_DOCS, unir(leerDocs(), g.documentos));
+  if (g.empresa && !Object.values(leerEmpresa()).some(Boolean)) escribirJSON(CLAVE_EMPRESA, g.empresa);
+  return (g.documentos || []).length;
+}
+
+// ---------------------------------------------------------------------------
+llenarSugerenciasClientes();

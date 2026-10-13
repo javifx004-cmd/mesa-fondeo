@@ -1,6 +1,6 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v19';
-const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js',
+const CACHE = 'planos-cocina-v20';
+const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js',
   'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg'];
 
 self.addEventListener('install', (e) => {

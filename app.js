@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '19';   // cambiar junto con CACHE en sw.js
+const VERSION = '20';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -1100,6 +1100,15 @@ function logoListo() {
   ]);
 }
 
+// Nombre de la empresa: el de «Mi empresa» en Gestión, o el de serie.
+function nombreEmpresa() {
+  try {
+    const e = JSON.parse(localStorage.getItem('planosCocina.empresa'));
+    if (e && e.nombre) return e.nombre.toUpperCase();
+  } catch { /* sin datos */ }
+  return EMPRESA;
+}
+
 function pintarCabecera(c, M, derecha) {
   const altoLogo = 150;
   let x = M;
@@ -1113,7 +1122,7 @@ function pintarCabecera(c, M, derecha) {
   c.font = '800 54px system-ui, sans-serif';
   c.textAlign = 'left';
   c.textBaseline = 'middle';
-  c.fillText(EMPRESA, x, M + altoLogo / 2);
+  c.fillText(nombreEmpresa(), x, M + altoLogo / 2, W - M - x - 420);
   c.font = '400 28px system-ui, sans-serif';
   c.fillStyle = '#5f6b75';
   c.textAlign = 'right';
@@ -1431,7 +1440,9 @@ $('#btnGuardar').addEventListener('click', () => guardar(true));
 
 $('#btnExportar').addEventListener('click', () => {
   guardar();
-  const blob = new Blob([JSON.stringify(leerTrabajos(), null, 1)], { type: 'application/json' });
+  // copia completa: trabajos y, si existe, la gestión (clientes, documentos, empresa)
+  const copia = { version: 2, trabajos: leerTrabajos(), gestion: typeof exportarGestion === 'function' ? exportarGestion() : null };
+  const blob = new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' });
   descargar(blob, `planos-cocina-copia-${hoy()}.json`);
 });
 
@@ -1440,8 +1451,11 @@ $('#fileImportar').addEventListener('change', async (e) => {
   e.target.value = '';
   if (!f) return;
   try {
-    const entrada = JSON.parse(await f.text());
+    const datos = JSON.parse(await f.text());
+    // formato antiguo: solo la lista de trabajos; nuevo: { trabajos, gestion }
+    const entrada = Array.isArray(datos) ? datos : datos.trabajos;
     if (!Array.isArray(entrada)) throw new Error();
+    const nDocs = !Array.isArray(datos) && typeof importarGestion === 'function' ? importarGestion(datos.gestion) : 0;
     const lista = leerTrabajos();
     let n = 0;
     for (const t of entrada) {
@@ -1456,7 +1470,7 @@ $('#fileImportar').addEventListener('change', async (e) => {
     }
     escribirTrabajos(lista);
     pintarLista();
-    aviso(`${n} trabajos restaurados`);
+    aviso(`${n} trabajos restaurados` + (nDocs ? ` y ${nDocs} documentos` : ''));
   } catch {
     aviso('El archivo no es una copia válida');
   }

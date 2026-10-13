@@ -69,7 +69,7 @@ button:active { transform: translateY(1px); }
 .topbar-actions button { background: transparent; color: inherit; border-color: rgba(255,255,255,.4); }
 .topbar-actions button.primary { background: var(--active); border-color: var(--active); }
 
-main { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: grid; gap: 12px; }
+main, .contenido { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: grid; gap: 12px; }
 
 .ficha, .plano, .presupuesto, .acciones {
   background: var(--panel);
@@ -228,6 +228,92 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 button.enlace { background: none; border: 0; padding: 0; min-height: 0; font: inherit; }
 #version { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
 
+/* --- Gestión --- */
+.pestanas { display: flex; gap: 6px; overflow-x: auto; }
+.pestanas button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.panel-g { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.barra-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.barra-filtros select, .barra-filtros input {
+  min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+  padding: 0 10px; font-size: 16px;
+}
+.barra-filtros input[type="search"] { flex: 1; min-width: 180px; }
+#listaDocs, #listaClientes { display: grid; gap: 8px; }
+.doc {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 6px 14px; align-items: center;
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+}
+.doc-info { cursor: pointer; min-width: 0; display: flex; flex-direction: column; }
+.doc-info span { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-total { white-space: nowrap; }
+.doc-acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.doc-acciones:empty { display: none; }
+.doc-acciones button { min-height: 34px; padding: 4px 10px; font-size: 14px; }
+.estado { font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.estado.ok { background: #e3f2e5; color: #1b5e20; }
+.estado.mal { background: #fde7e7; color: #a51d1d; }
+.estado.pendiente { background: #fff3dc; color: #8a5300; }
+.mal-txt { color: #a51d1d; }
+.cli-cifras { font-size: 14px; color: var(--muted); grid-column: 2 / -1; text-align: right; }
+.aviso-legal { margin: 0; font-size: 13px; color: var(--muted); }
+.vacio { color: var(--muted); margin: 0; }
+button.peligro { color: #a51d1d; border-color: #e7b4b4; margin-right: auto; }
+dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 16px); }
+.grid.una-col { grid-template-columns: 1fr; margin-top: 10px; }
+.doc-cab { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+.grid select {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 16px; font-weight: 400;
+}
+.fila-cliente { display: flex; gap: 6px; }
+.fila-cliente select { flex: 1; }
+.tabla-lineas { overflow-x: auto; margin: 6px 0 8px; }
+.tabla-lineas table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.tabla-lineas th { text-align: left; font-size: 13px; color: var(--muted); padding: 4px; }
+.tabla-lineas td { padding: 3px 4px; }
+.tabla-lineas input {
+  width: 100%; min-height: 38px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); padding: 0 8px; font-size: 15px;
+}
+.tabla-lineas td:nth-child(2), .tabla-lineas td:nth-child(4) { width: 96px; }
+.tabla-lineas td:nth-child(3) { width: 64px; }
+.tabla-lineas .num { text-align: right; white-space: nowrap; }
+.tabla-lineas .quitar { min-height: 34px; padding: 2px 8px; }
+.doc-pie { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 10px; }
+#docTotales { text-align: right; display: grid; gap: 2px; }
+#docTotales .total { font-size: 18px; }
+.campo-notas { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.campo-notas textarea {
+  width: 100%; margin-top: 4px; padding: 8px; font-size: 16px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+}
+.dlg-foot.tipos { justify-content: stretch; }
+.dlg-foot.tipos button { flex: 1; }
+.tabla-balance { overflow-x: auto; }
+.tabla-balance table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px; }
+.tabla-balance th, .tabla-balance td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.tabla-balance .num { text-align: right; white-space: nowrap; }
+.tabla-balance tr.total td { font-weight: 700; border-top: 2px solid var(--text); }
+@media (max-width: 520px) {
+  .doc-cab { grid-template-columns: 1fr; }
+  .doc-cab .wide { grid-column: auto; }
+  .doc { grid-template-columns: 1fr auto; }
+  .doc .estado { grid-column: 2; grid-row: 1; }
+  .doc-total { grid-column: 2; }
+  .cli-cifras { grid-column: 1 / -1; text-align: left; }
+  /* líneas del documento como tarjetas */
+  .tabla-lineas table { min-width: 0; }
+  .tabla-lineas thead { display: none; }
+  .tabla-lineas tr {
+    display: grid; grid-template-columns: 1fr 0.7fr 1fr auto; gap: 4px; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .tabla-lineas td { padding: 0; width: auto !important; }
+  .tabla-lineas td:first-child { grid-column: 1 / 4; }
+  .tabla-lineas td:nth-child(6) { grid-column: 4; grid-row: 1; }
+  .tabla-lineas td.importe { grid-column: 4; grid-row: 2; min-width: 84px; }
+}
+
 #aviso {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
   background: var(--accent); color: var(--accent-text);
@@ -254,7 +340,7 @@ button.enlace { background: none; border: 0; padding: 0; min-height: 0; font: in
 @media print {
   @page { size: A4 portrait; margin: 0; }
   body { background: #fff; padding: 0; }
-  .topbar, main, dialog, #aviso { display: none !important; }
+  .topbar, main, .contenido, dialog, #aviso { display: none !important; }
   #hojaImpresion { display: block; }
   #hojaImpresion img { width: 210mm; height: 297mm; display: block; }
 }
