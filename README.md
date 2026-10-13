@@ -1,4 +1,4 @@
-# Planos Cocina
+# Mármoles Carbonell · Planos y presupuestos
 
 Aplicación web para marmolistas: ficha del trabajo + plano de la encimera.
 Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexión).
@@ -14,6 +14,8 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - Cota con medida escrita.
   - Texto.
   - Símbolos de vitrocerámica y fregadero (si el fregadero se dibuja ancho, sale de dos senos).
+    Si se dibujan en un tramo vertical (en L) salen girados; «Girar» los gira de 90 en 90°.
+    Los taladros de grifo (G), jabonera (J) y ósmosis (Ó) van siempre detrás, en el lado de la pared.
     Sus medidas y el radio van solo en la ficha, no en el plano; la jabonera y la ósmosis
     marcadas en la ficha salen como taladros detrás del fregadero.
   - Canto visto: se marca en azul a lo largo del canto y la hoja lleva su leyenda.
@@ -35,6 +37,8 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   **Imprimir / PDF** de la hoja completa en **A4 vertical**, con «MÁRMOLES CARBONELL» y el logo
   en la cabecera, los datos, el plano ampliado a lo dibujado y una franja pequeña de observaciones.
 - **Logo**: el de Mármoles Carbonell va de serie (`logo.svg`, redibujado en vectorial); «Cambiar logo», al final de la página, permite usar otro en ese dispositivo.
+- **Protección de datos**: la app pide al navegador que no borre sus datos y avisa si hace más
+  de 7 días de la última copia de seguridad.
 - **Copia de seguridad**: exporta/restaura todos los trabajos en un archivo, útil para
   pasar los trabajos del móvil al PC.
 

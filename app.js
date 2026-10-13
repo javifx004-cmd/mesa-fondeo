@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '21';   // cambiar junto con CACHE en sw.js
+const VERSION = '24';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -318,33 +318,45 @@ function pintarObjeto(c, o) {
       break;
     }
     case 'vitro': {
-      const { x, y, w, h } = caja(o);
+      // se dibuja en su propio giro (o.rot) dentro de la caja
+      const { lw, lh, giro, cx, cy } = marcoLocal(o);
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(giro);
+      const x = -lw / 2;
+      const y = -lh / 2;
       c.lineWidth = Math.max(2, o.w * 0.7);
-      rectRedondeado(c, x, y, w, h, Math.min(w, h) * 0.06);
+      rectRedondeado(c, x, y, lw, lh, Math.min(lw, lh) * 0.06);
       c.stroke();
       // cuatro fuegos: dos grandes y dos pequeños
-      const m = Math.min(w / 2, h / 2);
+      const m = Math.min(lw / 2, lh / 2);
       const fuegos = [
-        [x + w * 0.27, y + h * 0.3, m * 0.38], [x + w * 0.73, y + h * 0.3, m * 0.28],
-        [x + w * 0.27, y + h * 0.72, m * 0.28], [x + w * 0.73, y + h * 0.72, m * 0.38],
+        [x + lw * 0.27, y + lh * 0.3, m * 0.38], [x + lw * 0.73, y + lh * 0.3, m * 0.28],
+        [x + lw * 0.27, y + lh * 0.72, m * 0.28], [x + lw * 0.73, y + lh * 0.72, m * 0.38],
       ];
-      for (const [cx, cy, r] of fuegos) {
+      for (const [fx, fy, r] of fuegos) {
         c.beginPath();
-        c.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2);
+        c.arc(fx, fy, Math.max(2, r), 0, Math.PI * 2);
         c.stroke();
       }
+      c.restore();
       break;
     }
     case 'frega': {
-      const { x, y, w, h } = caja(o);
+      const { lw, lh, giro, cx, cy, aMundo } = marcoLocal(o);
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(giro);
+      const x = -lw / 2;
+      const y = -lh / 2;
       c.lineWidth = Math.max(2, o.w * 0.7);
-      rectRedondeado(c, x, y, w, h, Math.min(w, h) * 0.12);
+      rectRedondeado(c, x, y, lw, lh, Math.min(lw, lh) * 0.12);
       c.stroke();
-      const dos = w > h * 1.9;   // fregadero ancho → dos senos
-      const mx = Math.min(w, h) * 0.1;
+      const dos = lw > lh * 1.9;   // fregadero ancho → dos senos
+      const mx = Math.min(lw, lh) * 0.1;
       const senos = dos
-        ? [[x + mx, y + mx, w / 2 - mx * 1.5, h - mx * 2], [x + w / 2 + mx / 2, y + mx, w / 2 - mx * 1.5, h - mx * 2]]
-        : [[x + mx, y + mx, w - mx * 2, h - mx * 2]];
+        ? [[x + mx, y + mx, lw / 2 - mx * 1.5, lh - mx * 2], [mx / 2, y + mx, lw / 2 - mx * 1.5, lh - mx * 2]]
+        : [[x + mx, y + mx, lw - mx * 2, lh - mx * 2]];
       for (const [sx, sy, sw, sh] of senos) {
         rectRedondeado(c, sx, sy, sw, sh, Math.min(sw, sh) * 0.15);
         c.stroke();
@@ -352,21 +364,23 @@ function pintarObjeto(c, o) {
         c.arc(sx + sw / 2, sy + sh / 2, Math.max(2, Math.min(sw, sh) * 0.08), 0, Math.PI * 2);
         c.stroke();
       }
-      // jabonera y ósmosis (de la ficha): taladros detrás del fregadero; las medidas solo van en la ficha
+      c.restore();
+      // taladros de la ficha detrás del fregadero (lado de la pared): grifo en el centro,
+      // jabonera a un lado y ósmosis al otro. Las letras se escriben siempre derechas.
       const d = trabajo.datos;
-      const extras = [d.jabonera && 'J', d.osmosis && 'Ó'].filter(Boolean);
-      extras.forEach((letra, i) => {
-        const cx = x + w - 30 - i * 80;
-        const cy = y - 34;
+      const taladros = [d.grifo && ['G', 0], d.jabonera && ['J', 1], d.osmosis && ['Ó', -1]].filter(Boolean);
+      const sep = Math.min(80, lw / 3);
+      for (const [letra, lado] of taladros) {
+        const [tx, ty] = aMundo(lado * sep, -lh / 2 - 30);
         c.lineWidth = Math.max(2, o.w * 0.6);
         c.beginPath();
-        c.arc(cx, cy, 16, 0, Math.PI * 2);
+        c.arc(tx, ty, letra === 'G' ? 17 : 14, 0, Math.PI * 2);
         c.stroke();
-        c.font = '700 24px system-ui, sans-serif';
-        c.textAlign = 'left';
+        c.font = '700 22px system-ui, sans-serif';
+        c.textAlign = 'center';
         c.textBaseline = 'middle';
-        c.fillText(letra, cx + 22, cy + 1);
-      });
+        c.fillText(letra, tx, ty + 1);
+      }
       break;
     }
     case 'luz': {
@@ -436,6 +450,23 @@ function pintarObjeto(c, o) {
       pintarPulido(c, o);
       break;
   }
+}
+
+// Marco propio de un símbolo girado (vitro, fregadero): medidas locales y paso a coordenadas
+// del plano. Con 90° o 270° el símbolo ocupa la caja tumbado.
+function marcoLocal(o) {
+  const { x, y, w, h } = caja(o);
+  const rot = o.rot || 0;
+  const giro = rot * Math.PI / 180;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const tumbado = rot % 180 !== 0;
+  const cos = Math.cos(giro);
+  const sin = Math.sin(giro);
+  return {
+    lw: tumbado ? h : w, lh: tumbado ? w : h, giro, cx, cy,
+    aMundo: (lx, ly) => [cx + lx * cos - ly * sin, cy + lx * sin + ly * cos],
+  };
 }
 
 // Dirección del tramo y normal a su izquierda (hacia donde van el símbolo y el texto).
@@ -844,6 +875,19 @@ lienzo.addEventListener('pointerdown', async (e) => {
       arrastre = { obj, ultimo: p };
       break;
     }
+    case 'girar': {
+      const obj = elementoEn(crudo);
+      if (!obj) return;
+      if (obj.tipo !== 'vitro' && obj.tipo !== 'frega') {
+        aviso('Girar sirve para el fregadero y la vitro');
+        return;
+      }
+      memorizar();
+      obj.rot = ((obj.rot || 0) + 90) % 360;
+      dibujar();
+      cambio();
+      return;
+    }
     case 'borrar': {
       const obj = elementoEn(crudo);
       if (!obj) return;
@@ -897,6 +941,11 @@ async function terminarTrazo(e) {
   }
   const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]);
   if (lon < 10) { dibujar(); return; }
+  if (o.tipo === 'vitro' || o.tipo === 'frega') {
+    // en un tramo vertical (caja más alta que ancha) sale girado, con la trasera a la derecha
+    const { w, h } = caja(o);
+    if (h > w * 1.15) o.rot = 90;
+  }
   if (o.tipo === 'cota') {
     enCurso = o;          // se sigue viendo mientras se escribe la medida
     dibujar();
@@ -972,7 +1021,7 @@ lienzo.addEventListener('pointercancel', terminarTrazo);
 $$('.tools [data-tool]').forEach((b) => b.addEventListener('click', () => {
   herramienta = b.dataset.tool;
   $$('.tools [data-tool]').forEach((x) => x.classList.toggle('active', x === b));
-  lienzo.style.cursor = { mover: 'move', borrar: 'not-allowed', editar: 'pointer' }[herramienta] || 'crosshair';
+  lienzo.style.cursor = { mover: 'move', borrar: 'not-allowed', editar: 'pointer', girar: 'pointer' }[herramienta] || 'crosshair';
 }));
 
 $('#optRejilla').addEventListener('change', dibujar);
@@ -1088,6 +1137,7 @@ function cargarLogo() {
   try { datos = localStorage.getItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
   logoImg.src = datos || 'logo.svg';   // logo de Mármoles Carbonell de serie
   $('#logoApp').src = logoImg.src;
+  $('#logoEmpresa').src = logoImg.src;
 }
 
 // Espera a que el logo esté cargado antes de componer una hoja (como mucho 4 s).
@@ -1242,6 +1292,10 @@ function componerHoja() {
   if (trabajo.objetos.some((o) => o.tipo === 'descuadre')) leyenda.push({ txt: 'Descuadre', tipo: 'descuadre' });
   if (trabajo.objetos.some((o) => o.tipo === 'inglete')) leyenda.push({ txt: 'Bajada a inglete', tipo: 'inglete' });
   if (trabajo.objetos.some((o) => o.tipo === 'pulido')) leyenda.push({ txt: 'Pulido por detrás', tipo: 'pulido' });
+  const dts = trabajo.datos;
+  if (trabajo.objetos.some((o) => o.tipo === 'frega') && (dts.grifo || dts.jabonera || dts.osmosis)) {
+    leyenda.push({ txt: [dts.grifo && 'G grifo', dts.jabonera && 'J jabonera', dts.osmosis && 'Ó ósmosis'].filter(Boolean).join(' · '), tipo: 'nota' });
+  }
   const hLeyenda = leyenda.length ? 56 : 0;
 
   // observaciones: una franja pequeña, solo si hay texto
@@ -1273,6 +1327,13 @@ function componerHoja() {
   c.textAlign = 'left';
   c.textBaseline = 'middle';
   for (const { txt, tipo } of leyenda) {
+    if (tipo === 'nota') {
+      // solo texto, sin muestra
+      c.fillStyle = '#111';
+      c.fillText(txt, lx, ly);
+      lx += c.measureText(txt).width + 40;
+      continue;
+    }
     const ancho = 90 + c.measureText(txt).width;
     c.save();
     if (tipo === 'canto') {
@@ -1440,13 +1501,18 @@ $('#btnNuevo').addEventListener('click', () => {
 });
 $('#btnGuardar').addEventListener('click', () => guardar(true));
 
-$('#btnExportar').addEventListener('click', () => {
+const CLAVE_ULTIMA_COPIA = 'planosCocina.ultimaCopia';
+
+function hacerCopia() {
   guardar();
   // copia completa: trabajos y, si existe, la gestión (clientes, documentos, empresa)
   const copia = { version: 2, trabajos: leerTrabajos(), gestion: typeof exportarGestion === 'function' ? exportarGestion() : null };
   const blob = new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' });
-  descargar(blob, `planos-cocina-copia-${hoy()}.json`);
-});
+  descargar(blob, `carbonell-copia-${hoy()}.json`);
+  try { localStorage.setItem(CLAVE_ULTIMA_COPIA, String(Date.now())); } catch { /* sin almacenamiento */ }
+  $('#avisoCopia').hidden = true;
+}
+$('#btnExportar').addEventListener('click', hacerCopia);
 
 $('#fileImportar').addEventListener('change', async (e) => {
   const f = e.target.files[0];
@@ -1509,6 +1575,33 @@ $('#btnQuitarLogo').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Protección de los datos
+// ---------------------------------------------------------------------------
+// Pide al navegador que no borre los datos de la app aunque falte espacio, y recuerda
+// hacer copia de seguridad si hace más de 7 días de la última.
+function protegerDatos() {
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  let ultima = 0;
+  let aplazado = 0;
+  try {
+    ultima = Number(localStorage.getItem(CLAVE_ULTIMA_COPIA)) || 0;
+    aplazado = Number(localStorage.getItem(CLAVE_ULTIMA_COPIA + '.aplazado')) || 0;
+  } catch { return; }
+  const hayDatos = leerTrabajos().length > 0;
+  const dia = 24 * 3600 * 1000;
+  if (!hayDatos || Date.now() - ultima < 7 * dia || Date.now() < aplazado) return;
+  $('#avisoCopiaTxt').textContent = ultima
+    ? `Hace ${Math.floor((Date.now() - ultima) / dia)} días de tu última copia de seguridad.`
+    : 'Todavía no has hecho ninguna copia de seguridad.';
+  $('#avisoCopia').hidden = false;
+}
+$('#btnCopiaAhora').addEventListener('click', hacerCopia);
+$('#btnCopiaLuego').addEventListener('click', () => {
+  try { localStorage.setItem(CLAVE_ULTIMA_COPIA + '.aplazado', String(Date.now() + 24 * 3600 * 1000)); } catch { /* sin almacenamiento */ }
+  $('#avisoCopia').hidden = true;
+});
+
+// ---------------------------------------------------------------------------
 // Avisos
 // ---------------------------------------------------------------------------
 let tempAviso = null;
@@ -1535,7 +1628,8 @@ function aviso(texto) {
     if (document.visibilityState === 'hidden') guardar();
   });
 
-  $('#version').textContent = `Planos Cocina · versión ${VERSION}`;
+  protegerDatos();
+  $('#version').textContent = `Mármoles Carbonell · Planos y presupuestos · versión ${VERSION}`;
   cargarLogo();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

@@ -213,7 +213,8 @@ function abrirGestion(pestana = 'documentos') {
   guardar();
   vistaPlanos.hidden = true;
   vistaGestion.hidden = false;
-  $('#btnGestion').textContent = 'Planos';
+  $('#btnGestion').classList.add('active');
+  $('#btnVistaPlanos').classList.remove('active');
   $('#btnNuevo').hidden = true;
   $('#btnGuardar').hidden = true;
   mostrarPestana(pestana);
@@ -223,16 +224,16 @@ function abrirGestion(pestana = 'documentos') {
 function cerrarGestion() {
   vistaGestion.hidden = true;
   vistaPlanos.hidden = false;
-  $('#btnGestion').textContent = 'Gestión';
+  $('#btnGestion').classList.remove('active');
+  $('#btnVistaPlanos').classList.add('active');
   $('#btnNuevo').hidden = false;
   $('#btnGuardar').hidden = false;
   llenarSugerenciasClientes();
   ajustarLienzo();
 }
 
-$('#btnGestion').addEventListener('click', () => {
-  if (vistaGestion.hidden) abrirGestion(); else cerrarGestion();
-});
+$('#btnGestion').addEventListener('click', () => { if (vistaGestion.hidden) abrirGestion(); });
+$('#btnVistaPlanos').addEventListener('click', () => { if (!vistaGestion.hidden) cerrarGestion(); });
 
 function mostrarPestana(nombre) {
   $$('.pestanas [data-pestana]').forEach((b) => b.classList.toggle('active', b.dataset.pestana === nombre));

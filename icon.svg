@@ -1,7 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#2f3b45"/>
-  <path d="M96 140h320v90H226v172h-130z" fill="#e9e4dc" stroke="#d9822b" stroke-width="10" stroke-linejoin="round"/>
-  <rect x="270" y="160" width="110" height="50" rx="10" fill="none" stroke="#2f3b45" stroke-width="8"/>
-  <circle cx="161" cy="300" r="26" fill="none" stroke="#2f3b45" stroke-width="8"/>
-  <path d="M96 440h130M96 428v24M226 428v24" stroke="#d9822b" stroke-width="8" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<rect width="512" height="512" fill="#111316"/>
+<g transform="translate(23.5 6.0) scale(0.5)">
+<polygon points="465,160 606,330 606,686 465,840 324,686 324,330" fill="none" stroke="#e6e6e6" stroke-width="14" stroke-linejoin="miter"/>
+<polygon points="465,184 588,335 588,681 465,816 342,681 342,335" fill="#fff"/>
+<g stroke="#1a1a1a" stroke-width="9" stroke-linecap="round" fill="none">
+<path d="M474 192 L352 660"/><path d="M433 352 L578 655"/><path d="M584 346 L556 582"/><path d="M351 664 L579 664"/><path d="M430 668 L466 808"/>
+</g>
+</g>
 </svg>
