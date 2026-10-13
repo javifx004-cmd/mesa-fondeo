@@ -103,9 +103,8 @@ datos, el plano y la leyenda, para el taller.
 Sin cuenta, los datos se guardan solo **en el aparato** donde se hacen. Con la cuenta de la empresa se ven
 iguales en el PC, el móvil y la tablet.
 
-1. **Una sola vez**, se crea el proyecto gratis en Supabase y se pega la tabla (ver el README).
-2. En **Gestión → Mi empresa → Sincronización entre dispositivos**, pega la **dirección del proyecto** y la
-   **clave pública**.
+1. La app ya lleva puesta la nube de la empresa (Supabase).
+2. Entra en **Gestión → Mi empresa → Sincronización entre dispositivos**.
 3. En el primer aparato (el que ya tiene los datos): correo, contraseña y **Crear cuenta**.
 4. En los demás aparatos: mismos datos y **Entrar**. Se descarga todo.
 

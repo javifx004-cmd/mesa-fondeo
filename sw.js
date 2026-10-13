@@ -1,5 +1,5 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v27';
+const CACHE = 'planos-cocina-v28';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js', 'contabilidad.js', 'sync.js',
   'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg',
   'Manual-Carbonell-Planos.pdf', 'iconos/icono-180.png', 'iconos/icono-192.png', 'iconos/icono-512.png'];

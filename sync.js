@@ -12,8 +12,8 @@ const CLAVE_SYNC_ESTADO = 'planosCocina.sync.estado'; // lo último subido/bajad
 const CLAVE_SYNC_ULTIMO = 'planosCocina.sync.ultimo'; // marca de tiempo del servidor de la última bajada
 
 // Si la empresa tiene ya su proyecto, se puede dejar puesto aquí para no escribirlo en cada aparato.
-const SUPABASE_URL_SERIE = '';
-const SUPABASE_CLAVE_SERIE = '';
+const SUPABASE_URL_SERIE = 'https://qbjxdmuygkgvcoaqavhq.supabase.co';
+const SUPABASE_CLAVE_SERIE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFianhkbXV5Z2tndmNvYXFhdmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4OTkwNjEsImV4cCI6MjEwNzQ3NTA2MX0.EVFkKmrbxWMKknFMPfOHNlCLd--K4s1N5hYqlkQxO7Y';
 
 // Listas de elementos con id
 const COLECCIONES = {
@@ -368,5 +368,9 @@ if (typeof escribirJSON === 'function') {
   };
 }
 
+if (SUPABASE_URL_SERIE && SUPABASE_CLAVE_SERIE) {
+  $('#syncUrl').closest('label').hidden = true;
+  $('#syncClave').closest('label').hidden = true;
+}
 pintarEstadoSync();
 programarSync(800);
