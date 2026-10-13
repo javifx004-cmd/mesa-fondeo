@@ -78,8 +78,10 @@ Botón **«Gestión»** arriba. Todo se guarda en el dispositivo y entra en la c
 - **Documentos**: presupuestos (P2026-001…), albaranes (A…) y facturas (F…), con numeración
   correlativa por año, líneas editables, IVA opcional, estado y hoja A4 con los datos del emisor y
   del cliente (imprimir/PDF, descargar o compartir).
-  - Desde el presupuesto de un plano: «Pasar a Gestión» crea el presupuesto con sus líneas y el
-    cliente.
+  - El presupuesto de un plano pasa solo a Gestión (y se actualiza mientras está pendiente) en
+    cuanto tiene cliente y piezas; el cliente también se guarda solo.
+  - En el presupuesto del plano, «Hacer albarán» y «Hacer factura» crean el documento con un toque y
+    lo abren listo para imprimir o compartir. En la ventana del documento hay «→ Albarán» y «→ Factura».
   - Presupuesto → «Aceptar», «→ Albarán» o «→ Factura»; albarán → «→ Factura»; factura →
     «Cobrada». Las facturas no se borran: se anulan y conservan su número.
   - «Exportar CSV» de los documentos que se ven, para el gestor.

@@ -178,6 +178,8 @@ button:disabled { opacity: .6; cursor: progress; }
 #tablaPresupuesto .vacio { color: var(--muted); margin: 0; }
 .avisos { margin: 10px 0 0; padding-left: 20px; color: #a35a00; font-size: 14px; }
 .avisos:empty { display: none; }
+.acciones-presu.rapido { align-items: center; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.acciones-presu.rapido span { font-weight: 600; color: var(--muted); }
 .acciones-presu { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
 .acciones { display: flex; flex-wrap: wrap; gap: 8px; }

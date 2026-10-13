@@ -100,11 +100,19 @@ function clienteDeTrabajo(t) {
   const nombre = (d.cliente || '').trim();
   if (!nombre) return null;
   const lista = leerClientes();
-  let cli = lista.find((c) => c.id === t.clienteId) ||
+  const propio = lista.find((c) => c.id === t.clienteId);
+  // el cliente creado solo desde este trabajo se actualiza con la ficha (así no se crean
+  // clientes a medias mientras se escribe el nombre)
+  if (propio && propio.autoTrabajo === t.id && !lista.some((c) => c.id !== propio.id && normalizar(c.nombre) === normalizar(nombre))) {
+    Object.assign(propio, { nombre, telefono: d.telefono || propio.telefono, direccion: d.direccion || propio.direccion });
+    guardarCliente(propio);
+    return propio;
+  }
+  let cli = (propio && normalizar(propio.nombre) === normalizar(nombre) && propio) ||
     lista.find((c) => normalizar(c.nombre) === normalizar(nombre)) ||
     (d.telefono && lista.find((c) => c.telefono && c.telefono.replace(/\D/g, '') === d.telefono.replace(/\D/g, '')));
   if (!cli) {
-    cli = { id: nuevoId(), nombre, nif: '', telefono: d.telefono || '', email: '', direccion: d.direccion || '', poblacion: '', notas: '' };
+    cli = { id: nuevoId(), nombre, nif: '', telefono: d.telefono || '', email: '', direccion: d.direccion || '', poblacion: '', notas: '', autoTrabajo: t.id };
     guardarCliente(cli);
   } else {
     // completa lo que falte con los datos de la ficha
@@ -145,35 +153,55 @@ form.querySelector('[name="cliente"]').addEventListener('change', (e) => {
 // ---------------------------------------------------------------------------
 // Del plano a Gestión
 // ---------------------------------------------------------------------------
-$('#btnPresuGestion').addEventListener('click', () => {
+// Crea o actualiza el presupuesto del trabajo en Gestión. Devuelve el documento o null.
+// silencioso: llamado al guardar el trabajo, sin avisos.
+function sincronizarPresupuesto(silencioso = false) {
   const r = calcular(trabajo);
-  if (!r.lineas.length) { aviso('El presupuesto está vacío: añade piezas primero'); return; }
-  if (!(trabajo.datos.cliente || '').trim()) { aviso('Pon el nombre del cliente en la ficha'); return; }
+  const nombre = (trabajo.datos.cliente || '').trim();
+  if (!r.lineas.length || !nombre) {
+    if (!silencioso) aviso(!nombre ? 'Pon el nombre del cliente en la ficha' : 'El presupuesto está vacío: añade piezas primero');
+    return null;
+  }
+  const previo = leerDocs().find((d) => d.id === trabajo.presupuestoId && d.tipo === 'presupuesto');
+  // aceptado o rechazado: ya no se toca
+  if (previo && previo.estado !== 'Pendiente') return previo;
   const cli = clienteDeTrabajo(trabajo);
   const material = r.material ? etiquetaMaterial(r.material) : trabajo.datos.material;
   const lineas = [
     ...(material ? [{ concepto: `Material: ${material}`, cantidad: '', unidad: '', precio: '' }] : []),
     ...r.lineas.map((l) => ({ concepto: l.concepto, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio })),
   ];
-  // si ya se pasó y sigue pendiente, se actualiza en vez de crear otro
-  const previo = leerDocs().find((d) => d.id === trabajo.presupuestoId && d.tipo === 'presupuesto');
+  const notas = trabajo.datos.referencia ? `Ref. ${trabajo.datos.referencia}` : '';
   let doc;
-  if (previo && previo.estado === 'Pendiente') {
-    doc = Object.assign(previo, { clienteId: cli.id, lineas, conIva: r.conIva });
+  if (previo) {
+    const igual = previo.clienteId === cli.id && previo.conIva === r.conIva && JSON.stringify(previo.lineas) === JSON.stringify(lineas);
+    if (igual) return previo;
+    doc = Object.assign(previo, { clienteId: cli.id, lineas, conIva: r.conIva, notas: previo.notas || notas });
   } else {
-    doc = nuevoDoc('presupuesto', {
-      clienteId: cli.id, lineas, conIva: r.conIva, trabajoId: trabajo.id,
-      notas: trabajo.datos.referencia ? `Ref. ${trabajo.datos.referencia}` : '',
-    });
+    doc = nuevoDoc('presupuesto', { clienteId: cli.id, lineas, conIva: r.conIva, trabajoId: trabajo.id, notas });
   }
   guardarDoc(doc);
   trabajo.presupuestoId = doc.id;
-  cambio();
+  return doc;
+}
+
+$('#btnPresuGestion').addEventListener('click', () => {
+  const doc = sincronizarPresupuesto();
+  if (!doc) return;
   guardar();
-  aviso(`Presupuesto ${doc.numero} guardado en Gestión`);
   abrirGestion('documentos');
   editarDoc(doc);
 });
+
+// Albarán o factura directos desde el plano: un toque y se abre listo para imprimir o compartir.
+for (const [id, tipo] of [['#btnPresuAlbaran', 'albaran'], ['#btnPresuFactura', 'factura']]) {
+  $(id).addEventListener('click', () => {
+    const doc = sincronizarPresupuesto();
+    if (!doc) return;
+    guardar();
+    convertir(doc, tipo);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Vista de Gestión
@@ -375,6 +403,8 @@ function editarDoc(doc, nuevo = false) {
   $('#docNotas').value = doc.notas || '';
   $('#btnDocBorrar').textContent = doc.tipo === 'factura' ? 'Anular' : 'Borrar';
   $('#btnDocBorrar').hidden = nuevo;
+  $('#btnDocAlbaran').hidden = doc.tipo !== 'presupuesto';
+  $('#btnDocFactura').hidden = doc.tipo === 'factura';
   pintarLineas();
   if (!dlgDoc.open) dlgDoc.showModal();
 }
@@ -456,6 +486,13 @@ function guardarEditor() {
   $('#docTitulo').textContent = `${TIPOS_DOC[d.tipo].nombre} ${d.numero}`;
   pintarDocs();
   return true;
+}
+
+for (const [id, tipo] of [['#btnDocAlbaran', 'albaran'], ['#btnDocFactura', 'factura']]) {
+  $(id).addEventListener('click', () => {
+    if (!guardarEditor()) return;
+    convertir(structuredClone(docEditado), tipo);
+  });
 }
 
 $('#btnDocGuardar').addEventListener('click', () => {

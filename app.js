@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '20';   // cambiar junto con CACHE en sw.js
+const VERSION = '21';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -136,6 +136,8 @@ function guardar(manual = false) {
     return;
   }
   trabajo.modificado = Date.now();
+  // el presupuesto del trabajo pasa solo a Gestión (gestion.js)
+  if (typeof sincronizarPresupuesto === 'function') sincronizarPresupuesto(true);
   const lista = leerTrabajos();
   const i = lista.findIndex((t) => t.id === trabajo.id);
   if (i >= 0) lista[i] = trabajo; else lista.push(trabajo);
