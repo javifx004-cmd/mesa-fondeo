@@ -439,3 +439,21 @@ dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 
   #hojaImpresion { display: block; }
   #hojaImpresion img { width: 210mm; height: 297mm; display: block; }
 }
+
+/* Sincronización entre dispositivos */
+.estado-sync {
+  font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--suave); background: transparent; color: inherit; cursor: pointer;
+}
+.estado-sync::before { content: '●'; margin-right: 5px; color: #9aa0a6; }
+.estado-sync.ok::before { color: #2e9d55; }
+.estado-sync.sincronizando::before { color: var(--active); }
+.estado-sync.error::before, .estado-sync.sin-conexion::before { color: #c0392b; }
+.panel-sync { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--suave); }
+.panel-sync h3 { margin: 0 0 6px; font-size: 16px; }
+.botones-sync { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sync-mensaje { min-height: 1.2em; font-weight: 600; color: var(--active); }
+@media (max-width: 700px) {
+  .estado-sync { font-size: 0; padding: 6px 8px; }
+  .estado-sync::before { font-size: 14px; margin: 0; }
+}

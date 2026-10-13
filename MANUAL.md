@@ -98,16 +98,31 @@ datos, el plano y la leyenda, para el taller.
 - En **Mi empresa** se ajusta el tipo medio de IRPF estimado (20 % por defecto).
 - Son cálculos orientativos para estimación directa simplificada: **el importe exacto lo confirma el gestor**.
 
-## 4. Copias de seguridad
+## 4. Tener los datos en todos los aparatos (sincronización)
 
-Los datos se guardan **en cada aparato**. Si se borra el navegador o se pierde el móvil, se pierden.
+Sin cuenta, los datos se guardan solo **en el aparato** donde se hacen. Con la cuenta de la empresa se ven
+iguales en el PC, el móvil y la tablet.
 
-- En **Trabajos**, pulsa **Copia de seguridad**: se descarga un archivo con trabajos, clientes y documentos.
+1. **Una sola vez**, se crea el proyecto gratis en Supabase y se pega la tabla (ver el README).
+2. En **Gestión → Mi empresa → Sincronización entre dispositivos**, pega la **dirección del proyecto** y la
+   **clave pública**.
+3. En el primer aparato (el que ya tiene los datos): correo, contraseña y **Crear cuenta**.
+4. En los demás aparatos: mismos datos y **Entrar**. Se descarga todo.
+
+Arriba aparece un punto: **verde** sincronizado, **dorado** sincronizando, **rojo** sin conexión o con error.
+Al pulsarlo se sincroniza al momento. Sin internet se sigue trabajando y se sube todo al volver.
+Si se cambia lo mismo en dos aparatos, se queda el último cambio.
+
+## 5. Copias de seguridad
+
+Aunque se use la sincronización, conviene hacer copias de vez en cuando.
+
+- En **Trabajos**, pulsa **Copia de seguridad**: se descarga un archivo con trabajos, clientes, documentos y gastos.
   Guárdalo en el ordenador, en el correo o en la nube.
-- Para pasar los datos a otro aparato, o recuperarlos: **Trabajos → Restaurar copia**.
+- Para recuperar los datos: **Trabajos → Restaurar copia**.
 - La app avisa si hace más de 7 días de la última copia.
 
-## 5. Avisos importantes
+## 6. Avisos importantes
 
 - **Verifactu:** desde el 1 de enero de 2027 (sociedades) y el 1 de julio de 2027 (autónomos), las facturas
   deben hacerse con un programa certificado. Esta aplicación no lo está: consultad con el gestor.

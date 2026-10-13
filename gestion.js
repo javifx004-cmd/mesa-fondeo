@@ -45,6 +45,7 @@ const leerDocs = () => leerJSON(CLAVE_DOCS, []);
 const leerEmpresa = () => leerJSON(CLAVE_EMPRESA, {});
 
 function guardarCliente(cli) {
+  cli.modificado = Date.now();
   const lista = leerClientes();
   const i = lista.findIndex((c) => c.id === cli.id);
   if (i >= 0) lista[i] = cli; else lista.push(cli);

@@ -106,5 +106,44 @@ con una dirección web, activar GitHub Pages: *Settings → Pages → Deploy fro
 `main` / root*. Después, desde el móvil, abrir la dirección y usar
 «Añadir a pantalla de inicio».
 
-Los trabajos se guardan en cada dispositivo por separado; para moverlos usa
+Sin cuenta, los datos se guardan en cada dispositivo por separado; para moverlos usa
 «Copia de seguridad» y «Restaurar copia» en la ventana de Trabajos.
+
+## Sincronización entre dispositivos (Supabase, gratis)
+
+Trabajos, clientes, documentos, gastos, datos de la empresa, logo y tarifas se sincronizan con una base de
+datos de Supabase (plan gratuito). Funciona sin conexión; si se cambia lo mismo en dos aparatos, gana el
+último cambio. Los datos de cada cuenta solo los ve esa cuenta (seguridad a nivel de fila).
+
+1. Crear una cuenta y un proyecto en <https://supabase.com> (región Europa).
+2. En *SQL Editor → New query*, pegar y ejecutar:
+
+   ```sql
+   create table public.datos (
+     user_id uuid not null default auth.uid() references auth.users on delete cascade,
+     coleccion text not null,
+     id text not null,
+     valor jsonb,
+     modificado bigint not null default 0,
+     borrado boolean not null default false,
+     actualizado timestamptz not null default now(),
+     primary key (user_id, coleccion, id)
+   );
+   alter table public.datos enable row level security;
+   create policy "cada uno sus datos" on public.datos for all
+     using (auth.uid() = user_id) with check (auth.uid() = user_id);
+   create or replace function public.tocar_actualizado() returns trigger language plpgsql as $$
+   begin new.actualizado = now(); return new; end $$;
+   create trigger datos_actualizado before insert or update on public.datos
+     for each row execute function public.tocar_actualizado();
+   ```
+
+3. (Opcional) *Authentication → Sign In / Providers → Email*: desactivar «Confirm email» para no tener que
+   confirmar el correo.
+4. En *Project Settings → API* (o *Data API*), copiar la **Project URL** y la clave **anon public**
+   (no la *service_role*).
+5. En la app: *Gestión → Mi empresa → Sincronización entre dispositivos*, pegarlas; en el aparato que ya
+   tiene los datos, **Crear cuenta**; en los demás, **Entrar** con el mismo correo y contraseña.
+
+Para no tener que pegar la dirección y la clave en cada aparato, pueden dejarse en
+`SUPABASE_URL_SERIE` y `SUPABASE_CLAVE_SERIE` al principio de `sync.js` (la clave anon es pública).

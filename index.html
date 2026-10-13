@@ -49,6 +49,7 @@
     <div class="topbar-actions">
       <button id="btnNuevo" type="button">Nuevo</button>
       <button id="btnTrabajos" type="button">Trabajos</button>
+      <button id="estadoSync" type="button" class="estado-sync" hidden title="Sincronizar ahora">Nube</button>
       <button id="btnGuardar" type="button" class="primary">Guardar</button>
     </div>
   </header>
@@ -337,6 +338,32 @@
         <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
       </form>
+
+      <div id="panelSync" class="panel-sync">
+        <h3>Sincronización entre dispositivos</h3>
+        <p class="ayuda">Con una cuenta de la empresa, los trabajos, clientes, documentos, gastos, tarifas y estos datos
+          se ven igual en el PC, el móvil y la tablet. Sin internet se sigue trabajando y se sube todo al volver.</p>
+        <div id="syncFuera">
+          <div class="grid">
+            <label class="wide">Dirección del proyecto (Project URL) <input id="syncUrl" type="url" autocomplete="off" placeholder="https://xxxx.supabase.co"></label>
+            <label class="wide">Clave pública (anon public) <input id="syncClave" autocomplete="off" spellcheck="false"></label>
+            <label>Correo de la cuenta <input id="syncEmail" type="email" autocomplete="username"></label>
+            <label>Contraseña <input id="syncPass" type="password" autocomplete="current-password"></label>
+          </div>
+          <div class="botones-sync">
+            <button type="button" id="btnSyncEntrar" class="primary">Entrar</button>
+            <button type="button" id="btnSyncCrear">Crear cuenta (solo la primera vez)</button>
+          </div>
+        </div>
+        <div id="syncDentro" hidden>
+          <p id="syncCuenta"></p>
+          <div class="botones-sync">
+            <button type="button" id="btnSyncAhora" class="primary">Sincronizar ahora</button>
+            <button type="button" id="btnSyncSalir">Cerrar sesión</button>
+          </div>
+        </div>
+        <p id="syncMensaje" class="sync-mensaje" role="status"></p>
+      </div>
     </section>
   </div>
 
@@ -502,5 +529,6 @@
   <script src="presupuesto.js"></script>
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
+  <script src="sync.js"></script>
 </body>
 </html>
