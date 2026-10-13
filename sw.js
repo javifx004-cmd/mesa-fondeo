@@ -1,8 +1,8 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v24';
+const CACHE = 'planos-cocina-v25';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js',
   'vendor/anthropic-sdk.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg',
-  'iconos/icono-180.png', 'iconos/icono-192.png', 'iconos/icono-512.png'];
+  'Manual-Carbonell-Planos.pdf', 'iconos/icono-180.png', 'iconos/icono-192.png', 'iconos/icono-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS.map((a) => new Request(a, { cache: 'reload' })))).then(() => self.skipWaiting()));
