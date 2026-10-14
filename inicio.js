@@ -156,6 +156,18 @@ function pintarInicio() {
       <span class="ini-fecha">${cuando}<br><small>${escapar(t.datos.estado || 'Medido')}</small></span></li>`;
   }).join('') || vacio('Sin colocaciones previstas. Pon la fecha de colocación en la ficha del plano.');
 
+  // para hoy: recordatorios, colocaciones, plazos, cobros y lo que falta en el almacén
+  if (typeof eventosDelDia === 'function') {
+    const ev = eventosDelDia(hoyIso).filter((e) => !e.hecho);
+    const bajos = leerStock().filter(stockBajo);
+    const icono = { recordatorio: '🔔', colocacion: '🛠', hacienda: '🏛', cobro: '€' };
+    $('#iniHoyLista').innerHTML = ev.map((e) => `<li class="ev ev-${e.tipo}" data-ir="agenda" tabindex="0" role="button"><span class="ev-ico">${icono[e.tipo]}</span>
+      <span><b>${e.hora ? `${e.hora} · ` : ''}${escapar(e.titulo)}</b><small>${escapar(e.sub || '')}</small></span></li>`).join('')
+      + (bajos.length ? `<li class="ev ev-stock" data-ir="almacen" tabindex="0" role="button"><span class="ev-ico">📦</span>
+      <span><b>Poco stock: ${bajos.length} ${bajos.length === 1 ? 'artículo' : 'artículos'}</b><small>${escapar(bajos.slice(0, 4).map((a) => a.nombre).join(', '))}${bajos.length > 4 ? '…' : ''}</small></span></li>` : '');
+    $('#iniHoy').hidden = !ev.length && !bajos.length;
+  }
+
   // mejores clientes del año
   const porCliente = {};
   for (const d of delAnio) porCliente[d.clienteId] = (porCliente[d.clienteId] || 0) + totales(d).base;
@@ -276,7 +288,7 @@ vistaInicio.addEventListener('click', (e) => {
   if (ir === 'gasto') { abrirGestion('gastos'); editarGasto(null); }
   if (ir === 'cobros') { abrirGestion('documentos'); $('#filtroTipo').value = 'factura'; $('#filtroTipo').dispatchEvent(new Event('change')); }
   if (ir === 'presupuestos') { abrirGestion('documentos'); $('#filtroTipo').value = 'presupuesto'; $('#filtroTipo').dispatchEvent(new Event('change')); }
-  if (['balance', 'impuestos', 'gastos'].includes(ir)) abrirGestion(ir);
+  if (['balance', 'impuestos', 'gastos', 'agenda', 'almacen'].includes(ir)) abrirGestion(ir);
 });
 vistaInicio.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-ir][role=button]')) { e.preventDefault(); e.target.click(); }

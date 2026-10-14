@@ -16,7 +16,7 @@ const FORMATOS_TABLA = [
 ];
 const DISCO = 5;      // mm que se come cada corte
 const MARGEN = 10;    // mm de borde que se sanea en la tabla
-const MEDIA_BANDA = 800; // media tabla: banda horizontal de todo el largo y hasta 80 cm
+const MEDIA_BANDA = 800; // media tabla: banda de todo el largo y 80 cm de alto (325 × 80 en Silestone)
 const cm = (mm) => String(Math.round(mm) / 10).replace('.', ',');
 
 function formatoPorMaterial(material) {
@@ -282,7 +282,7 @@ function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero, media = false) {
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.font = `600 ${tamLetra * 0.9}px system-ui, sans-serif`;
-    if (y0 + alto - ym > tamLetra * 1.6) c.fillText('No hace falta: media tabla (banda de 80 cm)', x0 + ancho / 2, (ym + y0 + alto) / 2, ancho - 20);
+    if (y0 + alto - ym > tamLetra * 1.6) c.fillText(`No hace falta: media tabla de ${cm(conf.l)} × 80 cm`, x0 + ancho / 2, (ym + y0 + alto) / 2, ancho - 20);
   }
   c.restore();
   return alto;
@@ -321,8 +321,8 @@ function pintarDespiece() {
   }
   const n = d.tablas.length;
   res.innerHTML = `<b class="despiece-n">${textoTablas(d)}</b> <span>de ${cm(d.conf.l)} × ${cm(d.conf.a)} cm</span>
-    <span class="despiece-dato">${n > 1 || d.media ? `En la ${n > 1 ? 'última' : ''} tabla se usan <b>${cm(d.usadoUltima)} cm</b> de ancho`
-      + `${d.media ? ' · <b>basta media tabla</b> (banda de 80 cm)' : ''}` : ''}</span>
+    <span class="despiece-dato">${n > 1 || d.media ? `En la ${n > 1 ? 'última' : ''} tabla se usan <b>${cm(d.usadoUltima)} cm</b> de alto`
+      + `${d.media ? ` · <b>basta media tabla</b> (${cm(d.conf.l)} × 80 cm)` : ''}` : ''}</span>
     <span class="despiece-dato">${d.piezas.length} piezas · ${d.m2.toLocaleString('es-ES', { maximumFractionDigits: 2 })} m²</span>
     <span class="despiece-dato">Aprovechamiento <b>${Math.round(d.aprovechamiento * 100)} %</b></span>
     ${d.sobrante ? `<span class="despiece-dato">Sobrante mayor ${cm(d.sobrante.w)} × ${cm(d.sobrante.h)} cm</span>` : ''}`;

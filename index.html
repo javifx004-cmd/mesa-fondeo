@@ -82,6 +82,11 @@
       </div>
     </section>
 
+    <section class="tarjeta ini-hoy" id="iniHoy" hidden>
+      <div class="tarjeta-cab"><h3>Para hoy</h3><button type="button" class="enlace" data-ir="agenda">Calendario</button></div>
+      <ul class="ini-lista" id="iniHoyLista"></ul>
+    </section>
+
     <section class="kpis" id="iniKpis" aria-label="Cifras del negocio"></section>
 
     <div class="ini-cols">
@@ -373,7 +378,9 @@
   <div id="gestion" class="contenido" hidden>
     <nav class="pestanas" aria-label="Gestión">
       <button type="button" data-pestana="documentos" class="active">Documentos</button>
+      <button type="button" data-pestana="agenda">Calendario</button>
       <button type="button" data-pestana="clientes">Clientes</button>
+      <button type="button" data-pestana="almacen">Almacén</button>
       <button type="button" data-pestana="gastos">Gastos</button>
       <button type="button" data-pestana="impuestos">Impuestos y beneficio</button>
       <button type="button" data-pestana="balance">Balance</button>
@@ -441,6 +448,37 @@
         <label>Año <select id="balanceAnio"></select></label>
       </div>
       <div id="tablaBalance"></div>
+    </section>
+
+    <section class="panel-g" id="pAgenda" hidden>
+      <div class="barra-filtros">
+        <button type="button" id="mesAnt" aria-label="Mes anterior">‹</button>
+        <h3 id="mesTitulo" class="mes-titulo"></h3>
+        <button type="button" id="mesSig" aria-label="Mes siguiente">›</button>
+        <button type="button" id="mesHoy">Hoy</button>
+        <span class="separa"></span>
+        <button type="button" id="btnAvisos">Activar avisos</button>
+        <button type="button" id="btnNuevoRecordatorio" class="primary">+ Recordatorio</button>
+      </div>
+      <div class="calendario" id="calendario"></div>
+      <div class="agenda-dia">
+        <h3 id="diaTitulo"></h3>
+        <ul class="ini-lista" id="diaLista"></ul>
+      </div>
+      <p class="ayuda">Salen solas las colocaciones de los trabajos, los plazos de Hacienda y las facturas sin cobrar a los 30 días.
+        Los recordatorios avisan al abrir la app y, si activas los avisos, también con una notificación del móvil o del PC mientras la app está abierta.</p>
+    </section>
+
+    <section class="panel-g" id="pAlmacen" hidden>
+      <div class="barra-filtros">
+        <select id="almCategoria" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <input type="search" id="almBuscar" placeholder="Buscar artículo…">
+        <label class="chk"><input type="checkbox" id="almBajo"> Solo con poco stock</label>
+        <button type="button" id="btnListaCompra">Lista de la compra</button>
+        <button type="button" id="btnNuevoArticulo" class="primary">+ Artículo</button>
+      </div>
+      <p class="resumen" id="almResumen"></p>
+      <div id="listaAlmacen" class="lista-almacen"></div>
     </section>
 
     <section class="panel-g" id="pEmpresa" hidden>
@@ -544,6 +582,52 @@
       <input type="search" id="gruposBuscar" placeholder="Buscar color…">
     </div>
     <div id="listaGrupos" class="lista-grupos"></div>
+  </dialog>
+
+  <dialog id="dlgArticulo">
+    <form id="formArticulo" method="dialog">
+      <div class="dlg-head"><h2>Artículo del almacén</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Nombre <input name="nombre" required autocomplete="off" placeholder="Ej. Disco de corte diamante 230"></label>
+      </div>
+      <div class="grid doc-cab">
+        <label>Categoría <select name="categoria"></select></label>
+        <label>Unidad <input name="unidad" autocomplete="off" list="listaUnidades" placeholder="ud, caja, litro…"></label>
+        <label>Cantidad <input name="cantidad" type="number" inputmode="decimal" step="any" min="0" value="0"></label>
+        <label>Avisar si baja de <input name="minimo" type="number" inputmode="decimal" step="any" min="0" value="1"></label>
+        <label>Precio por unidad (€) <input name="precio" type="number" inputmode="decimal" step="0.01" min="0"></label>
+        <label>Proveedor <input name="proveedor" autocomplete="off" list="listaProveedores"></label>
+        <label class="wide">Notas <input name="notas" autocomplete="off" placeholder="Medida, referencia, dónde está…"></label>
+      </div>
+      <datalist id="listaUnidades"><option>ud</option><option>caja</option><option>bote</option><option>cartucho</option><option>litro</option><option>kg</option><option>rollo</option><option>paquete</option></datalist>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarArticulo" class="peligro">Borrar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgRecordatorio">
+    <form id="formRecordatorio" method="dialog">
+      <div class="dlg-head"><h2>Recordatorio</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Qué hay que hacer <input name="titulo" required autocomplete="off" placeholder="Ej. Medir cocina de Ana · Pedir tablas a Cosentino"></label>
+      </div>
+      <div class="grid doc-cab">
+        <label>Día <input name="fecha" type="date" required></label>
+        <label>Hora <input name="hora" type="time"></label>
+        <label>Repetir <select name="repetir"><option value="">No se repite</option><option value="semanal">Cada semana</option><option value="mensual">Cada mes</option><option value="anual">Cada año</option></select></label>
+        <label>Avisar antes <select name="antes"><option value="0">A la hora</option><option value="30">30 minutos antes</option><option value="60">1 hora antes</option><option value="1440">1 día antes</option></select></label>
+        <label class="wide">Notas <input name="notas" autocomplete="off"></label>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarRecordatorio" class="peligro">Borrar</button>
+        <button type="button" id="btnIcsRecordatorio">Al calendario del móvil</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="dlgPlantilla">
@@ -705,6 +789,7 @@
   <script src="vendor/qrcode.js"></script>
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
+  <script src="almacen.js"></script>
   <script src="despiece.js"></script>
   <script src="plantillas.js"></script>
   <script src="sync.js"></script>

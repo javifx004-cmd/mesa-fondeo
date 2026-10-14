@@ -112,7 +112,8 @@ Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja c�
 - **Respetar la veta** impide girar las piezas.
 - Prueba cientos de formas de colocar las piezas y elige la que gasta menos tablas.
 - Dice cuántas pedir: **«1 tabla y media»** cuando lo de la última cabe en una **media tabla: una banda horizontal de
-  todo el largo y hasta 80 cm de ancho** (marca la línea de corte y lo que sobra), o cuánto ancho se usa de la última.
+  todo el largo y 80 cm de alto** (por ejemplo 325 × 80 en Silestone; marca la línea de corte y lo que sobra), o cuánto
+  alto se usa de la última.
 - Se ve el aprovechamiento y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
 
 ### Paso 4 · Enviar el plano
@@ -150,6 +151,8 @@ datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y la
 | Gastos | Compras y pagos con su IVA, generales o asignados a una cocina. |
 | Impuestos y beneficio | IVA y IRPF de cada trimestre, resumen del año y beneficio limpio por cocina. |
 | Balance | Por meses: facturas, base, IVA, facturado, cobrado, pendiente, gastos, beneficio y presupuestos. |
+| Calendario | Mes a mes: tus recordatorios, las colocaciones, los plazos de Hacienda y los cobros pendientes a los 30 días. |
+| Almacén | Brocas, discos, lijas, disolventes, siliconas… con cantidad, mínimo, proveedor y precio. Avisa del stock bajo. |
 | Mi empresa | Nombre, NIF, dirección, IBAN, texto del pie y logo. **Rellénala lo primero.** |
 
 ### Gastos, impuestos y beneficio
@@ -168,6 +171,19 @@ datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y la
     4.º del 1 al 30 de enero.
 - En **Mi empresa** se ajusta el tipo medio de IRPF estimado (20 % por defecto).
 - Son cálculos orientativos para estimación directa simplificada: **el importe exacto lo confirma el gestor**.
+
+### Calendario y recordatorios
+
+- **+ Recordatorio**: qué hay que hacer, día, hora, si se repite (cada semana, mes o año) y cuánto antes avisar.
+- Avisa al abrir la app y, con **Activar avisos**, también con una notificación mientras la app está abierta.
+- **Al calendario del móvil** descarga el recordatorio para el calendario del teléfono, que avisa aunque la app esté cerrada.
+- Lo de hoy sale en Inicio, en **Para hoy**.
+
+### Almacén
+
+- **+ Artículo** con su categoría, cantidad, mínimo, unidad, precio y proveedor. Con **−** y **+** se gasta o se repone.
+- Los que bajan del mínimo salen en rojo y en Inicio. **Lista de la compra** junta lo que falta por proveedor para
+  mandarlo por WhatsApp.
 
 ## 5. Tener los datos en todos los aparatos (sincronización)
 

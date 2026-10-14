@@ -22,6 +22,8 @@ const COLECCIONES = {
   clientes: 'planosCocina.clientes',
   documentos: 'planosCocina.documentos',
   gastos: 'planosCocina.gastos',
+  stock: 'planosCocina.stock',
+  recordatorios: 'planosCocina.recordatorios',
 };
 // Ajustes que se comparten tal cual (texto guardado en el dispositivo)
 const AJUSTES = { empresa: 'planosCocina.empresa', logo: 'planosCocina.logo', tarifas: 'planosCocina.tarifas', colores: 'planosCocina.coloresExtra' };
