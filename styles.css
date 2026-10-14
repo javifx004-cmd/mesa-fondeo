@@ -950,3 +950,28 @@ details.ia[open] > summary { margin-bottom: 8px; }
 #bienvenida b { animation-delay: .15s; }
 #bienvenida img { width: 120px; height: 120px; animation-delay: .3s; }
 #bienvenida .bv-firma { font-size: 11px; letter-spacing: .18em; color: rgba(226, 201, 146, .6); font-style: italic; animation: aparecer .6s .5s ease both; }
+
+/* --- Bloqueo con PIN --- */
+#bloqueo {
+  position: fixed; inset: 0; z-index: 99; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 24px 16px; color: #f1dcab;
+  background: radial-gradient(80% 60% at 50% 30%, rgba(226, 201, 146, .16), transparent 70%), var(--veta-osc), #0d0c0b;
+  background-size: auto, cover, auto;
+}
+#bloqueo[hidden] { display: none; }
+#bloqueo img { width: 78px; height: 78px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(226, 201, 146, .45); }
+#bloqueo > b { font-family: var(--serif); font-size: 22px; letter-spacing: .18em; }
+#bloqueoTexto { margin: 4px 0 0; color: rgba(241, 220, 171, .8); min-height: 1.4em; text-align: center; }
+.pin-puntos { display: flex; gap: 14px; margin: 6px 0 10px; }
+.pin-puntos i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #e2c992; }
+.pin-puntos i.lleno { background: #e2c992; }
+.pin-puntos.mal { animation: temblar .35s; }
+@keyframes temblar { 25% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 75% { transform: translateX(-5px); } }
+.teclado { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px; }
+.teclado button {
+  width: 72px; height: 72px; border-radius: 50%; font-size: 28px; font-family: var(--serif); font-weight: 600;
+  background: rgba(255, 255, 255, .06); color: #f4ead6; border: 1px solid rgba(226, 201, 146, .3);
+}
+.teclado button:active { background: rgba(226, 201, 146, .3); }
+.teclado [data-tecla] { font-family: inherit; font-size: 22px; background: transparent; border-color: transparent; }
+#btnOlvidePin { color: rgba(226, 201, 146, .75); margin-top: 6px; }

@@ -185,6 +185,15 @@ datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y la
 - Los que bajan del mínimo salen en rojo y en Inicio. **Lista de la compra** junta lo que falta por proveedor para
   mandarlo por WhatsApp.
 
+### Bloqueo con PIN o Face ID
+
+En **Gestión → Mi empresa → Bloqueo de la app**:
+- **Poner PIN** (de 4 a 6 números): se pide al abrir la app en ese aparato.
+- **Activar Face ID / huella**: desbloquea con la cara o el dedo; el PIN sigue valiendo.
+- **Bloquear al volver tras…** 1, 5, 15 minutos o 1 hora fuera de la app.
+- Si olvidas el PIN y tienes cuenta en la nube, **¿Has olvidado el PIN?** lo quita con la contraseña de la cuenta.
+- Cada aparato tiene su propio bloqueo. Es una protección para que otra persona no curiosee la app en tu móvil.
+
 ## 5. Tener los datos en todos los aparatos (sincronización)
 
 Sin cuenta, los datos se guardan solo **en el aparato** donde se hacen. Con la cuenta de la empresa se ven

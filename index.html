@@ -15,6 +15,20 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="bloqueo" hidden role="dialog" aria-modal="true" aria-label="App bloqueada">
+    <img src="logo.svg" alt="">
+    <b>MÁRMOLES CARBONELL</b>
+    <p id="bloqueoTexto">Introduce tu PIN</p>
+    <div class="pin-puntos" id="pinPuntos"></div>
+    <div class="teclado" id="tecladoPin">
+      <button type="button">1</button><button type="button">2</button><button type="button">3</button>
+      <button type="button">4</button><button type="button">5</button><button type="button">6</button>
+      <button type="button">7</button><button type="button">8</button><button type="button">9</button>
+      <button type="button" data-tecla="bio" id="btnBio" aria-label="Face ID o huella">◉</button><button type="button">0</button><button type="button" data-tecla="borrar" aria-label="Borrar">⌫</button>
+    </div>
+    <button type="button" class="enlace" id="btnOlvidePin">¿Has olvidado el PIN?</button>
+  </div>
+
   <div id="bienvenida" aria-hidden="true">
     <span class="bv-hola">Bienvenido al software de</span>
     <b>MÁRMOLES CARBONELL</b>
@@ -505,6 +519,20 @@
         <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
       </form>
 
+      <div id="panelBloqueo" class="panel-sync">
+        <h3>Bloqueo de la app</h3>
+        <p class="ayuda">Pide un PIN (o Face ID / huella) al abrir la app en este aparato. Cada aparato tiene su propio bloqueo.</p>
+        <p id="bloqueoEstado" class="resumen"></p>
+        <div class="botones-sync">
+          <button type="button" id="btnPonerPin" class="primary">Poner PIN</button>
+          <button type="button" id="btnPonerBio">Activar Face ID / huella</button>
+          <label class="chk">Bloquear al volver tras
+            <select id="bloqueoMinutos"><option value="0">no, solo al abrir</option><option value="1">1 minuto</option><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="60">1 hora</option></select>
+          </label>
+          <button type="button" id="btnQuitarPin" class="peligro">Quitar bloqueo</button>
+        </div>
+      </div>
+
       <div id="panelSync" class="panel-sync">
         <h3>Sincronización entre dispositivos</h3>
         <p class="ayuda">Con una cuenta de la empresa, los trabajos, clientes, documentos, gastos, tarifas y estos datos
@@ -627,6 +655,20 @@
         <button type="button" id="btnIcsRecordatorio">Al calendario del móvil</button>
         <button value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgPin">
+    <form id="formPin" method="dialog">
+      <div class="dlg-head"><h2>PIN de la app</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Nuevo PIN (4 a 6 números) <input name="pin1" type="password" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required></label>
+        <label>Repite el PIN <input name="pin2" type="password" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required></label>
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar PIN</button>
       </div>
     </form>
   </dialog>
@@ -795,5 +837,6 @@
   <script src="plantillas.js"></script>
   <script src="sync.js"></script>
   <script src="inicio.js"></script>
+  <script src="bloqueo.js"></script>
 </body>
 </html>
