@@ -45,15 +45,40 @@ function parsearTarifas(texto) {
   return { materiales, conceptos };
 }
 
+// Colores añadidos a mano a un grupo (toman los precios del grupo)
+const CLAVE_COLORES = 'planosCocina.coloresExtra';
+const CUALQUIER_COLOR = 'CUALQUIER COLOR';
+function leerColoresExtra() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_COLORES)) || []; } catch { return []; }
+}
+
+// Completa la tarifa: colores añadidos y, en cada grupo, «cualquier color» por si el color no está en la lista
+function completarTarifas(t) {
+  const base = t.materiales.filter((m) => !m.extra && m.material !== CUALQUIER_COLOR);
+  const grupos = new Map();
+  for (const m of base) {
+    const k = `${m.marca}|${m.grupo}|${m.espesor}`;
+    if (!grupos.has(k)) grupos.set(k, m);
+  }
+  const extra = [];
+  for (const c of leerColoresExtra()) {
+    const g = [...grupos.values()].find((m) => m.marca === c.marca && m.grupo === c.grupo);
+    if (g && !base.some((m) => m.marca === c.marca && normalizar(m.material) === normalizar(c.material))) {
+      extra.push({ ...g, material: c.material.toUpperCase(), extra: true });
+    }
+  }
+  const genericos = [...grupos.values()].map((g) => ({ ...g, material: CUALQUIER_COLOR, generico: true }));
+  return { ...t, materiales: [...base, ...extra, ...genericos] };
+}
+
 function leerTarifasGuardadas() {
   try {
     const t = JSON.parse(localStorage.getItem(CLAVE_TARIFAS));
-    if (t && t.csv) return { nombre: t.nombre, ...parsearTarifas(t.csv) };
+    if (t && t.csv) return completarTarifas({ nombre: t.nombre, ...parsearTarifas(t.csv) });
   } catch { /* se usan las de serie */ }
-  return { nombre: 'tarifas_carbonell_2025', ...parsearTarifas(TARIFAS_CSV) };
+  return completarTarifas({ nombre: 'tarifas_carbonell_2025', ...parsearTarifas(TARIFAS_CSV) });
 }
 
-let tarifas = leerTarifasGuardadas();
 
 function etiquetaMaterial(m) {
   return [`${m.marca} ${m.material}`, m.grupo, m.espesor].filter(Boolean).join(' · ');
@@ -61,6 +86,8 @@ function etiquetaMaterial(m) {
 
 const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD')
   .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+let tarifas = leerTarifasGuardadas();
 
 function buscarMaterial(texto) {
   const t = normalizar(texto);
@@ -375,7 +402,7 @@ $('#fileTarifas').addEventListener('change', async (e) => {
     const nombre = f.name.replace(/\.csv$/i, '');
     localStorage.setItem(CLAVE_TARIFAS, JSON.stringify({ nombre, csv }));
     if (typeof programarSync === 'function') programarSync();
-    tarifas = { nombre, ...nuevas };
+    tarifas = completarTarifas({ nombre, ...nuevas });
     llenarListas();
     pintarResultado();
     aviso(`Tarifas cargadas: ${nuevas.materiales.length} materiales`);
@@ -927,3 +954,74 @@ $('#proveedorIA').addEventListener('change', (e) => {
 // ---------------------------------------------------------------------------
 llenarListas();
 pintarPresupuesto();
+
+// ---------------------------------------------------------------------------
+// Colores y grupos: ver la tarifa por marca y grupo, elegir color y añadir colores nuevos
+// ---------------------------------------------------------------------------
+const dlgGrupos = $('#dlgGrupos');
+function pintarGrupos() {
+  const marcas = [...new Set(tarifas.materiales.map((m) => m.marca))];
+  const sel = $('#gruposMarca');
+  const elegida = sel.value || (buscarMaterial(trabajo.datos.material) || {}).marca || marcas[0];
+  sel.replaceChildren(...marcas.map((m) => new Option(m, m)));
+  sel.value = marcas.includes(elegida) ? elegida : marcas[0];
+  const q = normalizar($('#gruposBuscar').value);
+  const deMarca = tarifas.materiales.filter((m) => (q ? true : m.marca === sel.value));
+  const grupos = new Map();
+  for (const m of deMarca) {
+    if (q && !normalizar(`${m.marca} ${m.material} ${m.grupo}`).includes(q)) continue;
+    const k = `${m.marca}|${m.grupo}|${m.espesor}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(m);
+  }
+  $('#listaGrupos').innerHTML = [...grupos.entries()].map(([k, lista]) => {
+    const g = lista[0];
+    const colores = lista.filter((m) => !m.generico);
+    return `<section class="grupo-tarifa">
+      <header><b>${escapar(g.marca)} · ${escapar(g.grupo)}</b>${g.espesor ? ` <span>${escapar(g.espesor)}</span>` : ''}
+        <span class="precios">${fmtEuro(g.ml)} ml · ${fmtEuro(g.m2)} m²${g.zocalo != null ? ` · zócalo ${fmtEuro(g.zocalo)}` : ''}</span>
+        <button type="button" class="mini" data-nuevo="${escapar(k)}">+ Color</button></header>
+      <div class="colores">${colores.map((m) => `<button type="button" class="color${m.extra ? ' extra' : ''}" data-mat="${escapar(etiquetaMaterial(m))}">${escapar(m.material)}${m.extra ? ' <i data-quitar="' + escapar(m.marca + '|' + m.material) + '" title="Quitar">×</i>' : ''}</button>`).join('')}
+        <button type="button" class="color generico" data-mat="${escapar(etiquetaMaterial({ ...g, material: CUALQUIER_COLOR }))}">Otro color de este grupo</button></div>
+    </section>`;
+  }).join('') || '<p class="vacio">No hay colores con ese nombre.</p>';
+}
+$('#btnGrupos').addEventListener('click', () => { $('#gruposBuscar').value = ''; $('#gruposMarca').value = ''; pintarGrupos(); dlgGrupos.showModal(); });
+$('#gruposMarca').addEventListener('change', pintarGrupos);
+$('#gruposBuscar').addEventListener('input', pintarGrupos);
+$('#listaGrupos').addEventListener('click', (e) => {
+  const quitar = e.target.closest('[data-quitar]');
+  if (quitar) {
+    e.stopPropagation();
+    const [marca, material] = quitar.dataset.quitar.split('|');
+    localStorage.setItem(CLAVE_COLORES, JSON.stringify(leerColoresExtra().filter((c) => !(c.marca === marca && normalizar(c.material) === normalizar(material)))));
+    tarifas = completarTarifas(tarifas);
+    llenarListas();
+    pintarGrupos();
+    if (typeof programarSync === 'function') programarSync();
+    return;
+  }
+  const nuevo = e.target.closest('[data-nuevo]');
+  if (nuevo) {
+    const [marca, grupo] = nuevo.dataset.nuevo.split('|');
+    const nombre = (prompt(`Nombre del color nuevo para ${marca} · ${grupo}:`) || '').trim();
+    if (!nombre) return;
+    try {
+      localStorage.setItem(CLAVE_COLORES, JSON.stringify([...leerColoresExtra(), { marca, grupo, material: nombre }]));
+    } catch { aviso('No se pudo guardar'); return; }
+    tarifas = completarTarifas(tarifas);
+    llenarListas();
+    pintarGrupos();
+    if (typeof programarSync === 'function') programarSync();
+    aviso(`${nombre.toUpperCase()} añadido a ${marca} · ${grupo}`);
+    return;
+  }
+  const mat = e.target.closest('[data-mat]');
+  if (mat) {
+    const campo = form.querySelector('[name="material"]');
+    campo.value = mat.dataset.mat;
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    dlgGrupos.close();
+    aviso(`Material: ${mat.dataset.mat}`);
+  }
+});

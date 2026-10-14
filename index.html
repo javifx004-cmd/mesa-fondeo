@@ -259,6 +259,7 @@
           </select>
           <button type="button" id="btnDeshacer" title="Deshacer">↶</button>
           <button type="button" id="btnRehacer" title="Rehacer">↷</button>
+          <button type="button" id="btnPlantilla" class="oro" title="Dibujar una cocina tipo con sus medidas">Plantilla</button>
           <button type="button" id="btnLimpiar" title="Borrar todo el plano">Limpiar</button>
           <button type="button" id="btnAmpliar" title="Plano a pantalla completa">Ampliar</button>
         </div>
@@ -274,12 +275,24 @@
       <div class="presu-cab">
         <h2 class="seccion"><span class="paso">3</span>Presupuesto</h2>
         <span class="tarifa">Tarifa: <b id="nombreTarifa"></b>
+          <button type="button" class="enlace" id="btnGrupos">Colores y grupos</button>
           <label class="enlace">Cambiar tarifas<input type="file" id="fileTarifas" accept=".csv,text/csv" hidden></label>
         </span>
       </div>
 
-      <div class="ia">
-        <h3>Asistente con IA</h3>
+      <div class="auto-piezas">
+        <div>
+          <h3>Piezas automáticas, sin IA</h3>
+          <p class="ayuda">Elige una plantilla de cocina con sus medidas, o dibuja las piezas con «Rect.» y ponles cotas: la app saca las piezas sola.</p>
+        </div>
+        <div class="ia-botones">
+          <button type="button" id="btnPlantilla2" class="oro">Plantilla de cocina</button>
+          <button type="button" id="btnPiezasPlano" class="primary">Sacar piezas del plano</button>
+        </div>
+      </div>
+
+      <details class="ia">
+        <summary>Asistente con IA (opcional)</summary>
         <p class="ayuda">La IA lee el plano, la ficha y lo que escribas, y rellena las piezas. Los precios salen siempre de tu tarifa.</p>
         <label class="proveedor">IA:
           <select id="proveedorIA">
@@ -293,7 +306,7 @@
           <button type="button" id="btnClaveIA">Clave IA</button>
         </div>
         <p id="estadoIA" role="status" aria-live="polite"></p>
-      </div>
+      </details>
 
       <h3>Piezas</h3>
       <div id="listaPiezas"></div>
@@ -506,6 +519,44 @@
     </form>
   </dialog>
 
+  <dialog id="dlgGrupos" class="grande">
+    <div class="dlg-head"><h2>Colores y grupos</h2><button type="button" class="cerrar" data-close>✕</button></div>
+    <p class="ayuda">Todos los materiales de tu tarifa por marca y grupo. Toca un color para usarlo en el trabajo.
+      Si tu proveedor saca un color nuevo, añádelo a su grupo con «+ Color» y tendrá los precios de ese grupo.</p>
+    <div class="barra-filtros">
+      <select id="gruposMarca" aria-label="Marca"></select>
+      <input type="search" id="gruposBuscar" placeholder="Buscar color…">
+    </div>
+    <div id="listaGrupos" class="lista-grupos"></div>
+  </dialog>
+
+  <dialog id="dlgPlantilla">
+    <form id="formPlantilla" method="dialog">
+      <div class="dlg-head"><h2>Plantilla de cocina</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <p class="ayuda">Elige la forma y pon las medidas en milímetros, a lo largo de la pared. La app dibuja el plano con sus cotas y rellena las piezas del presupuesto.</p>
+      <div class="formas" id="formasPlantilla"></div>
+      <div class="grid medidas-plantilla">
+        <label data-campo="a">Tramo de la pared del fondo <input name="a" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 3200"></label>
+        <label data-campo="b">Tramo de la pared izquierda <input name="b" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 2400"></label>
+        <label data-campo="c">Tramo de la pared derecha <input name="c" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 1800"></label>
+        <label>Fondo de la bancada <input name="fondo" type="number" inputmode="numeric" min="300" step="1" value="620"></label>
+        <label data-campo="isla">Isla: largo <input name="islaL" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 2000"></label>
+        <label data-campo="isla">Isla: fondo <input name="islaF" type="number" inputmode="numeric" min="300" step="1" value="900"></label>
+        <label data-campo="pen">Península: largo <input name="penL" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 1600"></label>
+        <label data-campo="pen">Península: fondo <input name="penF" type="number" inputmode="numeric" min="300" step="1" value="900"></label>
+      </div>
+      <div class="casillas-plantilla">
+        <label class="chk"><input type="checkbox" name="canto" checked> Frentes con canto visto</label>
+        <label class="chk"><input type="checkbox" name="elementos" checked> Poner fregadero y vitro</label>
+        <label class="chk"><input type="checkbox" name="zocalo"> Zócalo en las paredes</label>
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Dibujar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlgColumna">
     <form method="dialog">
       <h2>Medidas de la columna</h2>
@@ -639,6 +690,7 @@
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
   <script src="despiece.js"></script>
+  <script src="plantillas.js"></script>
   <script src="sync.js"></script>
   <script src="inicio.js"></script>
 </body>

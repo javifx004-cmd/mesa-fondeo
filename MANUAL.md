@@ -82,6 +82,20 @@ en el móvil es mejor en horizontal.
 plano y rellena las piezas; los precios los calcula siempre la app con la tarifa. **Revisa siempre las
 piezas.** Necesita internet y una clave gratuita de Gemini (aistudio.google.com).
 
+### Piezas automáticas, sin IA
+
+- **Plantilla de cocina** (en el plano o en el presupuesto): elige lineal, en L, en U, con isla o península y pon
+  las medidas de cada pared. La app dibuja el plano con cotas, cantos, fregadero y vitro, y rellena las piezas.
+- **Sacar piezas del plano**: dibuja cada pieza con «Rect.» y ponle cotas. La app saca las piezas con sus medidas
+  y cantos vistos, y descuenta el solape de las esquinas.
+- La IA queda como opción, plegada debajo.
+
+### Colores y grupos
+
+En el presupuesto, **Colores y grupos** muestra toda la tarifa por marca y grupo con sus precios. Toca un color
+para usarlo. **Otro color de este grupo** sirve para cualquier color que no esté en la lista, y **+ Color** añade un
+color nuevo a su grupo, con los precios de ese grupo.
+
 ### Tablas necesarias (despiece)
 
 Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja cómo cortarlas:
