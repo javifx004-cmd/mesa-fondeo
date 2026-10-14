@@ -58,6 +58,32 @@ function guardarDoc(doc) {
   const i = lista.findIndex((d) => d.id === doc.id);
   if (i >= 0) lista[i] = doc; else lista.push(doc);
   escribirJSON(CLAVE_DOCS, lista);
+  // el seguimiento de la cocina avanza solo: aceptado → entregado (albarán) → cobrado
+  if (doc.trabajoId) {
+    const meta = doc.tipo === 'presupuesto' && doc.estado === 'Aceptado' ? 'Aceptado'
+      : doc.tipo === 'albaran' ? 'Colocado'
+        : doc.tipo === 'factura' && doc.estado === 'Cobrada' && !doc.rectifica ? 'Cobrado' : '';
+    if (meta) avanzarTrabajo(doc.trabajoId, meta);
+  }
+}
+
+function avanzarTrabajo(id, meta) {
+  const nivel = (e) => ESTADOS_TRABAJO.indexOf(e || 'Medido');
+  if (trabajo && trabajo.id === id) {
+    if (nivel(meta) <= nivel(trabajo.datos.estado)) return;
+    trabajo.datos.estado = meta;
+    const sel = document.querySelector('#planos [name="estado"]');
+    if (sel) sel.value = meta;
+    sucio = true;
+    guardar();
+    return;
+  }
+  const lista = leerTrabajos();
+  const t = lista.find((x) => x.id === id);
+  if (!t || nivel(meta) <= nivel(t.datos.estado)) return;
+  t.datos.estado = meta;
+  t.modificado = Date.now();
+  escribirTrabajos(lista);
 }
 
 // redondeo a céntimos, simétrico para negativos (rectificativas) y sin errores de coma flotante
@@ -190,6 +216,12 @@ function sincronizarPresupuesto(silencioso = false) {
   }
   doc.lineasAuto = JSON.stringify(lineas);
   guardarDoc(doc);
+  if (!trabajo.datos.estado || trabajo.datos.estado === 'Medido') {
+    trabajo.datos.estado = 'Presupuestado';
+    sucio = true;
+    const sel = document.querySelector('#planos [name="estado"]');
+    if (sel) sel.value = 'Presupuestado';
+  }
   if (trabajo.presupuestoId !== doc.id) {
     trabajo.presupuestoId = doc.id;
     sucio = true;
@@ -223,6 +255,7 @@ const vistaPlanos = $('#planos');
 
 function abrirGestion(pestana = 'documentos') {
   guardar();
+  if (typeof salirDeInicio === 'function') salirDeInicio();
   vistaPlanos.hidden = true;
   vistaGestion.hidden = false;
   $('#btnGestion').classList.add('active');
@@ -295,6 +328,7 @@ function pintarDocs() {
     cont.innerHTML = '<p class="vacio">No hay documentos. Crea uno con «+ Nuevo» o desde el presupuesto de un plano con «Pasar a Gestión».</p>';
     return;
   }
+  const rectificadaPor = Object.fromEntries(docs.filter((x) => x.rectifica).map((x) => [x.rectifica.id, x.numero]));
   cont.innerHTML = lista.map((d) => {
     const cli = clientes[d.clienteId];
     const acciones = [];
@@ -304,10 +338,12 @@ function pintarDocs() {
     }
     if (d.tipo === 'albaran' && d.estado !== 'Facturado') acciones.push(['factura', '→ Factura']);
     if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro') acciones.push(['cobrar', 'Cobrada']);
+    if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro' && totales(d).total > 0) acciones.push(['whatsapp', 'Recordar por WhatsApp']);
+    if (d.tipo === 'presupuesto' && d.estado === 'Pendiente') acciones.push(['whatsapp', 'Enviar por WhatsApp']);
     return `<div class="doc" data-id="${d.id}">
-      <div class="doc-info" data-accion="abrir">
+      <div class="doc-info" data-accion="abrir" tabindex="0" role="button">
         <strong>${nombreTipoDoc(d)} ${escapar(d.numero)}</strong>
-        <span>${escapar(cli ? cli.nombre : 'Sin cliente')} · ${fechaLegible(d.fecha)}</span>
+        <span>${escapar(cli ? cli.nombre : 'Sin cliente')} · ${fechaLegible(d.fecha)}${rectificadaPor[d.id] ? ` · rectificada por ${escapar(rectificadaPor[d.id])}` : ''}${d.rectifica ? ` · rectifica ${escapar(d.rectifica.numero)}` : ''}</span>
       </div>
       <span class="estado ${claseEstado(d.estado)}">${escapar(d.estado)}</span>
       <strong class="doc-total">${fmtEuro(totales(d).total)}</strong>
@@ -329,7 +365,34 @@ $('#listaDocs').addEventListener('click', (e) => {
   if (accion === 'aceptar') { doc.estado = 'Aceptado'; guardarDoc(doc); pintarDocs(); aviso(`Presupuesto ${doc.numero} aceptado`); }
   if (accion === 'cobrar') { doc.estado = 'Cobrada'; doc.fechaCobro = hoy(); guardarDoc(doc); pintarDocs(); aviso(`Factura ${doc.numero} cobrada`); }
   if (accion === 'albaran' || accion === 'factura') convertir(doc, accion);
+  if (accion === 'whatsapp') abrirWhatsApp(doc);
 });
+
+// WhatsApp con el mensaje ya escrito: recordatorio de cobro o envío del presupuesto.
+function telefonoWhatsApp(tel) {
+  let n = String(tel || '').replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/^00/, '');
+  if (/^[6789]\d{8}$/.test(n)) n = `34${n}`;   // móvil o fijo español sin prefijo
+  return n.length >= 9 ? n : '';
+}
+function mensajeWhatsApp(doc) {
+  const emp = leerEmpresa();
+  const cli = clientePorId(doc.clienteId) || {};
+  const saludo = `Hola${cli.nombre ? ` ${cli.nombre.split(' ')[0]}` : ''}`;
+  const firma = [emp.nombre || nombreEmpresa(), emp.telefono].filter(Boolean).join(' · ');
+  const total = fmtEuro(totales(doc).total);
+  if (doc.tipo === 'factura') {
+    return `${saludo}, le recordamos que está pendiente la factura ${doc.numero} del ${fechaLegible(doc.fecha)} por ${total}.`
+      + (emp.iban ? ` Puede pagarla por transferencia a la cuenta ${emp.iban}.` : '')
+      + ` Si ya la ha pagado, no haga caso de este mensaje. Muchas gracias.\n${firma}`;
+  }
+  return `${saludo}, le enviamos el presupuesto ${doc.numero} de su encimera: ${total}${doc.conIva !== false ? ' IVA incluido' : ''}.`
+    + ` Quedamos a su disposición para cualquier duda.\n${firma}`;
+}
+function abrirWhatsApp(doc) {
+  const tel = telefonoWhatsApp((clientePorId(doc.clienteId) || {}).telefono);
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(mensajeWhatsApp(doc))}`, '_blank', 'noopener');
+  if (!tel) aviso('El cliente no tiene teléfono: elige el contacto en WhatsApp');
+}
 
 // Crea un albarán o una factura a partir de otro documento.
 function convertir(origen, tipo) {
@@ -434,7 +497,8 @@ function editarDoc(doc, nuevo = false) {
   $('#docIva').checked = doc.conIva !== false;
   $('#docNotas').value = doc.notas || '';
   $('#btnDocBorrar').hidden = nuevo;
-  $('#btnDocAnular').hidden = nuevo || doc.tipo !== 'factura' || doc.estado === 'Anulada';
+  const rectificada = leerDocs().some((x) => x.rectifica && x.rectifica.id === doc.id);
+  $('#btnDocAnular').hidden = nuevo || doc.tipo !== 'factura' || doc.estado === 'Anulada' || rectificada;
   if (doc.tipo === 'factura' && !leerEmpresa().nif && leerEmpresa().qr !== 'no') aviso('Pon tu NIF en Gestión → Mi empresa para que salga el QR de Hacienda');
   $('#btnDocAlbaran').hidden = doc.tipo !== 'presupuesto';
   $('#btnDocFactura').hidden = doc.tipo === 'factura';
@@ -560,7 +624,7 @@ $('#btnDocGuardar').addEventListener('click', () => {
   if (guardarEditor()) { aviso('Documento guardado'); dlgDoc.close(); }
 });
 $('#btnDocAnular').addEventListener('click', () => {
-  const d = docEditado;
+  const d = leerEditor();
   if (!confirm(`¿Anular la factura ${d.numero}? Se conserva con su número, marcada como anulada.`)) return;
   d.estado = 'Anulada';
   guardarDoc(d);
@@ -569,13 +633,16 @@ $('#btnDocAnular').addEventListener('click', () => {
 });
 $('#btnDocBorrar').addEventListener('click', () => {
   const d = docEditado;
+  const rect = leerDocs().find((x) => x.rectifica && x.rectifica.id === d.id);
+  if (rect) { aviso(`No se puede borrar: la rectificativa ${rect.numero} hace referencia a esta factura`); return; }
   const nombre = `${nombreTipoDoc(d).toLowerCase()} ${d.numero}`;
   let pregunta = `¿Borrar ${nombre}? No se puede deshacer.`;
   if (d.tipo === 'factura') {
     // Hacienda pide numeración correlativa: si no es la última, queda un hueco
     const prefijo = String(d.numero).replace(/\d+$/, '');
     const posteriores = leerDocs().filter((x) => x.tipo === 'factura' && x.id !== d.id
-      && String(x.numero).startsWith(prefijo) && String(x.numero) > String(d.numero));
+      && String(x.numero).startsWith(prefijo)
+      && Number(String(x.numero).slice(prefijo.length)) > Number(String(d.numero).slice(prefijo.length)));
     pregunta = posteriores.length
       ? `¿Borrar la factura ${d.numero}?\n\nOJO: hay facturas posteriores y quedará un hueco en la numeración, `
         + 'que Hacienda no admite. Si ya la has entregado al cliente, es mejor ANULARLA.\n\nNo se puede deshacer.'
@@ -826,9 +893,9 @@ function pintarClientes() {
   cont.innerHTML = lista.map((c) => {
     const suyos = docs.filter((d) => d.clienteId === c.id && d.tipo === 'factura' && d.estado !== 'Anulada');
     const facturado = suyos.reduce((s, d) => s + totales(d).total, 0);
-    const pendiente = suyos.filter((d) => d.estado === 'Pendiente de cobro').reduce((s, d) => s + totales(d).total, 0);
+    const pendiente = suyos.filter((d) => d.estado === 'Pendiente de cobro' && totales(d).total > 0).reduce((s, d) => s + totales(d).total, 0);
     return `<div class="doc" data-id="${c.id}">
-      <div class="doc-info" data-accion="editar">
+      <div class="doc-info" data-accion="editar" tabindex="0" role="button">
         <strong>${escapar(c.nombre)}</strong>
         <span>${escapar([c.nif, c.telefono, c.poblacion].filter(Boolean).join(' · ') || 'Sin datos')}</span>
       </div>
@@ -922,7 +989,7 @@ function pintarBalance() {
       m.base += t.base;
       m.iva += t.iva;
       m.total += t.total;
-      if (d.estado === 'Cobrada') m.cobrado += t.total; else m.pendiente += t.total;
+      if (d.estado === 'Cobrada' || t.total < 0) m.cobrado += t.total; else m.pendiente += t.total;
     }
     if (d.tipo === 'presupuesto') {
       m.presu++;

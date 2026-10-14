@@ -87,6 +87,17 @@
       <section class="tarjeta ini-plazo" id="iniPlazo"></section>
     </div>
 
+    <div class="ini-cols">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Cocinas en marcha</h3><button type="button" class="enlace" data-ir="trabajos">Ver todas</button></div>
+        <div class="embudo" id="iniEmbudo"></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Próximas colocaciones</h3></div>
+        <ul class="ini-lista agenda" id="iniAgenda"></ul>
+      </section>
+    </div>
+
     <div class="ini-cols tres">
       <section class="tarjeta">
         <div class="tarjeta-cab"><h3>Pendiente de cobro</h3><button type="button" class="enlace" data-ir="cobros">Ver todo</button></div>
@@ -150,6 +161,15 @@
             </optgroup>
             <optgroup label="Otros de la tarifa" id="cantosTarifa"></optgroup>
           </select>
+        </label>
+        <label>Estado del trabajo
+          <select name="estado">
+            <option>Medido</option><option>Presupuestado</option><option>Aceptado</option>
+            <option>En taller</option><option>Colocado</option><option>Cobrado</option>
+          </select>
+        </label>
+        <label>Fecha de colocación
+          <input name="colocacion" type="date">
         </label>
         <fieldset class="wide grupo">
           <legend>Vitrocerámica</legend>
@@ -285,6 +305,25 @@
         <label class="chk"><input type="checkbox" id="conIva" checked> Añadir IVA 21 %</label>
       </div>
 
+      <div class="despiece">
+        <div class="despiece-cab">
+          <h3>Tablas necesarias</h3>
+          <button type="button" id="btnDespiecePdf" hidden>Despiece en PDF</button>
+        </div>
+        <div class="despiece-opc">
+          <label>Tabla <select id="formatoTabla"></select></label>
+          <span id="tablaMedidaOtra" hidden>
+            <label>Largo <input id="tablaLargo" type="number" inputmode="numeric" min="500" step="10" placeholder="mm"></label>
+            <label>Ancho <input id="tablaAncho" type="number" inputmode="numeric" min="300" step="10" placeholder="mm"></label>
+          </span>
+          <label>Alto zócalo <input id="altoZocalo" type="number" inputmode="numeric" min="10" step="5" value="50"></label>
+          <label class="chk"><input type="checkbox" id="respetarVeta"> Respetar la veta (no girar piezas)</label>
+        </div>
+        <p id="despieceRes" class="despiece-res"></p>
+        <ul id="avisosDespiece" class="avisos"></ul>
+        <div id="despieceDibujo" class="despiece-dibujo"></div>
+      </div>
+
       <div id="tablaPresupuesto"></div>
       <ul id="avisosPresupuesto" class="avisos"></ul>
 
@@ -366,6 +405,12 @@
         <label>Trimestre
           <select id="impTrim"><option value="1">1.º</option><option value="2">2.º</option><option value="3">3.º</option><option value="4">4.º</option></select>
         </label>
+        <span class="libros">
+          <span>Libros para el gestor:</span>
+          <button type="button" data-libro="ingresos">Ingresos</button>
+          <button type="button" data-libro="gastos">Gastos</button>
+          <label class="chk"><input type="checkbox" id="libroAnio"> Año completo</label>
+        </span>
       </div>
       <div id="impuestos"></div>
     </section>
@@ -593,6 +638,7 @@
   <script src="vendor/qrcode.js"></script>
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
+  <script src="despiece.js"></script>
   <script src="sync.js"></script>
   <script src="inicio.js"></script>
 </body>

@@ -25,6 +25,10 @@ La app se abre en **Inicio**:
   - lo que te queda limpio en el año;
   - los presupuestos por aceptar y los gastos del mes.
 - **Gráfico del año:** lo facturado cada mes frente a los gastos.
+- **Cocinas en marcha:** cuántas hay en cada paso (medido, presupuestado, aceptado, en taller, colocado, cobrado).
+  Toca un paso para ver esas cocinas.
+- **Próximas colocaciones:** agenda con la fecha, el cliente y la dirección. Avisa de las atrasadas.
+- En cada factura por cobrar: **✓** la marca como cobrada y **WA** abre WhatsApp con el recordatorio ya escrito.
 - **Próximo pago a Hacienda:** cuántos días quedan y cuánto toca pagar aproximadamente.
 - **Listas:**
   - facturas por cobrar, presupuestos por aceptar y últimos planos (tócalos para abrirlos);
@@ -42,6 +46,9 @@ Toca cualquier cifra para ir a su detalle.
 - **Vitrocerámica y fregadero:** tipo y medidas. Del fregadero, además, el radio y si lleva **grifo**,
   **jabonera** u **ósmosis**.
 - **Observaciones:** lo que deba saber el taller.
+- **Estado del trabajo y fecha de colocación:** para el seguimiento y la agenda. El estado avanza solo:
+  presupuestado al hacer el presupuesto, aceptado al aceptarlo, colocado al hacer el albarán y cobrado al cobrar
+  la factura. La fecha de colocación sale también en la hoja del taller.
 
 ### Paso 2 · Plano
 
@@ -75,6 +82,16 @@ en el móvil es mejor en horizontal.
 plano y rellena las piezas; los precios los calcula siempre la app con la tarifa. **Revisa siempre las
 piezas.** Necesita internet y una clave gratuita de Gemini (aistudio.google.com).
 
+### Tablas necesarias (despiece)
+
+Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja cómo cortarlas:
+
+- Elige el formato de tabla (Silestone, Dekton, Neolith, Compac, granito u otra medida). Sale solo según el material.
+- Tiene en cuenta el disco (5 mm), el borde de la tabla (10 mm), los zócalos y las tiras de los ingletes.
+- Las piezas más largas que la tabla se parten en trozos con junta (avisa).
+- **Respetar la veta** impide girar las piezas.
+- Se ve el aprovechamiento y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
+
 ### Paso 4 · Enviar el plano
 
 **Descargar PDF**, **Compartir PDF** (WhatsApp, correo…) o **Imprimir**: hoja A4 en PDF con el logo, los
@@ -98,6 +115,10 @@ datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y la
   Para que salga hay que poner el **NIF en Mi empresa**. Se puede quitar en Mi empresa.
 - En cada factura o presupuesto se ve **cuánto te queda limpio** aproximadamente.
 - **Exportar CSV** saca la lista para el gestor.
+- Los presupuestos y las facturas pendientes tienen el botón **WhatsApp**: abre la conversación con el cliente con el
+  mensaje escrito (el presupuesto, o el recordatorio de cobro con tu IBAN).
+- En **Impuestos**, **Libros para el gestor**: el libro de ingresos y el de gastos del trimestre (o del año) en CSV,
+  que es lo que pide Hacienda a los autónomos en estimación directa.
 
 | Pestaña | Para qué sirve |
 |---|---|

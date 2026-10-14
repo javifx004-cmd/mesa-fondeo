@@ -96,7 +96,8 @@ function gastosDeCocina(doc) {
 function beneficioCocina(doc) {
   const anio = anioDe(doc.fecha);
   const base = totales(doc).base;
-  const directos = redondear(gastosDeCocina(doc).filter((g) => g.deducible).reduce((s, g) => s + (Number(g.base) || 0), 0));
+  // una rectificativa no vuelve a restar los gastos de la cocina (ya los resta la factura original)
+  const directos = doc.rectifica ? 0 : redondear(gastosDeCocina(doc).filter((g) => g.deducible).reduce((s, g) => s + (Number(g.base) || 0), 0));
   const facturado = facturasDe(anio).reduce((s, d) => s + totales(d).base, 0);
   const generalesAnio = gastosDe(anio).filter((g) => !g.docId).reduce((s, g) => s + (Number(g.base) || 0), 0);
   // un presupuesto aún no facturado cuenta como si se sumara a lo facturado
@@ -110,7 +111,7 @@ function beneficioCocina(doc) {
   const factor = beneficioAnual > 0 ? Math.max(0, anual.rendimiento) / beneficioAnual : 1;
   const irpf = redondear(Math.max(0, antes) * confFiscal().irpfMedio * factor);
   const limpio = redondear(antes - irpf);
-  return { base, directos, generales, antes, irpf, limpio, margen: base ? limpio / base : 0 };
+  return { base, directos, generales, antes, irpf, limpio, margen: base > 0 ? limpio / base : 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +150,7 @@ function pintarGastos() {
   cont.innerHTML = lista.map((g) => {
     const doc = docs[g.docId];
     return `<div class="doc" data-id="${g.id}">
-      <div class="doc-info" data-accion="editar">
+      <div class="doc-info" data-accion="editar" tabindex="0" role="button">
         <strong>${escapar(g.concepto || g.categoria)}</strong>
         <span>${escapar([g.proveedor, g.categoria, fechaLegible(g.fecha)].filter(Boolean).join(' · '))}</span>
       </div>
@@ -338,3 +339,42 @@ function pintarRentabilidadDoc(doc) {
     editarGasto(null, doc.id);
   };
 }
+
+// ---------------------------------------------------------------------------
+// Libros registro de ingresos y de gastos (estimación directa), en CSV para Excel o el gestor
+// ---------------------------------------------------------------------------
+function exportarLibro(tipo) {
+  const anio = Number($('#impAnio').value) || new Date().getFullYear();
+  const trim = $('#libroAnio').checked ? null : Number($('#impTrim').value);
+  const enPeriodo = (f) => anioDe(f) === anio && (!trim || trimDe(f) === trim);
+  const num = (n) => (Number(n) || 0).toFixed(2).replace('.', ',');
+  const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lineas = [];
+  if (tipo === 'ingresos') {
+    const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c]));
+    lineas.push(['Número', 'Fecha', 'Cliente', 'NIF cliente', 'Base imponible', 'Tipo IVA', 'Cuota IVA', 'Total', 'Rectifica a', 'Estado', 'Fecha de cobro']);
+    leerDocs().filter((d) => d.tipo === 'factura' && enPeriodo(d.fecha))
+      .sort((a, b) => (a.fecha + a.numero).localeCompare(b.fecha + b.numero))
+      .forEach((d) => {
+        const c = clientes[d.clienteId] || {};
+        const t = totales(d);
+        lineas.push([d.numero, fechaLegible(d.fecha), c.nombre, c.nif, num(t.base), d.conIva ? '21 %' : 'Sin IVA', num(t.iva), num(t.total),
+          d.rectifica ? d.rectifica.numero : '', d.estado, d.fechaCobro ? fechaLegible(d.fechaCobro) : '']);
+      });
+  } else {
+    const docs = Object.fromEntries(leerDocs().map((d) => [d.id, d]));
+    lineas.push(['Fecha', 'Proveedor', 'Concepto', 'Categoría', 'Base imponible', 'Tipo IVA', 'Cuota IVA', 'Total', 'Deducible', 'Cocina']);
+    leerGastos().filter((g) => enPeriodo(g.fecha)).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+      .forEach((g) => {
+        const base = Number(g.base) || 0;
+        const iva = ivaGasto(g);
+        lineas.push([fechaLegible(g.fecha), g.proveedor, g.concepto, g.categoria, num(base), `${Number(g.tipoIva) || 0} %`, num(iva), num(base + iva),
+          g.deducible ? 'Sí' : 'No', docs[g.docId] ? docs[g.docId].numero : '']);
+      });
+  }
+  if (lineas.length === 1) { aviso('No hay nada en ese periodo'); return; }
+  const periodo = trim ? `${anio}-T${trim}` : String(anio);
+  descargar(new Blob(['\ufeff' + lineas.map((l) => l.map(celda).join(';')).join('\r\n')], { type: 'text/csv' }), `libro-${tipo}-${periodo}.csv`);
+  aviso(`Libro de ${tipo} ${trim ? `del ${trim}.º trimestre` : 'del año'} descargado`);
+}
+$$('[data-libro]').forEach((b) => b.addEventListener('click', () => exportarLibro(b.dataset.libro)));

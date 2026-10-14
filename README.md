@@ -11,6 +11,11 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
 - **PDF**: planos, presupuestos, albaranes y facturas se descargan y comparten en PDF (generado en el
   navegador, sin librerías).
 - **Facturas rectificativas** (serie R) y **QR tributario** en las facturas.
+- **Despiece de tablas** (`despiece.js`): número de tablas, aprovechamiento y dibujo del corte (MaxRects con
+  disco y margen), con hoja PDF para el taller.
+- **Seguimiento de cada cocina** (medido → cobrado) con fecha de colocación y agenda en Inicio.
+- **WhatsApp**: envío de presupuestos y recordatorios de cobro con el mensaje escrito.
+- **Libros registro** de ingresos y gastos en CSV por trimestre o año.
 - Estilo de lujo: negro, marfil y oro, con tipografías Cormorant Garamond y Manrope incluidas en `fuentes/`
   (licencia SIL OFL).
 

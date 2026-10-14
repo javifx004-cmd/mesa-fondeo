@@ -11,17 +11,19 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '30';   // cambiar junto con CACHE en sw.js
+const VERSION = '31';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
-  'osmosis', 'observaciones'];
+  'osmosis', 'observaciones', 'estado', 'colocacion'];
+// Seguimiento de cada cocina, de la medición al cobro
+const ESTADOS_TRABAJO = ['Medido', 'Presupuestado', 'Aceptado', 'En taller', 'Colocado', 'Cobrado'];
 const ROJO = '#c62828';
 const AZUL_CANTO = '#1e88e5';
 const VERDE_PULIDO = '#2e7d32';
 const ETIQUETAS = {
   cliente: 'Cliente', telefono: 'Teléfono', direccion: 'Dirección', referencia: 'Referencia',
   fecha: 'Fecha', material: 'Material', canto: 'Tipo de canto', vitro: 'Vitrocerámica',
-  fregadero: 'Fregadero', observaciones: 'Observaciones',
+  fregadero: 'Fregadero', observaciones: 'Observaciones', estado: 'Estado', colocacion: 'Colocación',
 };
 
 const $ = (s) => document.querySelector(s);
@@ -64,6 +66,7 @@ let punteroActivo = null;
 function trabajoVacio() {
   const datos = Object.fromEntries(CAMPOS.map((c) => [c, '']));
   datos.fecha = hoy();
+  datos.estado = 'Medido';
   return {
     id: nuevoId(), datos, objetos: [], piezas: [],
     extras: { colocBancada: false, colocAplacado: false, iva: true },
@@ -73,7 +76,7 @@ function trabajoVacio() {
 
 function tieneContenido(t) {
   return t.objetos.length > 0 || (t.piezas || []).length > 0 ||
-    CAMPOS.some((c) => c !== 'fecha' && (t.datos[c] || '').trim() !== '');
+    CAMPOS.some((c) => c !== 'fecha' && c !== 'estado' && (t.datos[c] || '').trim() !== '');
 }
 
 // ---------------------------------------------------------------------------
@@ -1050,10 +1053,11 @@ $('#btnAmpliar').addEventListener('click', () => {
 
 document.addEventListener('keydown', (e) => {
   const enCampo = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !enCampo) {
+  const enPlano = !$('#planos').hidden;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !enCampo && enPlano) {
     e.preventDefault();
     if (e.shiftKey) volverAHacer(); else deshacer();
-  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !enCampo) {
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !enCampo && enPlano) {
     e.preventDefault();
     volverAHacer();
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -1241,12 +1245,13 @@ function componerHoja() {
   const d = {
     ...trabajo.datos,
     fecha: fechaLegible(trabajo.datos.fecha),
+    colocacion: trabajo.datos.colocacion ? fechaLegible(trabajo.datos.colocacion) : '',
     vitro: textoVitro(trabajo.datos),
     fregadero: textoFregadero(trabajo.datos),
   };
   const pares = [
     ['cliente', 'telefono'], ['direccion', 'referencia'], ['material', 'fecha'],
-    ['canto', 'vitro'], ['fregadero', null],
+    ['canto', 'vitro'], ['fregadero', 'colocacion'],
   ];
   // calcula el alto de cada fila
   const filas = pares.map((par) => {
@@ -1499,13 +1504,20 @@ function pintarLista() {
     const li = document.createElement('li');
     const info = document.createElement('div');
     info.className = 'info';
+    info.tabIndex = 0;
+    info.setAttribute('role', 'button');
     const titulo = document.createElement('strong');
     titulo.textContent = [t.datos.cliente || 'Sin cliente', t.datos.referencia].filter(Boolean).join(' · ');
     const sub = document.createElement('small');
     sub.textContent = [t.datos.telefono, t.datos.direccion, fechaLegible(t.datos.fecha)].filter(Boolean).join(' · ');
+    const est = document.createElement('span');
+    est.className = `estado est-${(t.datos.estado || 'Medido').toLowerCase().replace(/\s+/g, '-')}`;
+    est.textContent = t.datos.estado || 'Medido';
     info.append(titulo, sub);
     info.addEventListener('click', () => {
       guardar();
+      // se abre en Planos aunque se esté en Inicio o en Gestión
+      if (typeof irAPlanos === 'function') irAPlanos();
       abrir(t);
       dlgTrabajos.close();
     });
@@ -1521,6 +1533,8 @@ function pintarLista() {
       delete copia.presupuestoId;
       delete copia.clienteId;
       copia.datos.referencia = (copia.datos.referencia || '') + ' (copia)';
+      copia.datos.estado = 'Medido';
+      copia.datos.colocacion = '';
       copia.creado = copia.modificado = Date.now();
       escribirTrabajos([...leerTrabajos(), copia]);
       pintarLista();
@@ -1538,7 +1552,7 @@ function pintarLista() {
       }
       pintarLista();
     });
-    li.append(info, dup, del);
+    li.append(info, est, dup, del);
     ul.appendChild(li);
   }
 }

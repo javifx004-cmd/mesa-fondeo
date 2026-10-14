@@ -119,17 +119,42 @@ function pintarInicio() {
   const nombreCli = (id) => escapar((clientes[id] || {}).nombre || 'Sin cliente');
   $('#iniCobros').innerHTML = pendientes.slice(0, 6).map((d) => {
     const dias = diasEntre(d.fecha, hoyIso);
-    return `<li data-doc="${d.id}"><span><b>${nombreCli(d.clienteId)}</b><small>${escapar(d.numero)} · hace ${dias} ${dias === 1 ? 'día' : 'días'}</small></span>
-      <span class="ini-num ${dias > 30 ? 'baja' : ''}">${fmtEuro(totales(d).total)}</span></li>`;
+    return `<li data-doc="${d.id}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b><small>${escapar(d.numero)} · hace ${dias} ${dias === 1 ? 'día' : 'días'}</small></span>
+      <span class="ini-num ${dias > 30 ? 'baja' : ''}">${fmtEuro(totales(d).total)}</span>
+      <span class="ini-acc"><button type="button" data-cobrar="${d.id}" title="Marcar como cobrada">✓</button><button type="button" class="wa" data-wa="${d.id}" title="Recordar por WhatsApp">WA</button></span></li>`;
   }).join('') || vacio('No hay nada pendiente de cobro');
-  $('#iniPresus').innerHTML = presus.slice(0, 6).map((d) => `<li data-doc="${d.id}"><span><b>${nombreCli(d.clienteId)}</b>
+  $('#iniPresus').innerHTML = presus.slice(0, 6).map((d) => `<li data-doc="${d.id}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b>
     <small>${escapar(d.numero)} · ${fechaLegible(d.fecha)}</small></span><span class="ini-num">${fmtEuro(totales(d).total)}</span></li>`).join('')
     || vacio('No hay presupuestos pendientes');
   $('#iniTrabajos').innerHTML = trabajos.slice().sort((a, b) => (b.modificado || 0) - (a.modificado || 0)).slice(0, 6)
-    .map((t) => `<li data-trabajo="${escapar(t.id)}"><span><b>${escapar(t.datos.cliente || 'Sin cliente')}</b>
+    .map((t) => `<li data-trabajo="${escapar(t.id)}" tabindex="0" role="button"><span><b>${escapar(t.datos.cliente || 'Sin cliente')}</b>
       <small>${escapar([t.datos.material, t.datos.direccion].filter(Boolean).join(' · ') || 'Sin datos')}</small></span>
       <span class="ini-fecha">${new Date(t.modificado || t.creado || Date.now()).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span></li>`).join('')
     || vacio('Todavía no hay planos');
+
+  // seguimiento: cuántas cocinas hay en cada paso (las cobradas solo las de este año)
+  const cuenta = Object.fromEntries(ESTADOS_TRABAJO.map((e) => [e, 0]));
+  for (const t of trabajos) {
+    const e = ESTADOS_TRABAJO.includes(t.datos.estado) ? t.datos.estado : 'Medido';
+    if (e === 'Cobrado' && new Date(t.modificado || 0).getFullYear() !== anio) continue;
+    cuenta[e]++;
+  }
+  const maxEmbudo = Math.max(1, ...Object.values(cuenta));
+  $('#iniEmbudo').innerHTML = ESTADOS_TRABAJO.map((e, i) => `<button type="button" class="paso-embudo" data-estado="${e}">
+    <span class="pe-n">${cuenta[e]}</span><span class="pe-t">${e}</span>
+    <i class="pe-barra"><i style="height:${Math.max(6, cuenta[e] / maxEmbudo * 100)}%; opacity:${0.45 + i * 0.11}"></i></i></button>`).join('');
+
+  // agenda: colocaciones de hoy en adelante (y las atrasadas sin colocar)
+  const agenda = trabajos.filter((t) => t.datos.colocacion && !['Colocado', 'Cobrado'].includes(t.datos.estado))
+    .sort((a, b) => a.datos.colocacion.localeCompare(b.datos.colocacion)).slice(0, 6);
+  $('#iniAgenda').innerHTML = agenda.map((t) => {
+    const f = new Date(`${t.datos.colocacion}T12:00`);
+    const dias = diasEntre(hoyIso, t.datos.colocacion);
+    const cuando = dias < 0 ? `<b class="baja">atrasada ${-dias} ${dias === -1 ? 'día' : 'días'}</b>` : dias === 0 ? '<b>hoy</b>' : dias === 1 ? 'mañana' : `en ${dias} días`;
+    return `<li data-trabajo="${escapar(t.id)}" tabindex="0" role="button"><span class="cal"><b>${f.getDate()}</b><small>${MESES_CORTOS[f.getMonth()]}</small></span>
+      <span><b>${escapar(t.datos.cliente || 'Sin cliente')}</b><small>${escapar(t.datos.direccion || t.datos.material || '')}</small></span>
+      <span class="ini-fecha">${cuando}<br><small>${escapar(t.datos.estado || 'Medido')}</small></span></li>`;
+  }).join('') || vacio('Sin colocaciones previstas. Pon la fecha de colocación en la ficha del plano.');
 
   // mejores clientes del año
   const porCliente = {};
@@ -213,6 +238,18 @@ function pintarPlazo() {
 
 // Navegación desde Inicio
 vistaInicio.addEventListener('click', (e) => {
+  const cobrar = e.target.closest('[data-cobrar]');
+  if (cobrar) {
+    const d = leerDocs().find((x) => x.id === cobrar.dataset.cobrar);
+    if (d) { d.estado = 'Cobrada'; d.fechaCobro = hoy(); guardarDoc(d); aviso(`Factura ${d.numero} cobrada`); pintarInicio(); }
+    return;
+  }
+  const wa = e.target.closest('[data-wa]');
+  if (wa) {
+    const d = leerDocs().find((x) => x.id === wa.dataset.wa);
+    if (d) abrirWhatsApp(d);
+    return;
+  }
   const doc = e.target.closest('[data-doc]');
   if (doc) {
     const d = leerDocs().find((x) => x.id === doc.dataset.doc);
@@ -225,6 +262,8 @@ vistaInicio.addEventListener('click', (e) => {
     if (t) { irAPlanos(); abrir(t); }
     return;
   }
+  const pe = e.target.closest('[data-estado]');
+  if (pe) { $('#btnTrabajos').click(); $('#buscar').value = pe.dataset.estado; pintarLista(); return; }
   const b = e.target.closest('[data-ir]');
   if (!b) return;
   const ir = b.dataset.ir;
@@ -258,6 +297,16 @@ function irAPlanos() {
 $('#btnInicio').addEventListener('click', () => { if (vistaInicio.hidden) abrirInicio(); });
 $('#btnVistaPlanos').addEventListener('click', () => { if (vistaPlanos.hidden) irAPlanos(); });
 $('#btnGestion').addEventListener('click', salirDeInicio, { capture: true });
+
+// Teclado: Intro o espacio abren documentos, trabajos, clientes y gastos de las listas
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button][tabindex]:not(button)')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
+// tras usar la ventana de Trabajos (abrir, borrar, restaurar), Inicio se pone al día
+dlgTrabajos.addEventListener('close', () => { if (!vistaInicio.hidden) pintarInicio(); });
 
 // La app se abre en Inicio
 abrirInicio();
