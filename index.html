@@ -98,6 +98,8 @@
         <button type="button" data-ir="presupuesto"><svg class="ico"><use href="#i-doc"/></svg>Nuevo presupuesto</button>
         <button type="button" data-ir="gasto"><svg class="ico"><use href="#i-euro"/></svg>Apuntar gasto</button>
         <button type="button" data-ir="trabajos"><svg class="ico"><use href="#i-carpeta"/></svg>Trabajos</button>
+        <button type="button" data-ir="tarifas"><svg class="ico"><use href="#i-euro"/></svg>Tarifas</button>
+        <div class="redes" id="iniRedes"></div>
       </div>
     </section>
 
@@ -247,7 +249,7 @@
       <div class="toolbar" role="toolbar" aria-label="Herramientas de dibujo">
         <div class="tools">
           <div class="grupo-h" role="group" aria-label="Dibujar"><span class="grupo-t">Dibujar</span><div class="grupo-b">
-            <button type="button" data-tool="linea" class="active" title="Línea recta"><svg class="ico"><use href="#i-linea"/></svg><span>Línea</span></button>
+            <button type="button" data-tool="linea" title="Línea recta"><svg class="ico"><use href="#i-linea"/></svg><span>Línea</span></button>
             <button type="button" data-tool="lapiz" title="Dibujo a mano alzada"><svg class="ico"><use href="#i-lapiz"/></svg><span>Lápiz</span></button>
             <button type="button" data-tool="rect" title="Rectángulo"><svg class="ico"><use href="#i-rect"/></svg><span>Rect.</span></button>
             <button type="button" data-tool="texto" title="Texto"><svg class="ico"><use href="#i-texto"/></svg><span>Texto</span></button>
@@ -517,6 +519,9 @@
         <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
         <label>Correo <input name="email" type="email" autocomplete="off"></label>
         <label class="wide">IBAN (para las facturas) <input name="iban" autocomplete="off"></label>
+        <label>Página web <input name="web" autocomplete="off" placeholder="marmolescarbonell.es"></label>
+        <label>Instagram <input name="instagram" autocomplete="off" placeholder="@marmolescarbonell"></label>
+        <label>Facebook <input name="facebook" autocomplete="off" placeholder="marmolescarbonell"></label>
         <label>Tipo medio de IRPF estimado (%) <input name="irpfMedio" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label>QR de Hacienda en las facturas <select name="qr"><option value="">Sí</option><option value="no">No</option></select></label>
@@ -607,7 +612,22 @@
   </dialog>
 
   <dialog id="dlgGrupos" class="grande">
-    <div class="dlg-head"><h2>Colores y grupos</h2><button type="button" class="cerrar" data-close>✕</button></div>
+    <div class="dlg-head"><h2>Tarifas</h2><button type="button" class="cerrar" data-close>✕</button></div>
+    <section class="precio-rapido">
+      <h3>Precio rápido</h3>
+      <div class="pr-campos">
+        <label class="pr-material">Material <input id="prMaterial" list="listaMateriales" autocomplete="off" placeholder="Escribe el color o la marca"></label>
+        <label>Largo (cm) <input id="prLargo" type="number" inputmode="decimal" min="0" step="0.1" placeholder="320"></label>
+        <label>Fondo (cm) <input id="prFondo" type="number" inputmode="decimal" min="0" step="0.1" value="62"></label>
+        <label class="chk"><input type="checkbox" id="prCanto" checked> Frente con canto</label>
+      </div>
+      <p id="prResultado" class="pr-resultado"></p>
+    </section>
+    <details class="otros-precios">
+      <summary>Cantos, huecos, colocación y demás precios</summary>
+      <div id="listaConceptos"></div>
+    </details>
+    <h3 class="titulo-grupos">Colores y grupos</h3>
     <p class="ayuda">Todos los materiales de tu tarifa por marca y grupo. Toca un color para usarlo en el trabajo.
       Si tu proveedor saca un color nuevo, añádelo a su grupo con «+ Color» y tendrá los precios de ese grupo.</p>
     <div class="barra-filtros">

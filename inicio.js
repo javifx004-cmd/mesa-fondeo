@@ -62,6 +62,12 @@ function pintarInicio() {
   $('#iniFecha').textContent = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   $('#iniSaludo').textContent = `${saludo}, ${emp.nombre || nombreEmpresa()}`;
 
+  // --- web y redes de la empresa ---
+  const enlaces = enlacesEmpresa(emp);
+  $('#iniRedes').innerHTML = enlaces.length
+    ? enlaces.map((l) => `<a class="red red-${l.tipo}" href="${escapar(l.url)}" target="_blank" rel="noopener" title="${l.nombre}">${l.icono}<span>${l.nombre}</span></a>`).join('')
+    : '<button type="button" class="enlace-redes" data-ir="empresa">Añade tu web, Instagram y Facebook</button>';
+
   // --- cifras ---
   const base = (lista) => redondear(lista.reduce((s, d) => s + totales(d).base, 0));
   const factMes = base(delAnio.filter((d) => mesDe(d.fecha) === mes));
@@ -281,6 +287,8 @@ vistaInicio.addEventListener('click', (e) => {
   const ir = b.dataset.ir;
   if (ir === 'plano') { irAPlanos(); abrir(trabajoVacio()); aviso('Nuevo plano'); }
   if (ir === 'trabajos') $('#btnTrabajos').click();
+  if (ir === 'tarifas') { $('#dlgGrupos').dataset.modo = 'consulta'; $('#prMaterial').value = ''; $('#btnGrupos').click(); }
+  if (ir === 'empresa') abrirGestion('empresa');
   if (ir === 'factura' || ir === 'presupuesto') {
     abrirGestion('documentos');
     editarDoc(nuevoDoc(ir, { lineas: [{ concepto: '', cantidad: 1, unidad: 'ud', precio: '' }] }), true);
@@ -336,6 +344,22 @@ $('.barra-movil').addEventListener('click', (e) => {
   if (v === 'trabajos') $('#btnTrabajos').click();
   if (v === 'nuevo') { irAPlanos(); guardar(); abrir(trabajoVacio()); aviso('Nuevo plano'); }
 });
+
+// Enlaces a la web y redes sociales (se ponen en Mi empresa)
+function enlacesEmpresa(emp) {
+  const limpio = (v) => String(v || '').trim();
+  const res = [];
+  const web = limpio(emp.web);
+  if (web) res.push({ tipo: 'web', nombre: 'Web', url: /^https?:\/\//i.test(web) ? web : `https://${web}`,
+    icono: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>' });
+  const ig = limpio(emp.instagram);
+  if (ig) res.push({ tipo: 'instagram', nombre: 'Instagram', url: /^https?:\/\//i.test(ig) ? ig : `https://www.instagram.com/${ig.replace(/^@/, '')}/`,
+    icono: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>' });
+  const fb = limpio(emp.facebook);
+  if (fb) res.push({ tipo: 'facebook', nombre: 'Facebook', url: /^https?:\/\//i.test(fb) ? fb : `https://www.facebook.com/${fb.replace(/^@/, '')}`,
+    icono: '<svg viewBox="0 0 24 24"><path d="M15 3h-2a4 4 0 0 0-4 4v3H7v4h2v7h4v-7h3l1-4h-4V7a1 1 0 0 1 1-1h2z"/></svg>' });
+  return res;
+}
 
 // Buscador general: clientes, planos y documentos
 function buscarTodo(q) {

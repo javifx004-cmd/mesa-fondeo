@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '39';   // cambiar junto con CACHE en sw.js
+const VERSION = '40';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion'];
@@ -58,7 +58,7 @@ function hoy() {
 let trabajo = trabajoVacio();
 let historial = [];
 let rehacer = [];
-let herramienta = 'linea';
+let herramienta = null;   // ninguna hasta que se elige (así no se dibuja sin querer)
 let enCurso = null;        // elemento que se está dibujando
 let arrastre = null;       // { obj, ultimo } al mover
 let punteroActivo = null;
@@ -839,6 +839,7 @@ function anadir(o) {
 lienzo.addEventListener('pointerdown', async (e) => {
   if (punteroActivo !== null) return;   // ignora el segundo dedo
   if (e.button && e.button !== 0) return;
+  if (!herramienta) { aviso('Elige primero una herramienta: Línea, Rect., Cota…'); return; }
   e.preventDefault();
   const crudo = aLogico(e);
   const p = iman(crudo);
@@ -1047,10 +1048,16 @@ lienzo.addEventListener('pointercancel', terminarTrazo);
 // Barra de herramientas
 // ---------------------------------------------------------------------------
 $$('.tools [data-tool]').forEach((b) => b.addEventListener('click', () => {
-  herramienta = b.dataset.tool;
-  $$('.tools [data-tool]').forEach((x) => x.classList.toggle('active', x === b));
-  lienzo.style.cursor = { mover: 'move', borrar: 'not-allowed', editar: 'pointer', girar: 'pointer' }[herramienta] || 'crosshair';
+  // tocar otra vez la herramienta elegida la suelta
+  herramienta = herramienta === b.dataset.tool ? null : b.dataset.tool;
+  $$('.tools [data-tool]').forEach((x) => x.classList.toggle('active', x.dataset.tool === herramienta));
+  lienzo.style.cursor = !herramienta ? 'default'
+    : { mover: 'move', borrar: 'not-allowed', editar: 'pointer', girar: 'pointer' }[herramienta] || 'crosshair';
+  // sin herramienta, en el móvil el dedo mueve la página en vez de dibujar
+  lienzo.style.touchAction = herramienta ? 'none' : 'pan-y';
 }));
+lienzo.style.cursor = 'default';
+lienzo.style.touchAction = 'pan-y';
 
 $('#optRejilla').addEventListener('change', dibujar);
 $('#btnDeshacer').addEventListener('click', deshacer);

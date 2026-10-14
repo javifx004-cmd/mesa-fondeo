@@ -36,7 +36,8 @@ La app se abre en **Inicio**:
   - facturas por cobrar, presupuestos por aceptar y últimos planos (tócalos para abrirlos);
   - los mejores clientes del año y en qué se va el dinero.
 
-Toca cualquier cifra para ir a su detalle. Arriba, el **buscador** encuentra clientes, planos y documentos por nombre,
+Toca cualquier cifra para ir a su detalle. Los botones **Web**, **Instagram** y **Facebook** abren tus páginas (se ponen en
+Mi empresa) y salen también al pie de los documentos. **Tarifas** abre los precios con la calculadora de **precio rápido**. Arriba, el **buscador** encuentra clientes, planos y documentos por nombre,
 teléfono o número.
 
 ## 3. Hacer un trabajo (pestaña Planos)
@@ -55,7 +56,8 @@ teléfono o número.
 
 ### Paso 2 · Plano
 
-Elige una herramienta y dibuja con el dedo o el ratón. **Ampliar** pone el plano a pantalla completa;
+Al entrar no hay ninguna herramienta elegida (así no se dibuja sin querer y el dedo mueve la página). Elige una
+herramienta y dibuja con el dedo o el ratón; tocándola otra vez se suelta. **Ampliar** pone el plano a pantalla completa;
 en el móvil es mejor en horizontal.
 
 | Grupo | Herramienta | Cómo se usa |

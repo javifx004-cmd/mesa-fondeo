@@ -874,6 +874,8 @@ function componerDocumento(doc) {
     if (emp.iban) textoPie(`IBAN: ${emp.iban}`);
   }
   if (emp.pie) textoPie(emp.pie, '#5f6b75', 24);
+  const redes = [emp.web, emp.instagram && `Instagram ${emp.instagram.startsWith('@') ? emp.instagram : `@${emp.instagram.replace(/^.*instagram\.com\//, '').replace(/\/$/, '')}`}`].filter(Boolean).join(' · ');
+  if (redes) textoPie(redes, '#8c6a34', 24);
   if (doc.tipo === 'albaran') {
     const fx = W - M - 580;
     const fy = HOJA_H - M - reservaPie + 40;

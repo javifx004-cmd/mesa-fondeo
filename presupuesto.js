@@ -1032,6 +1032,13 @@ $('#listaGrupos').addEventListener('click', (e) => {
     return;
   }
   const mat = e.target.closest('[data-mat]');
+  if (mat && dlgGrupos.dataset.modo === 'consulta') {
+    // solo consultar precios: el color va a la calculadora, no al trabajo
+    $('#prMaterial').value = mat.dataset.mat;
+    pintarPrecioRapido();
+    dlgGrupos.querySelector('.precio-rapido').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   if (mat) {
     const campo = form.querySelector('[name="material"]');
     campo.value = mat.dataset.mat;
@@ -1040,3 +1047,37 @@ $('#listaGrupos').addEventListener('click', (e) => {
     aviso(`Material: ${mat.dataset.mat}`);
   }
 });
+
+// Precio rápido: material + medidas → precio al momento (con la misma regla de ml / m² que el presupuesto)
+function pintarPrecioRapido() {
+  const m = buscarMaterial($('#prMaterial').value);
+  const largo = Math.round((Number(String($('#prLargo').value).replace(',', '.')) || 0) * 10);
+  const fondo = Math.round((Number(String($('#prFondo').value).replace(',', '.')) || 0) * 10);
+  const out = $('#prResultado');
+  if (!m) { out.innerHTML = $('#prMaterial').value ? '<span class="mal-txt">Ese material no está en la tarifa: elígelo de la lista.</span>' : ''; return; }
+  // la lista de colores salta a la marca del material
+  if ($('#gruposMarca').value !== m.marca && !$('#gruposBuscar').value) { $('#gruposMarca').value = m.marca; pintarGrupos(); }
+  const precios = `<span>${escapar(etiquetaMaterial(m))}</span><span><b>${fmtEuro(m.ml)}</b> ml · <b>${fmtEuro(m.m2)}</b> m²${m.zocalo != null ? ` · zócalo ${fmtEuro(m.zocalo)} ml` : ''}</span>`;
+  if (!largo || !fondo) { out.innerHTML = precios; return; }
+  const porM2 = fondo >= FONDO_M2;
+  let base = porM2 ? r2(Math.round(largo * fondo / 1e4) / 100 * m.m2) : r2(largo / 1000 * m.ml);
+  const canto = $('#prCanto').checked ? conceptoCanto(trabajo.datos.canto) || conceptoCanto('Sencillo 2 cm') : null;
+  if (canto) base = r2(base + largo / 1000 * canto.precio);
+  out.innerHTML = `${precios}<span class="pr-total">${cm10(largo)} × ${cm10(fondo)} cm ${porM2 ? '(por m²)' : '(por ml)'}${canto ? ` + ${escapar(canto.concepto)}` : ''}:
+    <b>${fmtEuro(base)}</b> + IVA = <b>${fmtEuro(r2(base * (1 + IVA)))}</b></span>`;
+}
+const cm10 = (mm) => String(mm / 10).replace('.', ',');
+['#prMaterial', '#prLargo', '#prFondo', '#prCanto'].forEach((s) => $(s).addEventListener('input', pintarPrecioRapido));
+
+function pintarConceptos() {
+  const porCat = {};
+  for (const c of tarifas.conceptos) (porCat[c.categoria] ||= []).push(c);
+  $('#listaConceptos').innerHTML = Object.entries(porCat).map(([cat, l]) => `<section><h4>${escapar(cat)}</h4>
+    <ul>${l.map((c) => `<li><span>${escapar(c.concepto)}</span><b>${c.precio == null ? '—' : fmtEuro(c.precio)}</b></li>`).join('')}</ul></section>`).join('');
+}
+$('#btnGrupos').addEventListener('click', () => {
+  if (!$('#prMaterial').value && trabajo.datos.material) $('#prMaterial').value = trabajo.datos.material;
+  pintarPrecioRapido();
+  pintarConceptos();
+});
+dlgGrupos.addEventListener('close', () => { delete dlgGrupos.dataset.modo; });

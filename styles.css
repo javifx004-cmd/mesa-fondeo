@@ -997,3 +997,31 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .resultados small { color: var(--muted); }
 .resultados .ev-ico { flex: none; }
 .hero { overflow: visible; }
+
+/* --- Tarifas: precio rápido y otros precios --- */
+.precio-rapido { margin: 8px 0 10px; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(184, 149, 90, .45); background: linear-gradient(135deg, rgba(226, 201, 146, .16), transparent 70%); }
+.precio-rapido h3, .titulo-grupos { margin: 0 0 8px; font-family: var(--serif); font-size: 21px; }
+.titulo-grupos { margin-top: 14px; }
+.pr-campos { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+.pr-campos label:not(.chk) { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pr-campos input:not([type=checkbox]) { min-height: 42px; border: 1px solid var(--border); border-radius: 10px; background: var(--campo); color: var(--text); padding: 0 10px; font-size: 16px; width: 110px; }
+.pr-material { flex: 1; min-width: 220px; }
+.pr-material input { width: 100% !important; }
+.pr-resultado { display: flex; flex-direction: column; gap: 3px; margin: 10px 0 0; font-size: 14px; }
+.pr-resultado .pr-total { font-size: 16px; }
+.pr-resultado .pr-total b { font-family: var(--serif); font-size: 22px; color: var(--oro-osc); }
+.otros-precios > summary { cursor: pointer; font-weight: 700; color: var(--muted); padding: 4px 0; }
+#listaConceptos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 8px; }
+#listaConceptos h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+#listaConceptos ul { list-style: none; margin: 0; padding: 0; }
+#listaConceptos li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+/* --- Web y redes en Inicio --- */
+.redes { display: flex; gap: 6px; width: 100%; justify-content: flex-end; }
+.red { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; text-decoration: none; font-size: 13px; font-weight: 600;
+  color: #f4ead6; border: 1px solid rgba(226, 201, 146, .3); background: rgba(255, 255, 255, .05); }
+.red svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.red:hover { border-color: #e2c992; }
+.red-instagram:hover { background: linear-gradient(135deg, rgba(225, 48, 108, .35), rgba(252, 175, 69, .25)); }
+.red-facebook:hover { background: rgba(24, 119, 242, .3); }
+.enlace-redes { background: none; border: 0; color: rgba(226, 201, 146, .75); text-decoration: underline; font-size: 13px; min-height: 0; padding: 4px 0; }
+@media (max-width: 1100px) { .redes { justify-content: flex-start; } }
