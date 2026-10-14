@@ -840,3 +840,62 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .colores .color.extra { border-style: dashed; border-color: var(--oro); }
 .colores .color.extra i { font-style: normal; margin-left: 6px; color: #b4442f; font-weight: 700; }
 .colores .color.generico { font-style: italic; color: var(--muted); }
+
+/* =========================================================================
+   PRESENCIA: bienvenida, transiciones y barra inferior del móvil
+   ========================================================================= */
+#bienvenida {
+  position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: radial-gradient(80% 60% at 50% 40%, rgba(226, 201, 146, .18), transparent 70%), var(--veta-osc), #0d0c0b;
+  background-size: auto, cover, auto; color: #f1dcab; transition: opacity .5s ease, visibility .5s;
+}
+#bienvenida img { width: 96px; height: 96px; border-radius: 18px; box-shadow: 0 0 0 1px rgba(226, 201, 146, .5), 0 20px 50px rgba(0, 0, 0, .6); animation: aparecer .6s ease both; }
+#bienvenida b { font-family: var(--serif); font-size: 30px; letter-spacing: .2em; animation: aparecer .6s .1s ease both; }
+#bienvenida span { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: rgba(226, 201, 146, .75); animation: aparecer .6s .2s ease both; }
+#bienvenida.fuera { opacity: 0; visibility: hidden; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+#inicio:not([hidden]), #planos:not([hidden]), #gestion:not([hidden]) { animation: aparecer .35s ease both; }
+.kpi { animation: aparecer .45s ease both; }
+.kpi:nth-child(2) { animation-delay: .04s; } .kpi:nth-child(3) { animation-delay: .08s; } .kpi:nth-child(4) { animation-delay: .12s; }
+.kpi:nth-child(5) { animation-delay: .16s; } .kpi:nth-child(6) { animation-delay: .2s; } .kpi:nth-child(7) { animation-delay: .24s; } .kpi:nth-child(8) { animation-delay: .28s; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+.barra-movil { display: none; }
+@media (max-width: 720px) {
+  .vistas { display: none; }
+  .topbar { flex-wrap: nowrap; }
+  #btnTrabajos { display: none; }
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .barra-movil {
+    position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 15;
+    display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; gap: 2px; padding: 6px;
+    border-radius: 22px; background: rgba(13, 12, 11, .88); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(226, 201, 146, .25);
+  }
+  .barra-movil button {
+    flex-direction: column; gap: 2px; min-height: 52px; padding: 4px 0; border: 0; border-radius: 16px;
+    background: transparent; color: rgba(241, 226, 191, .7); font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  }
+  .barra-movil button .ico { width: 22px; height: 22px; }
+  .barra-movil button.active { color: #15130f; background: linear-gradient(135deg, #ecd5a0, #b8955a 55%, #8c6a34); }
+  .barra-movil button.nuevo { justify-self: center; width: 52px; height: 52px; border-radius: 50%; color: #15130f;
+    background: linear-gradient(135deg, #ecd5a0, #b8955a 55%, #8c6a34); box-shadow: 0 6px 18px rgba(184, 149, 90, .5); }
+  .barra-movil button.nuevo .ico { width: 26px; height: 26px; stroke-width: 2.4; }
+  #aviso { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .aviso-copia { bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+@media print { .barra-movil, #bienvenida { display: none !important; } }
+#bienvenida b { font-size: clamp(20px, 6.4vw, 30px); letter-spacing: .16em; text-align: center; padding: 0 16px; }
+#bienvenida span { text-align: center; padding: 0 16px; letter-spacing: .22em; }
+@media (max-width: 720px) {
+  .marca-txt { display: flex !important; }
+  .topbar h1 { font-size: 15px; letter-spacing: .1em; }
+  .marca-txt span { font-size: 9px; letter-spacing: .16em; }
+  #logoApp { height: 40px; }
+}
+@media (max-width: 380px) { .marca-txt span { display: none; } }
+@media (max-width: 720px) {
+  #btnNuevo { display: none; }
+  .marca { flex: 1; }
+  .topbar h1 { overflow: hidden; text-overflow: ellipsis; }
+}

@@ -13,6 +13,8 @@ La aplicación se abre desde su dirección web y se instala como una app más.
 
 Funciona sin internet, salvo el asistente con IA. Abajo del todo se ve el número de versión.
 
+**En el móvil**, abajo tienes la barra con Inicio, Planos, **+** (nuevo plano), Gestión y Trabajos.
+
 ## 2. Inicio: el negocio de un vistazo
 
 La app se abre en **Inicio**:
@@ -107,6 +109,9 @@ Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja c�
 - Tiene en cuenta el disco (5 mm), el borde de la tabla (10 mm), los zócalos y las tiras de los ingletes.
 - Las piezas más largas que la tabla se parten en trozos con junta (avisa).
 - **Respetar la veta** impide girar las piezas.
+- Prueba cientos de formas de colocar las piezas y elige la que gasta menos tablas.
+- Dice cuántas pedir: **«1 tabla y media»** cuando en la última basta media tabla (marca la línea de corte y lo que
+  sobra), o cuánto se usa de la última si hace falta entera.
 - Se ve el aprovechamiento y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
 
 ### Paso 4 · Enviar el plano

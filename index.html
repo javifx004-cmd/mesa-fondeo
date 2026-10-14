@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mármoles Carbonell · Planos</title>
   <meta name="description" content="Fichas y planos de encimeras para marmolistas">
-  <meta name="theme-color" content="#111316">
+  <meta name="theme-color" content="#0d0c0b">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="iconos/icono-180.png">
@@ -14,6 +15,11 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="bienvenida" aria-hidden="true">
+    <img src="logo.svg" alt="">
+    <b>MÁRMOLES CARBONELL</b>
+    <span>Planos · Presupuestos · Facturas</span>
+  </div>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-linea" viewBox="0 0 24 24"><path d="M4 20 20 4"/></symbol>
     <symbol id="i-lapiz" viewBox="0 0 24 24"><path d="M3 17c3-6 5 2 8-4s5 2 10-6"/></symbol>
@@ -34,6 +40,8 @@
     <symbol id="i-mover" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></symbol>
     <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
     <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5M4 10h9M4 14h9"/></symbol>
+    <symbol id="i-casa" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10"/></symbol>
+    <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
     <symbol id="i-borrar" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></symbol>
   </svg>
@@ -485,6 +493,14 @@
       </div>
     </section>
   </div>
+
+  <nav class="barra-movil" aria-label="Secciones">
+    <button type="button" data-ir-vista="inicio"><svg class="ico"><use href="#i-casa"/></svg><span>Inicio</span></button>
+    <button type="button" data-ir-vista="planos"><svg class="ico"><use href="#i-rect"/></svg><span>Planos</span></button>
+    <button type="button" class="nuevo" data-ir-vista="nuevo" aria-label="Nuevo plano"><svg class="ico"><use href="#i-mas"/></svg></button>
+    <button type="button" data-ir-vista="gestion"><svg class="ico"><use href="#i-doc"/></svg><span>Gestión</span></button>
+    <button type="button" data-ir-vista="trabajos"><svg class="ico"><use href="#i-carpeta"/></svg><span>Trabajos</span></button>
+  </nav>
 
   <div id="pie-app" class="contenido">
     <p class="ajustes"><a class="enlace" href="Manual-Carbonell-Planos.pdf" target="_blank" rel="noopener">Manual de uso (PDF)</a></p>

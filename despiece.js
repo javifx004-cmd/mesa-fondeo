@@ -73,16 +73,19 @@ function nuevaTabla(L, A) {
   return { libres: [{ x: 0, y: 0, w: L, h: A }], puestas: [] };
 }
 
-function buscarHueco(tabla, w, h, girar) {
+// Reglas para elegir hueco: lado corto (bssf), área (baf) o lo más pegado al principio de la tabla (izq),
+// que deja libre el final y permite usar media tabla.
+function buscarHueco(tabla, w, h, girar, regla = 'bssf') {
   let mejor = null;
   for (const r of tabla.libres) {
     for (const [pw, ph, rot] of girar ? [[w, h, false], [h, w, true]] : [[w, h, false]]) {
-      if (pw <= r.w && ph <= r.h) {
-        const corto = Math.min(r.w - pw, r.h - ph);
-        const largo = Math.max(r.w - pw, r.h - ph);
-        if (!mejor || corto < mejor.corto || (corto === mejor.corto && largo < mejor.largo)) {
-          mejor = { x: r.x, y: r.y, w: pw, h: ph, rot, corto, largo };
-        }
+      if (pw > r.w || ph > r.h) continue;
+      const corto = Math.min(r.w - pw, r.h - ph);
+      const largo = Math.max(r.w - pw, r.h - ph);
+      const puntos = regla === 'izq' ? [r.x + pw, r.y + ph]
+        : regla === 'baf' ? [r.w * r.h - pw * ph, corto] : [corto, largo];
+      if (!mejor || puntos[0] < mejor.p[0] || (puntos[0] === mejor.p[0] && puntos[1] < mejor.p[1])) {
+        mejor = { x: r.x, y: r.y, w: pw, h: ph, rot, p: puntos };
       }
     }
   }
@@ -104,6 +107,34 @@ function colocar(tabla, p) {
     && (a.x !== b.x || a.y !== b.y || a.w !== b.w || a.h !== b.h || j < i)));
 }
 
+// Coloca las piezas en el orden dado con una regla; devuelve las tablas usadas.
+function empaquetar(orden, regla, L, A, girar) {
+  const tablas = [];
+  const fuera = [];
+  for (const p of orden) {
+    const w = p.l + DISCO;
+    const h = p.a + DISCO;
+    let sitio = null;
+    let tabla = null;
+    for (const tb of tablas) {
+      sitio = buscarHueco(tb, w, h, girar, regla);
+      if (sitio) { tabla = tb; break; }
+    }
+    if (!sitio) {
+      tabla = nuevaTabla(L, A);
+      sitio = buscarHueco(tabla, w, h, girar, regla);
+      if (!sitio) { fuera.push(p); continue; }
+      tablas.push(tabla);
+    }
+    colocar(tabla, sitio);
+    tabla.puestas.push({ ...p, x: sitio.x + MARGEN, y: sitio.y + MARGEN, w: sitio.w - DISCO, h: sitio.h - DISCO, rot: sitio.rot });
+  }
+  return { tablas, fuera };
+}
+
+// Largo de tabla que hace falta en la última (para saber si basta media tabla)
+const largoUsado = (tabla) => Math.max(0, ...tabla.puestas.map((p) => p.x + p.w)) + MARGEN;
+
 function calcularDespiece(t) {
   const conf = confDespiece(t);
   if (!conf.l || !conf.a) return { conf, tablas: [], avisos: ['Pon la medida de la tabla.'], piezas: [] };
@@ -111,28 +142,43 @@ function calcularDespiece(t) {
   // se trabaja con las piezas engordadas con el disco, en la zona útil de la tabla
   const L = conf.l - 2 * MARGEN + DISCO;
   const A = conf.a - 2 * MARGEN + DISCO;
-  const orden = piezas.map((p) => ({ ...p })).sort((a, b) => Math.max(b.l, b.a) - Math.max(a.l, a.a) || b.l * b.a - a.l * a.a);
-  const tablas = [];
-  for (const p of orden) {
-    const w = p.l + DISCO;
-    const h = p.a + DISCO;
-    let sitio = null;
-    let tabla = null;
-    for (const tb of tablas) {
-      sitio = buscarHueco(tb, w, h, !conf.veta);
-      if (sitio) { tabla = tb; break; }
-    }
-    if (!sitio) {
-      tabla = nuevaTabla(L, A);
-      sitio = buscarHueco(tabla, w, h, !conf.veta);
-      if (!sitio) { avisos.push(`${p.nombre} (${p.l} × ${p.a}) no cabe en la tabla.`); continue; }
-      tablas.push(tabla);
-    }
-    colocar(tabla, sitio);
-    tabla.puestas.push({ ...p, x: sitio.x + MARGEN, y: sitio.y + MARGEN, w: sitio.w - DISCO, h: sitio.h - DISCO, rot: sitio.rot });
+  const girar = !conf.veta;
+  // se prueban muchas combinaciones de orden y regla y se queda la mejor:
+  // menos tablas, y en la última el menor largo usado (para poder pedir media tabla)
+  const ordenes = [
+    (a, b) => Math.max(b.l, b.a) - Math.max(a.l, a.a) || b.l * b.a - a.l * a.a,
+    (a, b) => b.l * b.a - a.l * a.a,
+    (a, b) => b.l - a.l || b.a - a.a,
+    (a, b) => b.a - a.a || b.l - a.l,
+    (a, b) => (b.l + b.a) - (a.l + a.a),
+  ].map((f) => piezas.map((p) => ({ ...p })).sort(f));
+  // unas cuantas mezclas fijas (siempre las mismas, para que el resultado no cambie)
+  let semilla = 7;
+  const azar = () => { semilla = (semilla * 16807) % 2147483647; return semilla / 2147483647; };
+  for (let k = 0; k < (piezas.length <= 14 ? 40 : 12); k++) {
+    const o = ordenes[1].map((p) => ({ ...p }));
+    for (let i = o.length - 1; i > 0; i--) { if (azar() < 0.35) { const j = Math.floor(azar() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } }
+    ordenes.push(o);
   }
+  let mejor = null;
+  for (const orden of ordenes) {
+    for (const regla of ['bssf', 'baf', 'izq']) {
+      const r = empaquetar(orden, regla, L, A, girar);
+      const ultimo = r.tablas.length ? largoUsado(r.tablas[r.tablas.length - 1]) : 0;
+      const nota = [r.fuera.length, r.tablas.length, ultimo];
+      const k = mejor ? nota.findIndex((v, i) => v !== mejor.nota[i]) : -1;
+      if (!mejor || (k >= 0 && nota[k] < mejor.nota[k])) mejor = { ...r, nota };
+    }
+  }
+  const tablas = mejor ? mejor.tablas : [];
+  for (const p of (mejor ? mejor.fuera : [])) avisos.push(`${p.nombre} (${p.l} × ${p.a}) no cabe en la tabla.`);
+  // la última tabla: ¿basta media?
+  const usadoUltima = tablas.length ? largoUsado(tablas[tablas.length - 1]) : 0;
+  const fraccion = conf.l ? usadoUltima / conf.l : 0;
+  const media = tablas.length > 0 && fraccion <= 0.5;
   const areaPiezas = piezas.reduce((s, p) => s + p.l * p.a, 0);
-  const areaTablas = tablas.length * conf.l * conf.a;
+  const tablasPedir = tablas.length ? tablas.length - 1 + (media ? 0.5 : 1) : 0;
+  const areaTablas = tablasPedir * conf.l * conf.a;
   // el trozo sobrante más grande (para aprovecharlo en otra obra)
   let sobrante = null;
   if (tablas.length) {
@@ -142,13 +188,27 @@ function calcularDespiece(t) {
       if (w > 0 && h > 0 && (!sobrante || w * h > sobrante.w * sobrante.h)) sobrante = { w, h };
     }
   }
-  return { conf, tablas, avisos, piezas, aprovechamiento: areaTablas ? areaPiezas / areaTablas : 0, m2: areaPiezas / 1e6, sobrante };
+  return {
+    conf, tablas, avisos, piezas, m2: areaPiezas / 1e6, sobrante,
+    aprovechamiento: areaTablas ? areaPiezas / areaTablas : 0,
+    media, fraccion, usadoUltima, tablasPedir, equivalente: conf.l * conf.a ? areaPiezas / (conf.l * conf.a) : 0,
+  };
+}
+
+// «1 tabla y media», «2 tablas», «media tabla»…
+function textoTablas(d) {
+  const n = d.tablas.length;
+  if (!n) return '';
+  const enteras = d.media ? n - 1 : n;
+  if (d.media && enteras === 0) return 'Media tabla';
+  if (d.media) return `${enteras} ${enteras === 1 ? 'tabla' : 'tablas'} y media`;
+  return `${enteras} ${enteras === 1 ? 'tabla' : 'tablas'}`;
 }
 
 // ---------------------------------------------------------------------------
 // Dibujo de una tabla
 // ---------------------------------------------------------------------------
-function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero) {
+function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero, media = false) {
   const esc = ancho / conf.l;
   const alto = conf.a * esc;
   // tabla con vetas suaves
@@ -205,7 +265,23 @@ function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero) {
   c.font = `700 ${tamLetra}px system-ui, sans-serif`;
   c.textAlign = 'left';
   c.textBaseline = 'bottom';
-  c.fillText(`Tabla ${numero}`, x0, y0 - 6);
+  c.fillText(media ? `Tabla ${numero} · media tabla` : `Tabla ${numero}`, x0, y0 - 6);
+  if (media) {
+    // la otra mitad no hace falta: se marca la línea de media tabla y se aclara lo que sobra
+    const xm = x0 + ancho / 2;
+    c.fillStyle = 'rgba(255, 255, 255, .55)';
+    c.fillRect(xm, y0, ancho / 2, alto);
+    c.setLineDash([Math.max(6, ancho / 90), Math.max(4, ancho / 140)]);
+    c.strokeStyle = '#b4442f';
+    c.lineWidth = Math.max(1.5, ancho / 450);
+    c.beginPath(); c.moveTo(xm, y0 - 4); c.lineTo(xm, y0 + alto + 4); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#b4442f';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = `600 ${tamLetra * 0.9}px system-ui, sans-serif`;
+    c.fillText('No hace falta (media tabla)', xm + ancho / 4, y0 + alto / 2, ancho / 2 - 20);
+  }
   c.restore();
   return alto;
 }
@@ -242,7 +318,9 @@ function pintarDespiece() {
     return;
   }
   const n = d.tablas.length;
-  res.innerHTML = `<b class="despiece-n">${n}</b> <span>${n === 1 ? 'tabla' : 'tablas'} de ${d.conf.l} × ${d.conf.a} mm</span>
+  const pct = Math.round(d.fraccion * 100);
+  res.innerHTML = `<b class="despiece-n">${textoTablas(d)}</b> <span>de ${d.conf.l} × ${d.conf.a} mm</span>
+    <span class="despiece-dato">${n > 1 || d.media ? `La ${n > 1 ? 'última' : 'tabla'} se usa <b>${Math.round(d.usadoUltima)} mm</b> de largo (${pct} %)${d.media ? ' · <b>basta media tabla</b>' : ''}` : ''}</span>
     <span class="despiece-dato">${d.piezas.length} piezas · ${d.m2.toLocaleString('es-ES', { maximumFractionDigits: 2 })} m²</span>
     <span class="despiece-dato">Aprovechamiento <b>${Math.round(d.aprovechamiento * 100)} %</b></span>
     ${d.sobrante ? `<span class="despiece-dato">Sobrante mayor ${Math.round(d.sobrante.w)} × ${Math.round(d.sobrante.h)}</span>` : ''}`;
@@ -259,7 +337,7 @@ function pintarDespiece() {
     cv.style.height = `${alto + 30}px`;
     const c = cv.getContext('2d');
     c.scale(dpr, dpr);
-    dibujarTabla(c, tb, d.conf, 1, 28, ancho - 2, i + 1);
+    dibujarTabla(c, tb, d.conf, 1, 28, ancho - 2, i + 1, d.media && i === d.tablas.length - 1);
     return cv;
   }));
 }
@@ -287,7 +365,7 @@ function componerDespiece() {
     c.font = '600 30px system-ui, sans-serif';
     c.textAlign = 'left';
     c.textBaseline = 'top';
-    c.fillText(`${trabajo.datos.material || 'Material sin elegir'} · ${d.tablas.length} ${d.tablas.length === 1 ? 'tabla' : 'tablas'} de ${d.conf.l} × ${d.conf.a} mm`, M, y, W - M * 2);
+    c.fillText(`${trabajo.datos.material || 'Material sin elegir'} · ${textoTablas(d).toLowerCase()} de ${d.conf.l} × ${d.conf.a} mm`, M, y, W - M * 2);
     y += 44;
     c.font = '400 26px system-ui, sans-serif';
     c.fillStyle = '#5f6b75';
@@ -295,7 +373,7 @@ function componerDespiece() {
       + `${d.conf.veta ? ' · respetando la veta' : ''} · B bancada, F frontal, Z zócalo, I tira de inglete`, M, y, W - M * 2);
     y += 70;
     for (const [k, tb] of d.tablas.slice(i, i + 3).entries()) {
-      y += dibujarTabla(c, tb, d.conf, M, y + 36, W - M * 2, i + k + 1) + 90;
+      y += dibujarTabla(c, tb, d.conf, M, y + 36, W - M * 2, i + k + 1, d.media && i + k === d.tablas.length - 1) + 90;
     }
     if (d.avisos.length && i + 3 >= d.tablas.length) {
       c.fillStyle = '#a35a00';

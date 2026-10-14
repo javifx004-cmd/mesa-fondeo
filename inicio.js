@@ -308,5 +308,30 @@ document.addEventListener('keydown', (e) => {
 // tras usar la ventana de Trabajos (abrir, borrar, restaurar), Inicio se pone al día
 dlgTrabajos.addEventListener('close', () => { if (!vistaInicio.hidden) pintarInicio(); });
 
+// Barra inferior del móvil: refleja la sección activa
+function marcarBarraMovil() {
+  const activa = !vistaInicio.hidden ? 'inicio' : !vistaPlanos.hidden ? 'planos' : 'gestion';
+  $$('.barra-movil [data-ir-vista]').forEach((b) => b.classList.toggle('active', b.dataset.irVista === activa));
+}
+new MutationObserver(marcarBarraMovil).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+$('.barra-movil').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ir-vista]');
+  if (!b) return;
+  const v = b.dataset.irVista;
+  if (v === 'inicio') $('#btnInicio').click();
+  if (v === 'planos') $('#btnVistaPlanos').click();
+  if (v === 'gestion') $('#btnGestion').click();
+  if (v === 'trabajos') $('#btnTrabajos').click();
+  if (v === 'nuevo') { irAPlanos(); guardar(); abrir(trabajoVacio()); aviso('Nuevo plano'); }
+});
+
+// Pantalla de bienvenida: solo un instante al abrir
+setTimeout(() => {
+  const b = $('#bienvenida');
+  b.classList.add('fuera');
+  setTimeout(() => b.remove(), 600);
+}, 650);
+
 // La app se abre en Inicio
 abrirInicio();
+marcarBarraMovil();
