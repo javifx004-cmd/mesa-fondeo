@@ -43,6 +43,8 @@ function geometriaPlantilla(v) {
   return p;
 }
 
+const cmTxt = (mm) => String(Math.round(mm) / 10).replace('.', ',');
+
 function aplicarPlantilla(v) {
   const piezasMm = geometriaPlantilla(v);
   const maxX = Math.max(...piezasMm.map((q) => q.x + q.w));
@@ -71,18 +73,18 @@ function aplicarPlantilla(v) {
       : q.frente === 'todo-menos-izq' ? ['abajo', 'arriba', 'derecha'] : [q.frente];
     if (v.canto) for (const l of vistos) objetos.push({ tipo: 'canto', a: lados[l][0], b: lados[l][1], color, w });
     // cotas
-    if (q.cota === 'arriba') objetos.push({ tipo: 'cota', a: P(q.x, q.y).map((n, i) => n - (i ? sep : 0)), b: P(q.x + q.w, q.y).map((n, i) => n - (i ? sep : 0)), texto: String(q.largo), color, w: 2 });
-    if (q.cota === 'abajo') objetos.push({ tipo: 'cota', a: P(q.x, q.y + q.h).map((n, i) => n + (i ? sep : 0)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? sep : 0)), texto: String(q.largo), color, w: 2 });
-    if (q.cota === 'izquierda') objetos.push({ tipo: 'cota', a: P(q.x, 0).map((n, i) => n - (i ? 0 : sep)), b: P(q.x, q.y + q.h).map((n, i) => n - (i ? 0 : sep)), texto: String(q.cotaTotal), color, w: 2 });
-    if (q.cota === 'derecha') objetos.push({ tipo: 'cota', a: P(q.x + q.w, 0).map((n, i) => n + (i ? 0 : sep)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? 0 : sep)), texto: String(q.cotaTotal), color, w: 2 });
+    if (q.cota === 'arriba') objetos.push({ tipo: 'cota', a: P(q.x, q.y).map((n, i) => n - (i ? sep : 0)), b: P(q.x + q.w, q.y).map((n, i) => n - (i ? sep : 0)), texto: cmTxt(q.largo), unidad: 'cm', color, w: 2 });
+    if (q.cota === 'abajo') objetos.push({ tipo: 'cota', a: P(q.x, q.y + q.h).map((n, i) => n + (i ? sep : 0)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? sep : 0)), texto: cmTxt(q.largo), unidad: 'cm', color, w: 2 });
+    if (q.cota === 'izquierda') objetos.push({ tipo: 'cota', a: P(q.x, 0).map((n, i) => n - (i ? 0 : sep)), b: P(q.x, q.y + q.h).map((n, i) => n - (i ? 0 : sep)), texto: cmTxt(q.cotaTotal), unidad: 'cm', color, w: 2 });
+    if (q.cota === 'derecha') objetos.push({ tipo: 'cota', a: P(q.x + q.w, 0).map((n, i) => n + (i ? 0 : sep)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? 0 : sep)), texto: cmTxt(q.cotaTotal), unidad: 'cm', color, w: 2 });
     if (q.isla) {
       // fondo de la isla o península
-      objetos.push({ tipo: 'cota', a: P(q.x + q.w, q.y).map((n, i) => n + (i ? 0 : sep)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? 0 : sep)), texto: String(q.h), color, w: 2 });
+      objetos.push({ tipo: 'cota', a: P(q.x + q.w, q.y).map((n, i) => n + (i ? 0 : sep)), b: P(q.x + q.w, q.y + q.h).map((n, i) => n + (i ? 0 : sep)), texto: cmTxt(q.h), unidad: 'cm', color, w: 2 });
     }
   }
   // fondo de la bancada
   const b0 = piezasMm[0];
-  objetos.push({ tipo: 'cota', a: P(b0.x + b0.w, b0.y).map((n, i) => n + (i ? 0 : sep)), b: P(b0.x + b0.w, b0.y + b0.h).map((n, i) => n + (i ? 0 : sep)), texto: String(b0.h), color, w: 2 });
+  objetos.push({ tipo: 'cota', a: P(b0.x + b0.w, b0.y).map((n, i) => n + (i ? 0 : sep)), b: P(b0.x + b0.w, b0.y + b0.h).map((n, i) => n + (i ? 0 : sep)), texto: cmTxt(b0.h), unidad: 'cm', color, w: 2 });
 
   // fregadero y vitro: el fregadero en el primer tramo (o en la isla), la vitro en el siguiente
   if (v.elementos) {
@@ -156,7 +158,8 @@ $('#btnPlantilla').addEventListener('click', () => {
 formPlantilla.addEventListener('submit', (e) => {
   if (e.submitter && e.submitter.value === 'cancel') return;
   const f = formPlantilla.elements;
-  const n = (k) => Math.round(Number(String(f[k].value).replace(',', '.')) || 0);
+  // se escribe en centímetros y se trabaja en milímetros
+  const n = (k) => Math.round((Number(String(f[k].value).replace(',', '.')) || 0) * 10);
   const v = {
     forma: f.forma.value, a: n('a'), b: n('b'), c: n('c'), fondo: n('fondo') || 620,
     islaL: n('islaL'), islaF: n('islaF') || 900, penL: n('penL'), penF: n('penF') || 900,
@@ -193,7 +196,7 @@ formPlantilla.addEventListener('submit', (e) => {
 function piezasDesdePlano(objetos) {
   const rects = objetos.filter((o) => o.tipo === 'rect').map((o) => ({ ...caja(o), mmW: o.mmW, mmH: o.mmH })).filter((r) => r.w > 8 && r.h > 8);
   const cotas = objetos.filter((o) => o.tipo === 'cota' && parseFloat(String(o.texto).replace(',', '.')) > 0)
-    .map((o) => ({ a: o.a, b: o.b, mm: parseFloat(String(o.texto).replace(',', '.')), lon: Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]) }))
+    .map((o) => ({ a: o.a, b: o.b, mm: parseFloat(String(o.texto).replace(',', '.')) * (o.unidad === 'cm' ? 10 : 1), lon: Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]) }))
     .filter((c) => c.lon > 5);
   if (!rects.length) return { error: 'No hay piezas dibujadas: dibuja cada pieza con «Rect.» (o usa una plantilla).' };
   // escala: de las cotas y de las piezas con medidas

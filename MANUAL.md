@@ -60,7 +60,7 @@ en el móvil es mejor en horizontal.
 | Grupo | Herramienta | Cómo se usa |
 |---|---|---|
 | Dibujar | Línea, Lápiz, Rect., Texto | La línea se endereza sola; el imán ajusta a la rejilla. |
-| Medir | Cota | Arrastra y escribe la medida en milímetros. |
+| Medir | Cota | Arrastra y escribe la medida en centímetros. |
 | Elementos | Vitro, Fregad. | Arrastra el rectángulo. En un tramo vertical salen girados. |
 | Elementos | Caja luz | Toca donde va el enchufe. |
 | Elementos | Columna | Arrastra y escribe la medida de cada lado que toca la encimera. |
@@ -73,7 +73,7 @@ en el móvil es mejor en horizontal.
 | Editar | Girar | Gira el fregadero o la vitro 90°. Los taladros van siempre al lado de la pared. |
 | Editar | Mover, Borrar | Toca el elemento. **↶ ↷** deshacen y rehacen. |
 
-**Medidas de las piezas:** al dibujar un rectángulo, la app pide su largo × fondo (ej. 3200x620) y le pone las
+**Medidas de las piezas:** al dibujar un rectángulo, la app pide su largo × fondo en centímetros (ej. 320x62) y le pone las
 cotas sola; se mueven con la pieza. Para cambiarlas, toca la pieza con **Editar**.
 
 ### Paso 3 · Presupuesto
@@ -106,12 +106,13 @@ color nuevo a su grupo, con los precios de ese grupo.
 Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja cómo cortarlas:
 
 - Elige el formato de tabla (Silestone, Dekton, Neolith, Compac, granito u otra medida). Sale solo según el material.
-- Tiene en cuenta el disco (5 mm), el borde de la tabla (10 mm), los zócalos y las tiras de los ingletes.
+- Todas las medidas van en **centímetros**.
+- Tiene en cuenta el disco (0,5 cm), el borde de la tabla (1 cm), los zócalos y las tiras de los ingletes.
 - Las piezas más largas que la tabla se parten en trozos con junta (avisa).
 - **Respetar la veta** impide girar las piezas.
 - Prueba cientos de formas de colocar las piezas y elige la que gasta menos tablas.
-- Dice cuántas pedir: **«1 tabla y media»** cuando en la última basta media tabla (marca la línea de corte y lo que
-  sobra), o cuánto se usa de la última si hace falta entera.
+- Dice cuántas pedir: **«1 tabla y media»** cuando lo de la última cabe en una **media tabla: una banda horizontal de
+  todo el largo y hasta 80 cm de ancho** (marca la línea de corte y lo que sobra), o cuánto ancho se usa de la última.
 - Se ve el aprovechamiento y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
 
 ### Paso 4 · Enviar el plano

@@ -6,16 +6,18 @@
 // y un margen en el borde de la tabla. Las piezas más largas que la tabla se parten.
 // ---------------------------------------------------------------------------
 const FORMATOS_TABLA = [
-  { id: '3000x1400', nombre: '3000 × 1400 · Silestone estándar', l: 3000, a: 1400 },
-  { id: '3250x1590', nombre: '3250 × 1590 · Silestone jumbo', l: 3250, a: 1590 },
-  { id: '3200x1440', nombre: '3200 × 1440 · Dekton', l: 3200, a: 1440 },
-  { id: '3200x1600', nombre: '3200 × 1600 · Neolith / porcelánico', l: 3200, a: 1600 },
-  { id: '3050x1440', nombre: '3050 × 1440 · Compac', l: 3050, a: 1440 },
-  { id: '3000x1800', nombre: '3000 × 1800 · Granito (aprox.)', l: 3000, a: 1800 },
+  { id: '3000x1400', nombre: '300 × 140 · Silestone estándar', l: 3000, a: 1400 },
+  { id: '3250x1590', nombre: '325 × 159 · Silestone jumbo', l: 3250, a: 1590 },
+  { id: '3200x1440', nombre: '320 × 144 · Dekton', l: 3200, a: 1440 },
+  { id: '3200x1600', nombre: '320 × 160 · Neolith / porcelánico', l: 3200, a: 1600 },
+  { id: '3050x1440', nombre: '305 × 144 · Compac', l: 3050, a: 1440 },
+  { id: '3000x1800', nombre: '300 × 180 · Granito (aprox.)', l: 3000, a: 1800 },
   { id: 'otro', nombre: 'Otra medida…', l: 0, a: 0 },
 ];
 const DISCO = 5;      // mm que se come cada corte
 const MARGEN = 10;    // mm de borde que se sanea en la tabla
+const MEDIA_BANDA = 800; // media tabla: banda horizontal de todo el largo y hasta 80 cm
+const cm = (mm) => String(Math.round(mm) / 10).replace('.', ',');
 
 function formatoPorMaterial(material) {
   const m = String(material || '').toLowerCase();
@@ -48,7 +50,7 @@ function piezasACortar(t, conf) {
     // más larga que la tabla: se parte en trozos iguales (con junta)
     const largoMax = conf.veta ? conf.l - 2 * MARGEN : util;
     const n = l > largoMax ? Math.ceil(l / largoMax) : 1;
-    if (n > 1) avisos.push(`${nombre} (${l} mm) no cabe entera: va en ${n} trozos con junta.`);
+    if (n > 1) avisos.push(`${nombre} (${cm(l)} cm) no cabe entera: va en ${n} trozos con junta.`);
     for (let k = 0; k < n; k++) res.push({ nombre: n > 1 ? `${nombre} (${k + 1}/${n})` : nombre, l: Math.ceil(l / n), a });
   };
   (t.piezas || []).forEach((p, i) => {
@@ -73,8 +75,8 @@ function nuevaTabla(L, A) {
   return { libres: [{ x: 0, y: 0, w: L, h: A }], puestas: [] };
 }
 
-// Reglas para elegir hueco: lado corto (bssf), área (baf) o lo más pegado al principio de la tabla (izq),
-// que deja libre el final y permite usar media tabla.
+// Reglas para elegir hueco: lado corto (bssf), área (baf) o lo más arriba posible (arriba),
+// que deja libre la parte de abajo y permite usar media tabla (banda horizontal).
 function buscarHueco(tabla, w, h, girar, regla = 'bssf') {
   let mejor = null;
   for (const r of tabla.libres) {
@@ -82,7 +84,7 @@ function buscarHueco(tabla, w, h, girar, regla = 'bssf') {
       if (pw > r.w || ph > r.h) continue;
       const corto = Math.min(r.w - pw, r.h - ph);
       const largo = Math.max(r.w - pw, r.h - ph);
-      const puntos = regla === 'izq' ? [r.x + pw, r.y + ph]
+      const puntos = regla === 'arriba' ? [r.y + ph, r.x + pw]
         : regla === 'baf' ? [r.w * r.h - pw * ph, corto] : [corto, largo];
       if (!mejor || puntos[0] < mejor.p[0] || (puntos[0] === mejor.p[0] && puntos[1] < mejor.p[1])) {
         mejor = { x: r.x, y: r.y, w: pw, h: ph, rot, p: puntos };
@@ -132,8 +134,8 @@ function empaquetar(orden, regla, L, A, girar) {
   return { tablas, fuera };
 }
 
-// Largo de tabla que hace falta en la última (para saber si basta media tabla)
-const largoUsado = (tabla) => Math.max(0, ...tabla.puestas.map((p) => p.x + p.w)) + MARGEN;
+// Ancho de tabla que hace falta en la última, de arriba abajo (para saber si basta media tabla)
+const altoUsado = (tabla) => Math.max(0, ...tabla.puestas.map((p) => p.y + p.h)) + DISCO;
 
 function calcularDespiece(t) {
   const conf = confDespiece(t);
@@ -162,22 +164,22 @@ function calcularDespiece(t) {
   }
   let mejor = null;
   for (const orden of ordenes) {
-    for (const regla of ['bssf', 'baf', 'izq']) {
+    for (const regla of ['bssf', 'baf', 'arriba']) {
       const r = empaquetar(orden, regla, L, A, girar);
-      const ultimo = r.tablas.length ? largoUsado(r.tablas[r.tablas.length - 1]) : 0;
+      const ultimo = r.tablas.length ? altoUsado(r.tablas[r.tablas.length - 1]) : 0;
       const nota = [r.fuera.length, r.tablas.length, ultimo];
       const k = mejor ? nota.findIndex((v, i) => v !== mejor.nota[i]) : -1;
       if (!mejor || (k >= 0 && nota[k] < mejor.nota[k])) mejor = { ...r, nota };
     }
   }
   const tablas = mejor ? mejor.tablas : [];
-  for (const p of (mejor ? mejor.fuera : [])) avisos.push(`${p.nombre} (${p.l} × ${p.a}) no cabe en la tabla.`);
+  for (const p of (mejor ? mejor.fuera : [])) avisos.push(`${p.nombre} (${cm(p.l)} × ${cm(p.a)} cm) no cabe en la tabla.`);
   // la última tabla: ¿basta media?
-  const usadoUltima = tablas.length ? largoUsado(tablas[tablas.length - 1]) : 0;
-  const fraccion = conf.l ? usadoUltima / conf.l : 0;
-  const media = tablas.length > 0 && fraccion <= 0.5;
+  const usadoUltima = tablas.length ? altoUsado(tablas[tablas.length - 1]) : 0;
+  const fraccion = conf.a ? usadoUltima / conf.a : 0;
+  const media = tablas.length > 0 && usadoUltima <= Math.min(MEDIA_BANDA, conf.a);
   const areaPiezas = piezas.reduce((s, p) => s + p.l * p.a, 0);
-  const tablasPedir = tablas.length ? tablas.length - 1 + (media ? 0.5 : 1) : 0;
+  const tablasPedir = tablas.length ? tablas.length - 1 + (media ? Math.min(MEDIA_BANDA, conf.a) / conf.a : 1) : 0;
   const areaTablas = tablasPedir * conf.l * conf.a;
   // el trozo sobrante más grande (para aprovecharlo en otra obra)
   let sobrante = null;
@@ -243,7 +245,7 @@ function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero, media = false) {
     c.lineWidth = Math.max(1, ancho / 700);
     c.strokeRect(px, py, pw, ph);
     // etiqueta: nombre y medida
-    const medida = `${p.l} × ${p.a}`;
+    const medida = `${cm(p.l)} × ${cm(p.a)}`;
     c.fillStyle = '#2a2116';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
@@ -267,20 +269,20 @@ function dibujarTabla(c, tabla, conf, x0, y0, ancho, numero, media = false) {
   c.textBaseline = 'bottom';
   c.fillText(media ? `Tabla ${numero} · media tabla` : `Tabla ${numero}`, x0, y0 - 6);
   if (media) {
-    // la otra mitad no hace falta: se marca la línea de media tabla y se aclara lo que sobra
-    const xm = x0 + ancho / 2;
-    c.fillStyle = 'rgba(255, 255, 255, .55)';
-    c.fillRect(xm, y0, ancho / 2, alto);
+    // media tabla: banda de arriba de hasta 80 cm; lo de abajo no hace falta
+    const ym = y0 + Math.min(MEDIA_BANDA, conf.a) * esc;
+    c.fillStyle = 'rgba(255, 255, 255, .6)';
+    c.fillRect(x0, ym, ancho, y0 + alto - ym);
     c.setLineDash([Math.max(6, ancho / 90), Math.max(4, ancho / 140)]);
     c.strokeStyle = '#b4442f';
     c.lineWidth = Math.max(1.5, ancho / 450);
-    c.beginPath(); c.moveTo(xm, y0 - 4); c.lineTo(xm, y0 + alto + 4); c.stroke();
+    c.beginPath(); c.moveTo(x0 - 4, ym); c.lineTo(x0 + ancho + 4, ym); c.stroke();
     c.setLineDash([]);
     c.fillStyle = '#b4442f';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.font = `600 ${tamLetra * 0.9}px system-ui, sans-serif`;
-    c.fillText('No hace falta (media tabla)', xm + ancho / 4, y0 + alto / 2, ancho / 2 - 20);
+    if (y0 + alto - ym > tamLetra * 1.6) c.fillText('No hace falta: media tabla (banda de 80 cm)', x0 + ancho / 2, (ym + y0 + alto) / 2, ancho - 20);
   }
   c.restore();
   return alto;
@@ -304,10 +306,10 @@ function pintarDespiece() {
   const d = calcularDespiece(trabajo);
   selFormato.value = d.conf.id;
   $('#tablaMedidaOtra').hidden = d.conf.id !== 'otro';
-  $('#tablaLargo').value = d.conf.id === 'otro' ? d.conf.l || '' : '';
-  $('#tablaAncho').value = d.conf.id === 'otro' ? d.conf.a || '' : '';
+  $('#tablaLargo').value = d.conf.id === 'otro' && d.conf.l ? d.conf.l / 10 : '';
+  $('#tablaAncho').value = d.conf.id === 'otro' && d.conf.a ? d.conf.a / 10 : '';
   $('#respetarVeta').checked = d.conf.veta;
-  $('#altoZocalo').value = d.conf.zocalo;
+  $('#altoZocalo').value = d.conf.zocalo / 10;
   const res = $('#despieceRes');
   const dib = $('#despieceDibujo');
   $('#btnDespiecePdf').hidden = !d.tablas.length;
@@ -318,12 +320,12 @@ function pintarDespiece() {
     return;
   }
   const n = d.tablas.length;
-  const pct = Math.round(d.fraccion * 100);
-  res.innerHTML = `<b class="despiece-n">${textoTablas(d)}</b> <span>de ${d.conf.l} × ${d.conf.a} mm</span>
-    <span class="despiece-dato">${n > 1 || d.media ? `La ${n > 1 ? 'última' : 'tabla'} se usa <b>${Math.round(d.usadoUltima)} mm</b> de largo (${pct} %)${d.media ? ' · <b>basta media tabla</b>' : ''}` : ''}</span>
+  res.innerHTML = `<b class="despiece-n">${textoTablas(d)}</b> <span>de ${cm(d.conf.l)} × ${cm(d.conf.a)} cm</span>
+    <span class="despiece-dato">${n > 1 || d.media ? `En la ${n > 1 ? 'última' : ''} tabla se usan <b>${cm(d.usadoUltima)} cm</b> de ancho`
+      + `${d.media ? ' · <b>basta media tabla</b> (banda de 80 cm)' : ''}` : ''}</span>
     <span class="despiece-dato">${d.piezas.length} piezas · ${d.m2.toLocaleString('es-ES', { maximumFractionDigits: 2 })} m²</span>
     <span class="despiece-dato">Aprovechamiento <b>${Math.round(d.aprovechamiento * 100)} %</b></span>
-    ${d.sobrante ? `<span class="despiece-dato">Sobrante mayor ${Math.round(d.sobrante.w)} × ${Math.round(d.sobrante.h)}</span>` : ''}`;
+    ${d.sobrante ? `<span class="despiece-dato">Sobrante mayor ${cm(d.sobrante.w)} × ${cm(d.sobrante.h)} cm</span>` : ''}`;
   $('#avisosDespiece').replaceChildren(...d.avisos.map((a) => Object.assign(document.createElement('li'), { textContent: a })));
   // dibujo
   const ancho = Math.max(280, dib.clientWidth || 600);
@@ -365,11 +367,11 @@ function componerDespiece() {
     c.font = '600 30px system-ui, sans-serif';
     c.textAlign = 'left';
     c.textBaseline = 'top';
-    c.fillText(`${trabajo.datos.material || 'Material sin elegir'} · ${textoTablas(d).toLowerCase()} de ${d.conf.l} × ${d.conf.a} mm`, M, y, W - M * 2);
+    c.fillText(`${trabajo.datos.material || 'Material sin elegir'} · ${textoTablas(d).toLowerCase()} de ${cm(d.conf.l)} × ${cm(d.conf.a)} cm`, M, y, W - M * 2);
     y += 44;
     c.font = '400 26px system-ui, sans-serif';
     c.fillStyle = '#5f6b75';
-    c.fillText(`Aprovechamiento ${Math.round(d.aprovechamiento * 100)} % · disco ${DISCO} mm · margen ${MARGEN} mm`
+    c.fillText(`Aprovechamiento ${Math.round(d.aprovechamiento * 100)} % · disco ${DISCO / 10} cm · margen ${MARGEN / 10} cm`
       + `${d.conf.veta ? ' · respetando la veta' : ''} · B bancada, F frontal, Z zócalo, I tira de inglete`, M, y, W - M * 2);
     y += 70;
     for (const [k, tb] of d.tablas.slice(i, i + 3).entries()) {
@@ -387,10 +389,10 @@ function componerDespiece() {
 }
 
 selFormato.addEventListener('change', () => guardarConfDespiece({ formato: selFormato.value }));
-$('#tablaLargo').addEventListener('change', (e) => guardarConfDespiece({ formato: 'otro', largo: Number(e.target.value) || 0 }));
-$('#tablaAncho').addEventListener('change', (e) => guardarConfDespiece({ formato: 'otro', ancho: Number(e.target.value) || 0 }));
+$('#tablaLargo').addEventListener('change', (e) => guardarConfDespiece({ formato: 'otro', largo: Math.round(Number(e.target.value) * 10) || 0 }));
+$('#tablaAncho').addEventListener('change', (e) => guardarConfDespiece({ formato: 'otro', ancho: Math.round(Number(e.target.value) * 10) || 0 }));
 $('#respetarVeta').addEventListener('change', (e) => guardarConfDespiece({ veta: e.target.checked }));
-$('#altoZocalo').addEventListener('change', (e) => guardarConfDespiece({ zocalo: Number(e.target.value) || 50 }));
+$('#altoZocalo').addEventListener('change', (e) => guardarConfDespiece({ zocalo: Math.round(Number(e.target.value) * 10) || 50 }));
 $('#btnDespiecePdf').addEventListener('click', async () => {
   await logoListo();
   const nombre = nombreArchivo().replace(/^plano_/, 'despiece_');

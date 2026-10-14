@@ -202,20 +202,21 @@ function calcular(t) {
   piezas.forEach((p, i) => {
     const largo = Number(p.largo) || 0;
     const fondo = Number(p.fondo) || 0;
-    const nombre = `${TIPOS_PIEZA[p.tipo] || 'Pieza'} ${largo} × ${p.tipo === 'zocalo' ? '' : fondo}`.trim();
+    const cm = (mm) => String(mm / 10).replace('.', ',');
+    const nombre = p.tipo === 'zocalo' ? `Zócalo ${cm(largo)} cm` : `${TIPOS_PIEZA[p.tipo] || 'Pieza'} ${cm(largo)} × ${cm(fondo)} cm`;
     if (!largo || (p.tipo !== 'zocalo' && !fondo)) {
       avisos.push(`Pieza ${i + 1}: faltan medidas.`);
       return;
     }
     if (!material) {
       // sin material reconocido la pieza pasa igual (a 0 €) para que no se pierda en albaranes y facturas
-      if (p.tipo === 'zocalo') linea(`Zócalo ${largo} mm`, largo / 1000, 'ml', 0);
+      if (p.tipo === 'zocalo') linea(nombre, largo / 1000, 'ml', 0);
       else if (fondo >= FONDO_M2) linea(`${nombre} (por m²)`, Math.round(largo * fondo / 1e4) / 100, 'm²', 0);
       else linea(nombre, largo / 1000, 'ml', 0);
     } else {
       if (p.tipo === 'zocalo') {
         if (material.zocalo == null) avisos.push(`${material.material} no tiene precio de zócalo en la tarifa: el zócalo no se ha sumado.`);
-        else linea(`Zócalo ${largo} mm`, largo / 1000, 'ml', material.zocalo);
+        else linea(nombre, largo / 1000, 'ml', material.zocalo);
       } else if (fondo >= FONDO_M2) {
         linea(`${nombre} (por m²)`, Math.round(largo * fondo / 1e4) / 100, 'm²', material.m2);
       } else {
@@ -302,8 +303,8 @@ function pintarPresupuesto() {
         <select data-k="tipo" aria-label="Tipo de pieza">
           ${Object.entries(TIPOS_PIEZA).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}
         </select>
-        <label>Largo (mm)<input data-k="largo" type="number" inputmode="numeric" min="0"></label>
-        <label${esZocalo ? ' hidden' : ''}>${p.tipo === 'frontal' ? 'Alto' : 'Fondo'} (mm)<input data-k="fondo" type="number" inputmode="numeric" min="0"></label>
+        <label>Largo (cm)<input data-k="largo" type="number" inputmode="decimal" min="0" step="0.1"></label>
+        <label${esZocalo ? ' hidden' : ''}>${p.tipo === 'frontal' ? 'Alto' : 'Fondo'} (cm)<input data-k="fondo" type="number" inputmode="decimal" min="0" step="0.1"></label>
         <button type="button" class="quitar" title="Quitar pieza" aria-label="Quitar pieza">✕</button>
       </div>
       <div class="pieza-cantos"${esZocalo ? ' hidden' : ''}>
@@ -314,8 +315,9 @@ function pintarPresupuesto() {
         <label class="chk"><input type="checkbox" data-k="der"> Lado der.</label>
       </div>`;
     fila.querySelector('[data-k="tipo"]').value = p.tipo || 'bancada';
-    fila.querySelector('[data-k="largo"]').value = p.largo || '';
-    fila.querySelector('[data-k="fondo"]').value = p.fondo || '';
+    // se guardan en milímetros y se ven en centímetros
+    fila.querySelector('[data-k="largo"]').value = p.largo ? p.largo / 10 : '';
+    fila.querySelector('[data-k="fondo"]').value = p.fondo ? p.fondo / 10 : '';
     for (const k of ['frente', 'trasera', 'izq', 'der']) fila.querySelector(`[data-k="${k}"]`).checked = !!p[k];
     cont.appendChild(fila);
   });
@@ -367,7 +369,8 @@ $('#listaPiezas').addEventListener('input', (e) => {
   if (!fila || !el.dataset.k) return;
   const p = trabajo.piezas[Number(fila.dataset.i)];
   const k = el.dataset.k;
-  p[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (el.value === '' ? '' : Number(el.value)) : el.value;
+  p[k] = el.type === 'checkbox' ? el.checked
+    : el.type === 'number' ? (el.value === '' ? '' : Math.round(Number(String(el.value).replace(',', '.')) * 10)) : el.value;
   if (k === 'tipo') {
     if (p.tipo === 'frontal') { p.frente = p.trasera = p.izq = p.der = false; }
     pintarPresupuesto();

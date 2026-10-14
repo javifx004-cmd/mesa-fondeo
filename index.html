@@ -185,7 +185,7 @@
             <input name="vitro" list="listaVitro" autocomplete="off" placeholder="Encastrada, enrasada…">
           </label>
           <label>Medida (ancho × fondo)
-            <input name="vitroMedida" autocomplete="off" placeholder="Ej. 560 × 490">
+            <input name="vitroMedida" autocomplete="off" placeholder="Ej. 56 × 49">
           </label>
         </fieldset>
         <fieldset class="wide grupo">
@@ -194,7 +194,7 @@
             <input name="fregadero" list="listaFregadero" autocomplete="off" placeholder="Bajo encimera…">
           </label>
           <label>Medida (ancho × fondo)
-            <input name="fregaMedida" autocomplete="off" placeholder="Ej. 760 × 430">
+            <input name="fregaMedida" autocomplete="off" placeholder="Ej. 76 × 43">
           </label>
           <label>Radio de esquinas
             <input name="fregaRadio" autocomplete="off" placeholder="Ej. R15">
@@ -334,10 +334,10 @@
         <div class="despiece-opc">
           <label>Tabla <select id="formatoTabla"></select></label>
           <span id="tablaMedidaOtra" hidden>
-            <label>Largo <input id="tablaLargo" type="number" inputmode="numeric" min="500" step="10" placeholder="mm"></label>
-            <label>Ancho <input id="tablaAncho" type="number" inputmode="numeric" min="300" step="10" placeholder="mm"></label>
+            <label>Largo (cm) <input id="tablaLargo" type="number" inputmode="decimal" min="50" step="0.5" placeholder="cm"></label>
+            <label>Ancho (cm) <input id="tablaAncho" type="number" inputmode="decimal" min="30" step="0.5" placeholder="cm"></label>
           </span>
-          <label>Alto zócalo <input id="altoZocalo" type="number" inputmode="numeric" min="10" step="5" value="50"></label>
+          <label>Alto zócalo (cm) <input id="altoZocalo" type="number" inputmode="decimal" min="1" step="0.5" value="5"></label>
           <label class="chk"><input type="checkbox" id="respetarVeta"> Respetar la veta (no girar piezas)</label>
         </div>
         <p id="despieceRes" class="despiece-res"></p>
@@ -549,17 +549,17 @@
   <dialog id="dlgPlantilla">
     <form id="formPlantilla" method="dialog">
       <div class="dlg-head"><h2>Plantilla de cocina</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
-      <p class="ayuda">Elige la forma y pon las medidas en milímetros, a lo largo de la pared. La app dibuja el plano con sus cotas y rellena las piezas del presupuesto.</p>
+      <p class="ayuda">Elige la forma y pon las medidas en centímetros, a lo largo de la pared. La app dibuja el plano con sus cotas y rellena las piezas del presupuesto.</p>
       <div class="formas" id="formasPlantilla"></div>
       <div class="grid medidas-plantilla">
-        <label data-campo="a">Tramo de la pared del fondo <input name="a" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 3200"></label>
-        <label data-campo="b">Tramo de la pared izquierda <input name="b" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 2400"></label>
-        <label data-campo="c">Tramo de la pared derecha <input name="c" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 1800"></label>
-        <label>Fondo de la bancada <input name="fondo" type="number" inputmode="numeric" min="300" step="1" value="620"></label>
-        <label data-campo="isla">Isla: largo <input name="islaL" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 2000"></label>
-        <label data-campo="isla">Isla: fondo <input name="islaF" type="number" inputmode="numeric" min="300" step="1" value="900"></label>
-        <label data-campo="pen">Península: largo <input name="penL" type="number" inputmode="numeric" min="300" step="1" placeholder="Ej. 1600"></label>
-        <label data-campo="pen">Península: fondo <input name="penF" type="number" inputmode="numeric" min="300" step="1" value="900"></label>
+        <label data-campo="a">Tramo de la pared del fondo <input name="a" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 320"></label>
+        <label data-campo="b">Tramo de la pared izquierda <input name="b" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 240"></label>
+        <label data-campo="c">Tramo de la pared derecha <input name="c" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 180"></label>
+        <label>Fondo de la bancada <input name="fondo" type="number" inputmode="decimal" min="30" step="0.1" value="62"></label>
+        <label data-campo="isla">Isla: largo <input name="islaL" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 200"></label>
+        <label data-campo="isla">Isla: fondo <input name="islaF" type="number" inputmode="decimal" min="30" step="0.1" value="90"></label>
+        <label data-campo="pen">Península: largo <input name="penL" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 160"></label>
+        <label data-campo="pen">Península: fondo <input name="penF" type="number" inputmode="decimal" min="30" step="0.1" value="90"></label>
       </div>
       <div class="casillas-plantilla">
         <label class="chk"><input type="checkbox" name="canto" checked> Frentes con canto visto</label>
@@ -576,7 +576,7 @@
   <dialog id="dlgColumna">
     <form method="dialog">
       <h2>Medidas de la columna</h2>
-      <p class="ayuda">Medida en mm de cada lado que toca la encimera. Deja vacío el lado que no toca.</p>
+      <p class="ayuda">Medida en cm de cada lado que toca la encimera. Deja vacío el lado que no toca.</p>
       <div class="cruz">
         <input id="colArriba" inputmode="numeric" autocomplete="off" placeholder="Arriba" aria-label="Lado de arriba">
         <input id="colIzq" inputmode="numeric" autocomplete="off" placeholder="Izq." aria-label="Lado izquierdo">
