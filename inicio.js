@@ -95,14 +95,14 @@ function pintarInicio() {
   $('#iniKpis').innerHTML = [
     kpi(`Facturado en ${MESES[mes].toLowerCase()}`, euroCorto(factMes),
       variacion === null ? 'sin IVA' : `<b class="${variacion >= 0 ? 'sube' : 'baja'}">${variacion >= 0 ? '▲' : '▼'} ${Math.abs(variacion)} %</b> frente al mes pasado`, 'destacado', 'balance'),
-    kpi(`Facturado en ${anio}`, euroCorto(factAnio), `${delAnio.length} facturas · sin IVA`, '', 'balance'),
+    kpi(`Facturado en ${anio}`, euroCorto(factAnio), `${delAnio.length} ${delAnio.length === 1 ? 'factura' : 'facturas'} · sin IVA`, '', 'balance'),
     kpi('Pendiente de cobro', euroCorto(pendiente),
-      pendientes.length ? `${pendientes.length} facturas${vencidas ? ` · <b class="baja">${vencidas} con más de 30 días</b>` : ''}` : 'todo cobrado', pendiente ? 'aviso' : '', 'cobros'),
+      pendientes.length ? `${pendientes.length} ${pendientes.length === 1 ? 'factura' : 'facturas'}${vencidas ? ` · <b class="baja">${vencidas} con más de 30 días</b>` : ''}` : 'todo cobrado', pendiente ? 'aviso' : '', 'cobros'),
     kpi(`IVA del ${trim}.º trimestre`, euroCorto(Math.max(0, iva.resultado)),
       iva.resultado < 0 ? `a compensar ${fmtEuro(-iva.resultado)}` : 'a pagar (modelo 303)', '', 'impuestos'),
     kpi(`IRPF del ${trim}.º trimestre`, euroCorto(irpf ? irpf.pago : 0), 'pago a cuenta (modelo 130)', '', 'impuestos'),
     kpi(`Te queda limpio en ${anio}`, euroCorto(limpioAnio), 'después de gastos e IRPF aprox.', 'oro', 'impuestos'),
-    kpi('Presupuestos por aceptar', euroCorto(redondear(presus.reduce((s, d) => s + totales(d).base, 0))), `${presus.length} presupuestos`, '', 'presupuestos'),
+    kpi('Presupuestos por aceptar', euroCorto(redondear(presus.reduce((s, d) => s + totales(d).base, 0))), `${presus.length} ${presus.length === 1 ? 'presupuesto' : 'presupuestos'}`, '', 'presupuestos'),
     kpi(`Gastos de ${MESES[mes].toLowerCase()}`, euroCorto(gastosMes), `${trabajosMes} planos nuevos este mes`, '', 'gastos'),
   ].join('');
 
@@ -337,12 +337,54 @@ $('.barra-movil').addEventListener('click', (e) => {
   if (v === 'nuevo') { irAPlanos(); guardar(); abrir(trabajoVacio()); aviso('Nuevo plano'); }
 });
 
-// Pantalla de bienvenida: solo un instante al abrir
-setTimeout(() => {
+// Buscador general: clientes, planos y documentos
+function buscarTodo(q) {
+  const t = normalizar(q);
+  if (t.length < 2) return [];
+  const res = [];
+  for (const c of leerClientes()) {
+    if (normalizar(`${c.nombre} ${c.telefono} ${c.nif} ${c.direccion} ${c.email}`).includes(t)) res.push({ tipo: 'cliente', id: c.id, titulo: c.nombre, sub: [c.telefono, c.poblacion || c.direccion].filter(Boolean).join(' · ') });
+  }
+  for (const tr of leerTrabajos()) {
+    const d = tr.datos;
+    if (normalizar(`${d.cliente} ${d.telefono} ${d.direccion} ${d.referencia} ${d.material}`).includes(t)) res.push({ tipo: 'plano', id: tr.id, titulo: `Plano · ${d.cliente || 'Sin cliente'}`, sub: [d.material, d.direccion, d.estado].filter(Boolean).join(' · ') });
+  }
+  const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c.nombre]));
+  for (const d of leerDocs()) {
+    if (normalizar(`${d.numero} ${clientes[d.clienteId] || ''} ${d.notas}`).includes(t)) res.push({ tipo: 'doc', id: d.id, titulo: `${nombreTipoDoc(d)} ${d.numero}`, sub: `${clientes[d.clienteId] || ''} · ${fmtEuro(totales(d).total)} · ${d.estado}` });
+  }
+  return res.slice(0, 12);
+}
+$('#iniBuscar').addEventListener('input', (e) => {
+  const res = buscarTodo(e.target.value);
+  const ul = $('#iniResultados');
+  ul.hidden = !e.target.value.trim();
+  const ico = { cliente: '👤', plano: '📐', doc: '📄' };
+  ul.innerHTML = res.map((r) => `<li data-res="${r.tipo}" data-id="${escapar(r.id)}" tabindex="0" role="button"><span class="ev-ico">${ico[r.tipo]}</span>
+    <span><b>${escapar(r.titulo)}</b><small>${escapar(r.sub || '')}</small></span></li>`).join('') || '<li class="vacio">Sin resultados</li>';
+});
+$('#iniResultados').addEventListener('click', (e) => {
+  const li = e.target.closest('[data-res]');
+  if (!li) return;
+  e.stopPropagation();
+  const { res, id } = li.dataset;
+  $('#iniBuscar').value = '';
+  $('#iniResultados').hidden = true;
+  if (res === 'plano') { const t = leerTrabajos().find((x) => x.id === id); if (t) { irAPlanos(); abrir(t); } }
+  if (res === 'doc') { const d = leerDocs().find((x) => x.id === id); if (d) { abrirGestion('documentos'); editarDoc(d); } }
+  if (res === 'cliente') { const c = clientePorId(id); abrirGestion('clientes'); if (c) editarCliente(c); }
+});
+
+// Pantalla de bienvenida: 5 segundos al abrir (tocándola se pasa antes)
+function quitarBienvenida() {
   const b = $('#bienvenida');
+  if (!b || b.classList.contains('fuera')) return;
   b.classList.add('fuera');
   setTimeout(() => b.remove(), 600);
-}, 2200);
+  document.dispatchEvent(new Event('bienvenida-fuera'));
+}
+setTimeout(quitarBienvenida, 5000);
+$('#bienvenida').addEventListener('click', quitarBienvenida);
 
 // La app se abre en Inicio
 abrirInicio();

@@ -85,7 +85,7 @@ function buscarHueco(tabla, w, h, girar, regla = 'bssf') {
       const corto = Math.min(r.w - pw, r.h - ph);
       const largo = Math.max(r.w - pw, r.h - ph);
       const puntos = regla === 'arriba' ? [r.y + ph, r.x + pw]
-        : regla === 'baf' ? [r.w * r.h - pw * ph, corto] : [corto, largo];
+        : regla === 'baf' ? [r.w * r.h - pw * ph, corto] : regla === 'blsf' ? [largo, corto] : [corto, largo];
       if (!mejor || puntos[0] < mejor.p[0] || (puntos[0] === mejor.p[0] && puntos[1] < mejor.p[1])) {
         mejor = { x: r.x, y: r.y, w: pw, h: ph, rot, p: puntos };
       }
@@ -145,8 +145,9 @@ function calcularDespiece(t) {
   const L = conf.l - 2 * MARGEN + DISCO;
   const A = conf.a - 2 * MARGEN + DISCO;
   const girar = !conf.veta;
-  // se prueban muchas combinaciones de orden y regla y se queda la mejor:
-  // menos tablas, y en la última el menor largo usado (para poder pedir media tabla)
+  // Búsqueda: muchas combinaciones de orden y regla, y después mejora local (intercambios del mejor orden).
+  // Se queda la que usa menos tablas; a igualdad, la que permite media tabla, la que menos alto usa de la
+  // última y la que deja el recorte aprovechable más grande.
   const ordenes = [
     (a, b) => Math.max(b.l, b.a) - Math.max(a.l, a.a) || b.l * b.a - a.l * a.a,
     (a, b) => b.l * b.a - a.l * a.a,
@@ -154,23 +155,42 @@ function calcularDespiece(t) {
     (a, b) => b.a - a.a || b.l - a.l,
     (a, b) => (b.l + b.a) - (a.l + a.a),
   ].map((f) => piezas.map((p) => ({ ...p })).sort(f));
-  // unas cuantas mezclas fijas (siempre las mismas, para que el resultado no cambie)
-  let semilla = 7;
+  let semilla = 7;   // siempre las mismas mezclas, para que el resultado no cambie entre aparatos
   const azar = () => { semilla = (semilla * 16807) % 2147483647; return semilla / 2147483647; };
-  for (let k = 0; k < (piezas.length <= 14 ? 40 : 12); k++) {
-    const o = ordenes[1].map((p) => ({ ...p }));
-    for (let i = o.length - 1; i > 0; i--) { if (azar() < 0.35) { const j = Math.floor(azar() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } }
-    ordenes.push(o);
-  }
+  const reglas = ['bssf', 'baf', 'blsf', 'arriba'];
+  const bandaMax = Math.min(MEDIA_BANDA, conf.a);
+  const valorar = (r) => {
+    const ultimo = r.tablas.length ? altoUsado(r.tablas[r.tablas.length - 1]) : 0;
+    let recorte = 0;
+    for (const tb of r.tablas) for (const f of tb.libres) if (Math.min(f.w, f.h) >= 300) recorte = Math.max(recorte, f.w * f.h);
+    return [r.fuera.length, r.tablas.length, ultimo <= bandaMax ? 0 : 1, Math.round(ultimo / 10), -recorte];
+  };
+  const mejorQue = (a, b) => { const k = a.findIndex((v, i) => v !== b[i]); return k >= 0 && a[k] < b[k]; };
   let mejor = null;
-  for (const orden of ordenes) {
-    for (const regla of ['bssf', 'baf', 'arriba']) {
+  const probar = (orden) => {
+    for (const regla of reglas) {
       const r = empaquetar(orden, regla, L, A, girar);
-      const ultimo = r.tablas.length ? altoUsado(r.tablas[r.tablas.length - 1]) : 0;
-      const nota = [r.fuera.length, r.tablas.length, ultimo];
-      const k = mejor ? nota.findIndex((v, i) => v !== mejor.nota[i]) : -1;
-      if (!mejor || (k >= 0 && nota[k] < mejor.nota[k])) mejor = { ...r, nota };
+      const nota = valorar(r);
+      if (!mejor || mejorQue(nota, mejor.nota)) mejor = { ...r, nota, orden };
     }
+  };
+  ordenes.forEach(probar);
+  // número fijo de vueltas (mismo resultado en el PC y en el móvil), con un tope de tiempo por seguridad
+  const maxVueltas = piezas.length <= 12 ? 700 : piezas.length <= 25 ? 350 : 120;
+  const limite = performance.now() + 1500;
+  let vueltas = 0;
+  while (vueltas < maxVueltas && performance.now() < limite && piezas.length > 1) {
+    vueltas++;
+    // a veces una mezcla nueva, casi siempre retocar la mejor encontrada
+    const base = vueltas % 5 === 0 ? ordenes[vueltas % ordenes.length] : mejor.orden;
+    const o = base.map((p) => ({ ...p }));
+    const cambios = 1 + Math.floor(azar() * 3);
+    for (let c = 0; c < cambios; c++) {
+      const a = Math.floor(azar() * o.length);
+      const b = Math.floor(azar() * o.length);
+      [o[a], o[b]] = [o[b], o[a]];
+    }
+    probar(o);
   }
   const tablas = mejor ? mejor.tablas : [];
   for (const p of (mejor ? mejor.fuera : [])) avisos.push(`${p.nombre} (${cm(p.l)} × ${cm(p.a)} cm) no cabe en la tabla.`);
@@ -190,8 +210,40 @@ function calcularDespiece(t) {
       if (w > 0 && h > 0 && (!sobrante || w * h > sobrante.w * sobrante.h)) sobrante = { w, h };
     }
   }
+  // Desperdicio: lo que se paga y no va en piezas. De ello, los recortes de al menos 30 × 30 cm se pueden
+  // aprovechar en otra obra (se cuentan sin solaparse, en una cuadrícula de 1 cm).
+  let recortes = 0;
+  const listaRecortes = [];
+  tablas.forEach((tb, n) => {
+    const altoTabla = media && n === tablas.length - 1 ? bandaMax : conf.a;
+    const cols = Math.ceil(conf.l / 10);
+    const filas = Math.ceil(altoTabla / 10);
+    const ocupado = new Uint8Array(cols * filas);
+    const marcar = (x, y, w, h, v) => {
+      let nuevas = 0;
+      for (let fy = Math.max(0, Math.floor(y / 10)); fy < Math.min(filas, Math.ceil((y + h) / 10)); fy++) {
+        for (let fx = Math.max(0, Math.floor(x / 10)); fx < Math.min(cols, Math.ceil((x + w) / 10)); fx++) {
+          if (!ocupado[fy * cols + fx]) { nuevas++; if (v) ocupado[fy * cols + fx] = 1; }
+        }
+      }
+      return nuevas;
+    };
+    for (const p of tb.puestas) marcar(p.x - DISCO / 2, p.y - DISCO / 2, p.w + DISCO, p.h + DISCO, true);
+    const libres = tb.libres.map((f) => ({ x: f.x + MARGEN, y: f.y + MARGEN, w: f.w - DISCO, h: Math.min(f.h - DISCO, altoTabla - MARGEN - f.y) }))
+      .filter((f) => Math.min(f.w, f.h) >= 300).sort((p, q) => q.w * q.h - p.w * p.h);
+    for (const f of libres) {
+      const nuevas = marcar(f.x, f.y, f.w, f.h, false);
+      if (nuevas * 100 >= f.w * f.h * 0.85) {
+        marcar(f.x, f.y, f.w, f.h, true);
+        recortes += nuevas * 100;
+        listaRecortes.push({ tabla: n + 1, w: f.w, h: f.h });
+      }
+    }
+  });
+  const desperdicio = areaTablas ? Math.max(0, areaTablas - areaPiezas) / areaTablas : 0;
+  const aprovechable = areaTablas ? Math.min(recortes, Math.max(0, areaTablas - areaPiezas)) / areaTablas : 0;
   return {
-    conf, tablas, avisos, piezas, m2: areaPiezas / 1e6, sobrante,
+    conf, tablas, avisos, piezas, m2: areaPiezas / 1e6, sobrante, desperdicio, aprovechable, listaRecortes, vueltas,
     aprovechamiento: areaTablas ? areaPiezas / areaTablas : 0,
     media, fraccion, usadoUltima, tablasPedir, equivalente: conf.l * conf.a ? areaPiezas / (conf.l * conf.a) : 0,
   };
@@ -325,6 +377,8 @@ function pintarDespiece() {
       + `${d.media ? ` · <b>basta media tabla</b> (${cm(d.conf.l)} × 80 cm)` : ''}` : ''}</span>
     <span class="despiece-dato">${d.piezas.length} piezas · ${d.m2.toLocaleString('es-ES', { maximumFractionDigits: 2 })} m²</span>
     <span class="despiece-dato">Aprovechamiento <b>${Math.round(d.aprovechamiento * 100)} %</b></span>
+    <span class="despiece-dato">Desperdicio <b class="${d.desperdicio > 0.35 ? 'mal-txt' : ''}">${Math.round(d.desperdicio * 100)} %</b>${d.aprovechable > 0.005
+      ? ` (de él, <b>${Math.round(d.aprovechable * 100)} %</b> son recortes aprovechables)` : ''}</span>
     ${d.sobrante ? `<span class="despiece-dato">Sobrante mayor ${cm(d.sobrante.w)} × ${cm(d.sobrante.h)} cm</span>` : ''}`;
   $('#avisosDespiece').replaceChildren(...d.avisos.map((a) => Object.assign(document.createElement('li'), { textContent: a })));
   // dibujo
@@ -371,7 +425,8 @@ function componerDespiece() {
     y += 44;
     c.font = '400 26px system-ui, sans-serif';
     c.fillStyle = '#5f6b75';
-    c.fillText(`Aprovechamiento ${Math.round(d.aprovechamiento * 100)} % · disco ${DISCO / 10} cm · margen ${MARGEN / 10} cm`
+    c.fillText(`Aprovechamiento ${Math.round(d.aprovechamiento * 100)} % · desperdicio ${Math.round(d.desperdicio * 100)} %`
+      + `${d.aprovechable > 0.005 ? ` (recortes aprovechables ${Math.round(d.aprovechable * 100)} %)` : ''} · disco ${DISCO / 10} cm · margen ${MARGEN / 10} cm`
       + `${d.conf.veta ? ' · respetando la veta' : ''} · B bancada, F frontal, Z zócalo, I tira de inglete`, M, y, W - M * 2);
     y += 70;
     for (const [k, tb] of d.tablas.slice(i, i + 3).entries()) {

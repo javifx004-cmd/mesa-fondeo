@@ -36,7 +36,8 @@ La app se abre en **Inicio**:
   - facturas por cobrar, presupuestos por aceptar y últimos planos (tócalos para abrirlos);
   - los mejores clientes del año y en qué se va el dinero.
 
-Toca cualquier cifra para ir a su detalle.
+Toca cualquier cifra para ir a su detalle. Arriba, el **buscador** encuentra clientes, planos y documentos por nombre,
+teléfono o número.
 
 ## 3. Hacer un trabajo (pestaña Planos)
 
@@ -114,12 +115,14 @@ Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja c�
 - Dice cuántas pedir: **«1 tabla y media»** cuando lo de la última cabe en una **media tabla: una banda horizontal de
   todo el largo y 80 cm de alto** (por ejemplo 325 × 80 en Silestone; marca la línea de corte y lo que sobra), o cuánto
   alto se usa de la última.
-- Se ve el aprovechamiento y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
+- Se ve el **aprovechamiento**, el **% de desperdicio** y cuánto de ese desperdicio son **recortes aprovechables** (de al
+  menos 30 × 30 cm) para otras obras, y el sobrante mayor. **Despiece en PDF** saca la hoja para el taller.
 
 ### Paso 4 · Enviar el plano
 
 **Descargar PDF**, **Compartir PDF** (WhatsApp, correo…) o **Imprimir**: hoja A4 en PDF con el logo, los
-datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y las facturas también salen en PDF.
+datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y las facturas también salen en PDF; el
+PDF del presupuesto lleva el plano en la segunda página.
 
 ## 4. Presupuestos, albaranes y facturas (pestaña Gestión)
 

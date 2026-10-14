@@ -975,3 +975,25 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .teclado button:active { background: rgba(226, 201, 146, .3); }
 .teclado [data-tecla] { font-family: inherit; font-size: 22px; background: transparent; border-color: transparent; }
 #btnOlvidePin { color: rgba(226, 201, 146, .75); margin-top: 6px; }
+#bienvenida { cursor: pointer; }
+#bienvenida::after { content: 'Toca para entrar'; position: absolute; bottom: calc(28px + env(safe-area-inset-bottom)); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: rgba(226, 201, 146, .45); animation: aparecer .6s 1.5s ease both; }
+#bienvenida img { animation-duration: 1s; }
+.buscador { position: relative; margin-top: 16px; max-width: 520px; }
+.buscador input {
+  width: 100%; min-height: 46px; padding: 0 16px 0 42px; border-radius: 999px; font-size: 16px;
+  background: rgba(255, 255, 255, .08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e2c992' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-4-4'/%3E%3C/svg%3E") no-repeat 14px center / 18px;
+  border: 1px solid rgba(226, 201, 146, .35); color: #f4ead6;
+}
+.buscador input::placeholder { color: rgba(244, 234, 214, .55); }
+.buscador input:focus { outline: none; border-color: #e2c992; background-color: rgba(255, 255, 255, .12); }
+.resultados {
+  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 6; list-style: none; margin: 0; padding: 6px;
+  background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, .3);
+  max-height: 360px; overflow: auto;
+}
+.resultados li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer; }
+.resultados li:hover, .resultados li:focus { background: var(--suave); }
+.resultados li > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.resultados small { color: var(--muted); }
+.resultados .ev-ico { flex: none; }
+.hero { overflow: visible; }

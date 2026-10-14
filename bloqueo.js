@@ -38,7 +38,11 @@ function bloquear() {
   pantallaBloqueo.hidden = false;
   document.body.classList.add('sin-scroll');
   // con Face ID / huella se pide nada más bloquear (tras la bienvenida)
-  if (c.bio) setTimeout(() => { if (!pantallaBloqueo.hidden) desbloquearBio(); }, $('#bienvenida') ? 2400 : 300);
+  if (c.bio) {
+    const pedir = () => { if (!pantallaBloqueo.hidden) desbloquearBio(); };
+    if ($('#bienvenida') && !$('#bienvenida').classList.contains('fuera')) document.addEventListener('bienvenida-fuera', () => setTimeout(pedir, 400), { once: true });
+    else setTimeout(pedir, 300);
+  }
 }
 function desbloquear() {
   pantallaBloqueo.hidden = true;

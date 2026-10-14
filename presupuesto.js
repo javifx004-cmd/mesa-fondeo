@@ -531,7 +531,8 @@ function nombrePresupuesto() {
 
 async function presupuestoComoBlob() {
   await logoListo();
-  return hojasAPdf([componerPresupuesto()]);
+  // si hay plano dibujado, va como segunda página para que el cliente vea lo que se presupuesta
+  return hojasAPdf(trabajo.objetos.length ? [componerPresupuesto(), componerHoja()] : [componerPresupuesto()]);
 }
 
 function comprobarPresupuesto() {
