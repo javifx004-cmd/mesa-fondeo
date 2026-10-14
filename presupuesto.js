@@ -99,7 +99,13 @@ function buscarMaterial(texto) {
     const nombre = normalizar(m.material);
     return t === nombre || t === normalizar(`${m.marca} ${m.material}`) || t.includes(normalizar(`${m.marca} ${m.material}`));
   });
-  return candidatos.length === 1 ? candidatos[0] : null;
+  if (candidatos.length === 1) return candidatos[0];
+  // escrito a mano («silestone blanco zeus grupo 4», «zeus»…): vale si todas las palabras del color están
+  const palabras = (m) => normalizar(m.material).split(/[\s/()+.,-]+/).filter((p) => p.length > 1);
+  const marcaEscrita = [...new Set(tarifas.materiales.map((m) => m.marca))].find((mc) => t.includes(normalizar(mc)));
+  const sueltos = tarifas.materiales.filter((m) => m.material !== CUALQUIER_COLOR && palabras(m).length
+    && palabras(m).every((p) => t.includes(p)) && (!marcaEscrita || m.marca === marcaEscrita));
+  return sueltos.length === 1 ? sueltos[0] : null;
 }
 
 function buscarConcepto(nombre) {
@@ -201,7 +207,12 @@ function calcular(t) {
       avisos.push(`Pieza ${i + 1}: faltan medidas.`);
       return;
     }
-    if (material) {
+    if (!material) {
+      // sin material reconocido la pieza pasa igual (a 0 €) para que no se pierda en albaranes y facturas
+      if (p.tipo === 'zocalo') linea(`Zócalo ${largo} mm`, largo / 1000, 'ml', 0);
+      else if (fondo >= FONDO_M2) linea(`${nombre} (por m²)`, Math.round(largo * fondo / 1e4) / 100, 'm²', 0);
+      else linea(nombre, largo / 1000, 'ml', 0);
+    } else {
       if (p.tipo === 'zocalo') {
         if (material.zocalo == null) avisos.push(`${material.material} no tiene precio de zócalo en la tarifa: el zócalo no se ha sumado.`);
         else linea(`Zócalo ${largo} mm`, largo / 1000, 'ml', material.zocalo);

@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '32';   // cambiar junto con CACHE en sw.js
+const VERSION = '33';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion'];
@@ -314,6 +314,13 @@ function pintarObjeto(c, o) {
     case 'rect': {
       const { x, y, w, h } = caja(o);
       c.strokeRect(x, y, w, h);
+      // cotas de la pieza (se mueven con ella)
+      const cw = { color: o.color, w: Math.max(2, o.w - 1) };
+      if (o.mmW) pintarCota(c, { ...cw, a: [x, y - 55], b: [x + w, y - 55], texto: String(o.mmW) });
+      if (o.mmH) pintarCota(c, { ...cw, a: [x + w + 55, y], b: [x + w + 55, y + h], texto: String(o.mmH) });
+      c.strokeStyle = o.color;
+      c.fillStyle = o.color;
+      c.lineWidth = o.w;
       break;
     }
     case 'cota':
@@ -961,6 +968,14 @@ async function terminarTrazo(e) {
     o.texto = await pedirTexto('Medida (ej. 2450)', '');
     enCurso = null;
     if (o.texto === null) { dibujar(); return; }
+  } else if (o.tipo === 'rect') {
+    // al dibujar una pieza se piden sus medidas y se le ponen las cotas solas
+    enCurso = o;
+    dibujar();
+    const t = await pedirTexto('Medidas de la pieza en mm: largo × fondo (ej. 3200x620)', propuestaMedidas(o), true);
+    enCurso = null;
+    if (t === null) { dibujar(); return; }
+    ponerMedidasRect(o, t);
   } else if (o.tipo === 'columna') {
     enCurso = o;
     dibujar();
@@ -997,6 +1012,9 @@ async function editar(o) {
     campo.focus({ preventScroll: true });
     aviso('Las medidas se cambian aquí, en la ficha');
     return;
+  } else if (o.tipo === 'rect') {
+    const t = await pedirTexto('Medidas de la pieza en mm: largo × fondo (ej. 3200x620)', propuestaMedidas(o), true);
+    if (t !== null) { ponerMedidasRect(o, t); ok = true; }
   } else if (o.tipo === 'columna') {
     ok = await pedirLadosColumna(o);
   } else if (['cota', 'texto', 'luz', 'arista', 'inglete', 'pulido'].includes(o.tipo)) {
@@ -1071,6 +1089,52 @@ document.addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------------------
 // Diálogo de texto
 // ---------------------------------------------------------------------------
+// Escala del plano (mm por unidad de dibujo) sacada de las cotas y de las piezas con medidas
+function escalaPlano() {
+  const e = [];
+  for (const o of trabajo.objetos) {
+    const mm = parseFloat(String(o.texto || '').replace(',', '.'));
+    if (o.tipo === 'cota' && mm > 0) { const lon = Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]); if (lon > 5) e.push(mm / lon); }
+    if (o.tipo === 'rect') {
+      const { w, h } = caja(o);
+      if (o.mmW && w > 5) e.push(o.mmW / w);
+      if (o.mmH && h > 5) e.push(o.mmH / h);
+    }
+  }
+  e.sort((a, b) => a - b);
+  return e.length ? e[Math.floor(e.length / 2)] : null;
+}
+// Medidas propuestas: las que ya tenga o las calculadas con la escala del plano
+function propuestaMedidas(o) {
+  if (o.mmW || o.mmH) return [o.mmW, o.mmH].filter(Boolean).join(' x ');
+  const esc = escalaPlano();
+  if (!esc) return '';
+  const { w, h } = caja(o);
+  const r10 = (n) => Math.round(n * esc / 10) * 10;
+  return w >= h ? `${r10(w)} x ${r10(h)}` : `${r10(h)} x ${r10(w)}`;
+}
+// «3200x620»: el número mayor va al lado más largo del rectángulo dibujado
+function ponerMedidasRect(o, texto) {
+  const n = (String(texto).match(/\d+(?:[.,]\d+)?/g) || []).map((x) => Math.round(parseFloat(x.replace(',', '.')))).filter((x) => x > 0);
+  delete o.mmW;
+  delete o.mmH;
+  if (!n.length) return;
+  const { w, h } = caja(o);
+  const largo = Math.max(...n.slice(0, 2));
+  const corto = n.length > 1 ? Math.min(...n.slice(0, 2)) : null;
+  if (w >= h) { o.mmW = largo; if (corto) o.mmH = corto; } else { o.mmH = largo; if (corto) o.mmW = corto; }
+}
+
+// Intro en una casilla de una ventana acepta (el primer botón es «Cancelar» y si no lo pulsaría a él)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.isComposing || !(e.target instanceof HTMLInputElement)) return;
+  const formD = e.target.closest('dialog form[method="dialog"]');
+  const ok = formD && formD.querySelector('button[value="ok"]');
+  if (!ok) return;
+  e.preventDefault();
+  ok.click();
+});
+
 function pedirTexto(etiqueta, valor, permitirVacio = false) {
   const dlg = $('#dlgTexto');
   const input = $('#dlgTextoInput');
@@ -1206,6 +1270,11 @@ function cajaDibujo() {
   for (const o of trabajo.objetos) {
     if (o.pts) pts.push(...o.pts);
     if (o.a) pts.push(o.a, o.b);
+    if (o.tipo === 'rect' && (o.mmW || o.mmH)) {
+      // las cotas de la pieza van por fuera
+      const { x, y, w, h } = caja(o);
+      pts.push([x - 20, y - 110], [x + w + 150, y + h + 20]);
+    }
     if (o.tipo === 'arista') {
       // la medida va por fuera de la esquina
       pts.push([o.p[0] - 140, o.p[1] - 70], [o.p[0] + 140, o.p[1] + 70]);

@@ -200,11 +200,7 @@ function sincronizarPresupuesto(silencioso = false) {
   // retocado a mano en Gestión (precios, descuentos…): se respeta
   if (previo && previo.lineasAuto && JSON.stringify(previo.lineas) !== previo.lineasAuto) return previo;
   const cli = clienteDeTrabajo(trabajo);
-  const material = r.material ? etiquetaMaterial(r.material) : trabajo.datos.material;
-  const lineas = [
-    ...(material ? [{ concepto: `Material: ${material}`, cantidad: '', unidad: '', precio: '' }] : []),
-    ...r.lineas.map((l) => ({ concepto: l.concepto, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio })),
-  ];
+  const lineas = lineasDeTrabajo(r);
   const notas = trabajo.datos.referencia ? `Ref. ${trabajo.datos.referencia}` : '';
   let doc;
   if (previo) {
@@ -229,6 +225,15 @@ function sincronizarPresupuesto(silencioso = false) {
   return doc;
 }
 
+// Todas las líneas del presupuesto del plano (material, bancadas, cantos, huecos, extras…)
+function lineasDeTrabajo(r) {
+  const material = r.material ? etiquetaMaterial(r.material) : trabajo.datos.material;
+  return [
+    ...(material ? [{ concepto: `Material: ${material}`, cantidad: '', unidad: '', precio: '' }] : []),
+    ...r.lineas.map((l) => ({ concepto: l.concepto, cantidad: l.cantidad, unidad: l.unidad, precio: l.precio })),
+  ];
+}
+
 $('#btnPresuGestion').addEventListener('click', () => {
   const doc = sincronizarPresupuesto();
   if (!doc) return;
@@ -243,7 +248,10 @@ for (const [id, tipo] of [['#btnPresuAlbaran', 'albaran'], ['#btnPresuFactura', 
     const doc = sincronizarPresupuesto();
     if (!doc) return;
     guardar();
-    convertir(doc, tipo);
+    // pasa TODO lo que hay ahora en el plano (aunque el presupuesto ya estuviera aceptado);
+    // solo si el presupuesto se retocó a mano en Gestión se respetan esos retoques
+    const retocado = doc.lineasAuto && JSON.stringify(doc.lineas) !== doc.lineasAuto;
+    convertir(doc, tipo, retocado ? null : lineasDeTrabajo(calcular(trabajo)));
   });
 }
 
@@ -395,11 +403,11 @@ function abrirWhatsApp(doc) {
 }
 
 // Crea un albarán o una factura a partir de otro documento.
-function convertir(origen, tipo) {
+function convertir(origen, tipo, lineas = null) {
   const yaHecho = leerDocs().find((d) => d.origen && d.origen.id === origen.id && d.tipo === tipo && d.estado !== 'Anulada');
   if (yaHecho && !confirm(`Ya existe ${TIPOS_DOC[tipo].nombre.toLowerCase()} ${yaHecho.numero} de este documento. ¿Hacer otro?`)) return;
   const doc = nuevoDoc(tipo, {
-    clienteId: origen.clienteId, lineas: structuredClone(origen.lineas), conIva: origen.conIva,
+    clienteId: origen.clienteId, lineas: lineas || structuredClone(origen.lineas), conIva: origen.conIva,
     pago: origen.pago, trabajoId: origen.trabajoId,
     notas: [origen.notas, `Según ${TIPOS_DOC[origen.tipo].nombre.toLowerCase()} ${origen.numero}`].filter(Boolean).join(' · '),
     origen: { id: origen.id, tipo: origen.tipo, numero: origen.numero },

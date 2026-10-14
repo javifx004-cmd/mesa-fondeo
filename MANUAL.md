@@ -71,6 +71,9 @@ en el móvil es mejor en horizontal.
 | Editar | Girar | Gira el fregadero o la vitro 90°. Los taladros van siempre al lado de la pared. |
 | Editar | Mover, Borrar | Toca el elemento. **↶ ↷** deshacen y rehacen. |
 
+**Medidas de las piezas:** al dibujar un rectángulo, la app pide su largo × fondo (ej. 3200x620) y le pone las
+cotas sola; se mueven con la pieza. Para cambiarlas, toca la pieza con **Editar**.
+
 ### Paso 3 · Presupuesto
 
 1. Añade las **piezas**: bancada, frontal o zócalo, con largo, fondo (o alto) y qué cantos son vistos.

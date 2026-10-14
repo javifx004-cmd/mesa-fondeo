@@ -191,20 +191,22 @@ formPlantilla.addEventListener('submit', (e) => {
 // en el plano pasan a la pieza, y en las esquinas en L no se cuenta dos veces el solape.
 // ---------------------------------------------------------------------------
 function piezasDesdePlano(objetos) {
-  const rects = objetos.filter((o) => o.tipo === 'rect').map((o) => ({ ...caja(o) })).filter((r) => r.w > 8 && r.h > 8);
+  const rects = objetos.filter((o) => o.tipo === 'rect').map((o) => ({ ...caja(o), mmW: o.mmW, mmH: o.mmH })).filter((r) => r.w > 8 && r.h > 8);
   const cotas = objetos.filter((o) => o.tipo === 'cota' && parseFloat(String(o.texto).replace(',', '.')) > 0)
     .map((o) => ({ a: o.a, b: o.b, mm: parseFloat(String(o.texto).replace(',', '.')), lon: Math.hypot(o.b[0] - o.a[0], o.b[1] - o.a[1]) }))
     .filter((c) => c.lon > 5);
   if (!rects.length) return { error: 'No hay piezas dibujadas: dibuja cada pieza con «Rect.» (o usa una plantilla).' };
-  if (!cotas.length) return { error: 'Pon al menos una cota con su medida para saber la escala del plano.' };
-  const escalas = cotas.map((c) => c.mm / c.lon).sort((x, y) => x - y);
+  // escala: de las cotas y de las piezas con medidas
+  const escalas = [...cotas.map((c) => c.mm / c.lon), ...rects.flatMap((r) => [r.mmW && r.mmW / r.w, r.mmH && r.mmH / r.h]).filter(Boolean)]
+    .sort((x, y) => x - y);
+  if (!escalas.length) return { error: 'Pon las medidas a las piezas (toca la pieza con «Editar») o al menos una cota.' };
   const escala = escalas[Math.floor(escalas.length / 2)];
   const redondea = (mm) => Math.round(mm / 5) * 5;
   const piezas = rects.map((r) => {
     const horizontal = r.w >= r.h;
     // cada lado se mide por la cota pegada a él (arriba o abajo, izquierda o derecha) o por la escala
-    const mmW = cotaCerca(r, 'h') ?? r.w * escala;
-    const mmH = cotaCerca(r, 'v') ?? r.h * escala;
+    const mmW = r.mmW || (cotaCerca(r, 'h') ?? r.w * escala);
+    const mmH = r.mmH || (cotaCerca(r, 'v') ?? r.h * escala);
     return { r, horizontal, largo: redondea(horizontal ? mmW : mmH), fondo: redondea(horizontal ? mmH : mmW) };
   });
   function cotaCerca(r, eje) {
