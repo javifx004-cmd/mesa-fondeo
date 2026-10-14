@@ -5,6 +5,15 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
 
 ## Qué incluye
 
+- **Inicio**: panel con lo facturado, lo pendiente de cobro, IVA e IRPF del trimestre, beneficio del año,
+  gráfico mensual, próximo pago a Hacienda, cobros, presupuestos, últimos planos, mejores clientes y gastos
+  por categoría.
+- **PDF**: planos, presupuestos, albaranes y facturas se descargan y comparten en PDF (generado en el
+  navegador, sin librerías).
+- **Facturas rectificativas** (serie R) y **QR tributario** en las facturas.
+- Estilo de lujo: negro, marfil y oro, con tipografías Cormorant Garamond y Manrope incluidas en `fuentes/`
+  (licencia SIL OFL).
+
 - **Ficha**: cliente, teléfono, dirección, referencia, fecha, material, tipo de canto y
   observaciones (con sugerencias habituales).
   - Vitrocerámica: tipo y medida.
@@ -33,7 +42,7 @@ Funciona en PC y en el móvil (se puede instalar como app y funciona sin conexi�
   - **Ampliar**: el plano a pantalla completa (en el móvil, mejor en horizontal).
 - **Trabajos guardados** en el propio dispositivo (se guardan solos mientras trabajas),
   con buscador, duplicar y borrar.
-- **Descargar imagen**, **Compartir** (WhatsApp, correo… desde el móvil) e
+- **Descargar PDF**, **Compartir PDF** (WhatsApp, correo… desde el móvil) e
   **Imprimir / PDF** de la hoja completa en **A4 vertical**, con «MÁRMOLES CARBONELL» y el logo
   en la cabecera, los datos, el plano ampliado a lo dibujado y una franja pequeña de observaciones.
 - **Logo**: el de Mármoles Carbonell va de serie (`logo.svg`, redibujado en vectorial); «Cambiar logo», al final de la página, permite usar otro en ese dispositivo.

@@ -32,6 +32,9 @@
     <symbol id="i-editar" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
     <symbol id="i-girar" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></symbol>
     <symbol id="i-mover" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5M4 10h9M4 14h9"/></symbol>
+    <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
     <symbol id="i-borrar" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></symbol>
   </svg>
   <header class="topbar">
@@ -43,6 +46,7 @@
       </div>
     </div>
     <nav class="vistas" aria-label="Secciones">
+      <button id="btnInicio" type="button">Inicio</button>
       <button id="btnVistaPlanos" type="button" class="active">Planos</button>
       <button id="btnGestion" type="button">Gestión</button>
     </nav>
@@ -54,7 +58,63 @@
     </div>
   </header>
 
-  <main id="planos">
+  <div id="inicio" class="contenido inicio" hidden>
+    <section class="hero">
+      <div class="hero-txt">
+        <p class="hero-fecha" id="iniFecha"></p>
+        <h2 id="iniSaludo">Buenos días</h2>
+        <p class="hero-sub" id="iniResumen"></p>
+      </div>
+      <div class="hero-acciones">
+        <button type="button" class="oro" data-ir="plano"><svg class="ico"><use href="#i-rect"/></svg>Nuevo plano</button>
+        <button type="button" data-ir="factura"><svg class="ico"><use href="#i-doc"/></svg>Nueva factura</button>
+        <button type="button" data-ir="presupuesto"><svg class="ico"><use href="#i-doc"/></svg>Nuevo presupuesto</button>
+        <button type="button" data-ir="gasto"><svg class="ico"><use href="#i-euro"/></svg>Apuntar gasto</button>
+        <button type="button" data-ir="trabajos"><svg class="ico"><use href="#i-carpeta"/></svg>Trabajos</button>
+      </div>
+    </section>
+
+    <section class="kpis" id="iniKpis" aria-label="Cifras del negocio"></section>
+
+    <div class="ini-cols">
+      <section class="tarjeta ini-grafico">
+        <div class="tarjeta-cab">
+          <h3>Facturación del año</h3>
+          <span class="leyenda"><i class="l-fact"></i>Facturado <i class="l-gasto"></i>Gastos</span>
+        </div>
+        <div id="iniGrafico"></div>
+      </section>
+      <section class="tarjeta ini-plazo" id="iniPlazo"></section>
+    </div>
+
+    <div class="ini-cols tres">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Pendiente de cobro</h3><button type="button" class="enlace" data-ir="cobros">Ver todo</button></div>
+        <ul class="ini-lista" id="iniCobros"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Presupuestos por aceptar</h3><button type="button" class="enlace" data-ir="presupuestos">Ver todo</button></div>
+        <ul class="ini-lista" id="iniPresus"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Últimos planos</h3><button type="button" class="enlace" data-ir="trabajos">Ver todo</button></div>
+        <ul class="ini-lista" id="iniTrabajos"></ul>
+      </section>
+    </div>
+
+    <div class="ini-cols">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Mejores clientes del año</h3></div>
+        <ul class="ini-lista ranking" id="iniClientes"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>En qué se va el dinero</h3></div>
+        <ul class="ini-lista barras" id="iniGastos"></ul>
+      </section>
+    </div>
+  </div>
+
+  <main id="planos" hidden>
     <section class="ficha" aria-label="Datos del trabajo">
       <h2 class="seccion"><span class="paso">1</span>Datos del trabajo</h2>
       <div class="grid">
@@ -229,8 +289,8 @@
       <ul id="avisosPresupuesto" class="avisos"></ul>
 
       <div class="acciones-presu">
-        <button type="button" id="btnPresuImagen">Descargar presupuesto</button>
-        <button type="button" id="btnPresuCompartir">Compartir presupuesto</button>
+        <button type="button" id="btnPresuImagen">Descargar PDF</button>
+        <button type="button" id="btnPresuCompartir">Compartir PDF</button>
         <button type="button" id="btnPresuImprimir">Imprimir / PDF</button>
       </div>
       <div class="acciones-presu rapido">
@@ -243,8 +303,8 @@
 
     <section class="acciones">
       <h2 class="seccion"><span class="paso">4</span>Enviar el plano</h2>
-      <button type="button" id="btnImagen">Descargar imagen</button>
-      <button type="button" id="btnCompartir">Compartir</button>
+      <button type="button" id="btnImagen">Descargar PDF</button>
+      <button type="button" id="btnCompartir">Compartir PDF</button>
       <button type="button" id="btnImprimir">Imprimir / PDF</button>
     </section>
   </main>
@@ -395,7 +455,7 @@
         <input id="dlgTextoInput" autocomplete="off">
       </label>
       <div class="dlg-foot">
-        <button value="cancel" type="submit">Cancelar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button value="ok" type="submit" class="primary">Aceptar</button>
       </div>
     </form>
@@ -413,7 +473,7 @@
         <input id="colAbajo" inputmode="numeric" autocomplete="off" placeholder="Abajo" aria-label="Lado de abajo">
       </div>
       <div class="dlg-foot">
-        <button value="cancel" type="submit">Cancelar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button value="ok" type="submit" class="primary">Aceptar</button>
       </div>
     </form>
@@ -433,7 +493,7 @@
       </div>
       <div class="dlg-foot">
         <button type="button" id="btnBorrarCliente" class="peligro">Borrar</button>
-        <button value="cancel" type="submit">Cancelar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button value="ok" type="submit" class="primary">Guardar</button>
       </div>
     </form>
@@ -481,11 +541,12 @@
       <div class="dlg-foot">
         <button type="button" id="btnDocBorrar" class="peligro">Borrar</button>
         <button type="button" id="btnDocAnular" class="peligro">Anular</button>
+        <button type="button" id="btnDocRectificar">Rectificar</button>
         <button type="button" id="btnDocAlbaran">→ Albarán</button>
         <button type="button" id="btnDocFactura">→ Factura</button>
         <button type="button" id="btnDocImprimir">Imprimir / PDF</button>
-        <button type="button" id="btnDocDescargar">Descargar</button>
-        <button type="button" id="btnDocCompartir">Compartir</button>
+        <button type="button" id="btnDocDescargar">Descargar PDF</button>
+        <button type="button" id="btnDocCompartir">Compartir PDF</button>
         <button type="button" id="btnDocGuardar" class="primary">Guardar</button>
       </div>
     </form>
@@ -533,5 +594,6 @@
   <script src="gestion.js"></script>
   <script src="contabilidad.js"></script>
   <script src="sync.js"></script>
+  <script src="inicio.js"></script>
 </body>
 </html>

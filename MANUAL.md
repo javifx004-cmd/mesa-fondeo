@@ -13,7 +13,26 @@ La aplicación se abre desde su dirección web y se instala como una app más.
 
 Funciona sin internet, salvo el asistente con IA. Abajo del todo se ve el número de versión.
 
-## 2. Hacer un trabajo (pestaña Planos)
+## 2. Inicio: el negocio de un vistazo
+
+La app se abre en **Inicio**:
+
+- **Botones rápidos:** nuevo plano, nueva factura, nuevo presupuesto, apuntar un gasto y trabajos.
+- **Cifras:**
+  - lo facturado este mes (y si sube o baja frente al anterior) y en el año;
+  - lo pendiente de cobro, avisando de las facturas con más de 30 días;
+  - el IVA y el IRPF del trimestre;
+  - lo que te queda limpio en el año;
+  - los presupuestos por aceptar y los gastos del mes.
+- **Gráfico del año:** lo facturado cada mes frente a los gastos.
+- **Próximo pago a Hacienda:** cuántos días quedan y cuánto toca pagar aproximadamente.
+- **Listas:**
+  - facturas por cobrar, presupuestos por aceptar y últimos planos (tócalos para abrirlos);
+  - los mejores clientes del año y en qué se va el dinero.
+
+Toca cualquier cifra para ir a su detalle.
+
+## 3. Hacer un trabajo (pestaña Planos)
 
 ### Paso 1 · Datos del trabajo
 
@@ -58,16 +77,20 @@ piezas.** Necesita internet y una clave gratuita de Gemini (aistudio.google.com)
 
 ### Paso 4 · Enviar el plano
 
-**Descargar imagen**, **Compartir** (WhatsApp, correo…) o **Imprimir / PDF**: hoja A4 con el logo, los
-datos, el plano y la leyenda, para el taller.
+**Descargar PDF**, **Compartir PDF** (WhatsApp, correo…) o **Imprimir**: hoja A4 en PDF con el logo, los
+datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y las facturas también salen en PDF.
 
-## 3. Presupuestos, albaranes y facturas (pestaña Gestión)
+## 4. Presupuestos, albaranes y facturas (pestaña Gestión)
 
 - El presupuesto de cada plano **pasa solo** a Gestión en cuanto tiene cliente y piezas.
 - Lo más rápido: en el presupuesto del plano, **Hacer albarán** o **Hacer factura**. Se abre el documento
   listo para **Imprimir / PDF** o **Compartir**.
 - En la lista de documentos: **Aceptar**, **→ Albarán**, **→ Factura** y **Cobrada**.
 - Cada documento lleva su número correlativo por año: P2026-001, A2026-001, F2026-001…
+- Si cambias a mano un presupuesto en Gestión (un descuento, otro precio), el plano ya no lo pisa.
+- **Rectificar** una factura crea una **factura rectificativa** (serie R2026-001…) con los importes en negativo,
+  la factura que corrige y el motivo. Déjala entera para anular la factura, o cambia las líneas para corregir solo
+  una parte. Es la forma correcta ante Hacienda de corregir una factura ya entregada.
 - Cualquier documento se puede **Borrar** desde su ventana. Una factura ya entregada al cliente es mejor
   **Anularla**: conserva su número, porque Hacienda no admite huecos en la numeración. Si se borra la última
   factura, su número se vuelve a usar en la siguiente.
@@ -102,7 +125,7 @@ datos, el plano y la leyenda, para el taller.
 - En **Mi empresa** se ajusta el tipo medio de IRPF estimado (20 % por defecto).
 - Son cálculos orientativos para estimación directa simplificada: **el importe exacto lo confirma el gestor**.
 
-## 4. Tener los datos en todos los aparatos (sincronización)
+## 5. Tener los datos en todos los aparatos (sincronización)
 
 Sin cuenta, los datos se guardan solo **en el aparato** donde se hacen. Con la cuenta de la empresa se ven
 iguales en el PC, el móvil y la tablet.
@@ -116,16 +139,16 @@ Arriba aparece un punto: **verde** sincronizado, **dorado** sincronizando, **roj
 Al pulsarlo se sincroniza al momento. Sin internet se sigue trabajando y se sube todo al volver.
 Si se cambia lo mismo en dos aparatos, se queda el último cambio.
 
-## 5. Copias de seguridad
+## 6. Copias de seguridad
 
 Aunque se use la sincronización, conviene hacer copias de vez en cuando.
 
-- En **Trabajos**, pulsa **Copia de seguridad**: se descarga un archivo con trabajos, clientes, documentos y gastos.
+- En **Trabajos**, pulsa **Copia de seguridad**: se descarga un archivo con trabajos, clientes, documentos, gastos, tarifas y logo.
   Guárdalo en el ordenador, en el correo o en la nube.
 - Para recuperar los datos: **Trabajos → Restaurar copia**.
 - La app avisa si hace más de 7 días de la última copia.
 
-## 6. Avisos importantes
+## 7. Avisos importantes
 
 - **Verifactu:** desde el 1 de enero de 2027 (sociedades) y el 1 de julio de 2027 (autónomos), las facturas
   deben hacerse con un programa certificado. Esta aplicación no lo está: consultad con el gestor.

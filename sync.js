@@ -10,6 +10,7 @@
 const CLAVE_SYNC_CONF = 'planosCocina.sync.conf';     // url, clave pública, sesión
 const CLAVE_SYNC_ESTADO = 'planosCocina.sync.estado'; // lo último subido/bajado de cada elemento
 const CLAVE_SYNC_ULTIMO = 'planosCocina.sync.ultimo'; // marca de tiempo del servidor de la última bajada
+const CLAVE_SYNC_AJUSTES = 'planosCocina.sync.ajustes'; // cuándo cambió aquí cada ajuste (empresa, logo, tarifas)
 
 // Si la empresa tiene ya su proyecto, se puede dejar puesto aquí para no escribirlo en cada aparato.
 const SUPABASE_URL_SERIE = 'https://qbjxdmuygkgvcoaqavhq.supabase.co';
@@ -121,11 +122,19 @@ function elementosLocales() {
   for (const [col, clave] of Object.entries(COLECCIONES)) {
     for (const v of leerLS(clave, [])) if (v && v.id) res[`${col}/${v.id}`] = { col, id: String(v.id), valor: v, modificado: v.modificado || 0 };
   }
+  // los ajustes no llevan fecha propia: se apunta aquí cuándo cambiaron por última vez
+  const marcas = leerLS(CLAVE_SYNC_AJUSTES, {});
+  let cambiadas = false;
   for (const [id, clave] of Object.entries(AJUSTES)) {
     let v = null;
     try { v = localStorage.getItem(clave); } catch { /* sin almacenamiento */ }
-    if (v !== null) res[`ajustes/${id}`] = { col: 'ajustes', id, valor: v, modificado: 0 };
+    if (v === null) continue;
+    const h = huella(v);
+    // la primera vez no se sabe su edad (t = 0): manda la de la nube; después, cada cambio lleva su hora
+    if (!marcas[id] || marcas[id].h !== h) { marcas[id] = { h, t: marcas[id] ? Date.now() : 0 }; cambiadas = true; }
+    res[`ajustes/${id}`] = { col: 'ajustes', id, valor: v, modificado: marcas[id].t };
   }
+  if (cambiadas) escribirLS(CLAVE_SYNC_AJUSTES, marcas);
   return res;
 }
 
@@ -158,27 +167,33 @@ async function subir(sesion, estado) {
 
 async function bajar(sesion, estado) {
   let ultimo = leerLS(CLAVE_SYNC_ULTIMO, '');
-  const locales = elementosLocales();
-  const cambios = { colecciones: new Set(), trabajos: new Set(), n: 0 };
-  // las listas se modifican en memoria y se escriben al final
-  const listas = Object.fromEntries(Object.entries(COLECCIONES).map(([col, clave]) => [col, leerLS(clave, [])]));
+  // 1) se piden todas las filas nuevas (puede tardar: mientras, se sigue trabajando)
+  const recibidas = [];
   for (;;) {
     const filtro = ultimo ? `&actualizado=gt.${encodeURIComponent(ultimo)}` : '';
     const filas = await pedir(`/rest/v1/datos?select=coleccion,id,valor,modificado,borrado,actualizado${filtro}&order=actualizado.asc&limit=500`, { token: sesion.token });
-    for (const f of filas) {
-      const k = `${f.coleccion}/${f.id}`;
-      const local = locales[k];
-      const cambiadoAqui = local && (!estado[k] || estado[k].h !== huella(local.valor));
-      // si aquí hay una versión más nueva sin subir, se queda la de aquí
-      if (!(cambiadoAqui && local.modificado > (f.modificado || 0))) {
-        aplicarRemoto(f, listas, cambios);
-        estado[k] = { h: f.borrado ? 'borrado' : huella(f.valor), modificado: f.modificado, borrado: f.borrado };
-      }
-      ultimo = f.actualizado;
-    }
+    recibidas.push(...filas);
+    if (filas.length) ultimo = filas[filas.length - 1].actualizado;
     if (filas.length < 500) break;
   }
+  // 2) se aplican de golpe sobre lo que haya guardado AHORA (sin esperas en medio)
+  const locales = elementosLocales();
+  const cambios = { colecciones: new Set(), trabajos: new Set(), n: 0 };
+  const listas = Object.fromEntries(Object.entries(COLECCIONES).map(([col, clave]) => [col, leerLS(clave, [])]));
+  const marcas = leerLS(CLAVE_SYNC_AJUSTES, {});
+  for (const f of recibidas) {
+    const k = `${f.coleccion}/${f.id}`;
+    const local = locales[k];
+    const cambiadoAqui = local && (!estado[k] || estado[k].h !== huella(local.valor));
+    // si aquí hay una versión más nueva sin subir, se queda la de aquí
+    if (cambiadoAqui && local.modificado > (f.modificado || 0)) continue;
+    aplicarRemoto(f, listas, cambios);
+    const h = f.borrado ? 'borrado' : huella(f.valor);
+    estado[k] = { h, modificado: f.modificado, borrado: f.borrado };
+    if (f.coleccion === 'ajustes') marcas[f.id] = { h, t: f.modificado || 0 };
+  }
   for (const col of cambios.colecciones) if (COLECCIONES[col]) escribirLS(COLECCIONES[col], listas[col]);
+  escribirLS(CLAVE_SYNC_AJUSTES, marcas);
   escribirLS(CLAVE_SYNC_ESTADO, estado);
   escribirLS(CLAVE_SYNC_ULTIMO, ultimo);
   return cambios;
@@ -237,7 +252,8 @@ function programarSync(ms = 3000) {
 // Tras recibir cambios: el trabajo abierto se recarga si no se estaba tocando aquí,
 // y se repintan las listas visibles.
 function refrescarTrasSync(cambios) {
-  if (cambios.trabajos.has(String(trabajo.id))) {
+  // el trabajo abierto se recarga solo si aquí no hay cambios a medio guardar
+  if (cambios.trabajos.has(String(trabajo.id)) && !sucio) {
     const nuevo = leerTrabajos().find((t) => t.id === trabajo.id);
     if (nuevo) abrir(nuevo); else abrir(trabajoVacio());
   }
@@ -249,11 +265,26 @@ function refrescarTrasSync(cambios) {
     }
   }
   if (typeof pintarResultado === 'function') pintarResultado();
-  if (!$('#gestion').hidden) {
+  // no se repinta la pestaña si se está escribiendo en ella
+  const escribiendo = document.activeElement && document.activeElement.closest('#gestion') && document.activeElement.matches('input, textarea, select');
+  if (!$('#gestion').hidden && !escribiendo) {
     const activa = $('.pestanas [data-pestana].active');
     if (activa) mostrarPestana(activa.dataset.pestana);
   }
+  if (!$('#inicio').hidden && typeof pintarInicio === 'function') pintarInicio();
+  avisarNumerosRepetidos();
   if ($('#dlgTrabajos').open) pintarLista();
+}
+
+// Dos aparatos sin conexión pueden dar el mismo número a facturas distintas: se avisa.
+function avisarNumerosRepetidos() {
+  const vistos = {};
+  const repes = new Set();
+  for (const d of leerLS(COLECCIONES.documentos, [])) {
+    if (d.tipo !== 'factura' && d.tipo !== 'albaran') continue;
+    if (vistos[d.numero]) repes.add(d.numero); else vistos[d.numero] = true;
+  }
+  if (repes.size) aviso(`Atención: número repetido en ${[...repes].join(', ')}. Cambia la fecha o renumera una de ellas.`);
 }
 
 function mensajeErrorSync(err) {
@@ -337,6 +368,7 @@ $('#btnSyncSalir').addEventListener('click', () => {
   guardarConfSync({ sesion: null });
   ultimoEstadoSync = '';
   escribirLS(CLAVE_SYNC_ESTADO, {});
+  escribirLS(CLAVE_SYNC_AJUSTES, {});
   escribirLS(CLAVE_SYNC_ULTIMO, '');
   pintarEstadoSync();
 });

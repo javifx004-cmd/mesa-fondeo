@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '29';   // cambiar junto con CACHE en sw.js
+const VERSION = '30';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones'];
@@ -122,7 +122,9 @@ function textoFregadero(d) {
 // Guardado automático
 // ---------------------------------------------------------------------------
 let temporizador = null;
+let sucio = false;   // hay cambios sin guardar en el trabajo abierto
 function cambio() {
+  sucio = true;
   // el presupuesto (presupuesto.js) depende de la ficha, las piezas y las cajas del plano
   if (typeof pintarResultado === 'function') pintarResultado();
   clearTimeout(temporizador);
@@ -131,6 +133,8 @@ function cambio() {
 
 function guardar(manual = false) {
   clearTimeout(temporizador);
+  // sin cambios no se toca: así no pisa versiones más nuevas de otros aparatos
+  if (!sucio && !manual) return;
   if (!tieneContenido(trabajo)) {
     if (manual) aviso('No hay nada que guardar todavía');
     return;
@@ -142,12 +146,14 @@ function guardar(manual = false) {
   const i = lista.findIndex((t) => t.id === trabajo.id);
   if (i >= 0) lista[i] = trabajo; else lista.push(trabajo);
   if (escribirTrabajos(lista)) {
+    sucio = false;
     try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
     if (manual) aviso('Trabajo guardado');
   }
 }
 
 function abrir(t) {
+  sucio = false;
   trabajo = structuredClone(t);
   for (const c of CAMPOS) if (!(c in trabajo.datos)) trabajo.datos[c] = '';
   trabajo.objetos.forEach(migrarColumna);
@@ -1368,12 +1374,71 @@ function componerHoja() {
 function nombreArchivo() {
   const partes = [trabajo.datos.cliente, trabajo.datos.referencia].filter(Boolean).join('_') || 'plano';
   return 'plano_' + partes.normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 60) + '.png';
+    .replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 60) + '.pdf';
 }
 
 async function hojaComoBlob() {
   await logoListo();
-  return new Promise((ok) => componerHoja().toBlob(ok, 'image/png'));
+  return hojasAPdf([componerHoja()]);
+}
+
+// ---------------------------------------------------------------------------
+// PDF: cada hoja (lienzo A4) va como una página con la imagen en alta calidad.
+// Se escribe el PDF a mano (sin librerías): una imagen JPEG por página.
+// ---------------------------------------------------------------------------
+async function hojasAPdf(hojas) {
+  const enc = new TextEncoder();
+  const partes = [];
+  const offsets = [];
+  let tam = 0;
+  const poner = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; partes.push(b); tam += b.length; };
+  const objeto = (n, cuerpo) => { offsets[n] = tam; poner(`${n} 0 obj\n`); cuerpo(); poner('\nendobj\n'); };
+  const jpegs = [];
+  for (const h of hojas) {
+    const blob = await new Promise((ok) => h.toBlob(ok, 'image/jpeg', 0.92));
+    jpegs.push({ datos: new Uint8Array(await blob.arrayBuffer()), w: h.width, h: h.height });
+  }
+  const A4 = [595.28, 841.89];
+  const n = jpegs.length;
+  // 1 catálogo, 2 páginas, y por página: página, imagen y contenido
+  poner('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+  objeto(1, () => poner('<< /Type /Catalog /Pages 2 0 R >>'));
+  objeto(2, () => poner(`<< /Type /Pages /Count ${n} /Kids [${jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] >>`));
+  jpegs.forEach((j, i) => {
+    const pg = 3 + i * 3;
+    objeto(pg, () => poner(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${A4[0]} ${A4[1]}] `
+      + `/Resources << /XObject << /Im${i} ${pg + 1} 0 R >> >> /Contents ${pg + 2} 0 R >>`));
+    objeto(pg + 1, () => {
+      poner(`<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /DeviceRGB `
+        + `/BitsPerComponent 8 /Filter /DCTDecode /Length ${j.datos.length} >>\nstream\n`);
+      poner(j.datos);
+      poner('\nendstream');
+    });
+    // la hoja ocupa el ancho de la página; si es más alta que A4 se ajusta al alto
+    const esc = Math.min(A4[0] / j.w, A4[1] / j.h);
+    const w = (j.w * esc).toFixed(2);
+    const h = (j.h * esc).toFixed(2);
+    const y = (A4[1] - j.h * esc).toFixed(2);
+    const contenido = `q ${w} 0 0 ${h} 0 ${y} cm /Im${i} Do Q`;
+    objeto(pg + 2, () => poner(`<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream`));
+  });
+  const total = 3 + n * 3;
+  const inicioXref = tam;
+  let xref = `xref\n0 ${total}\n0000000000 65535 f \n`;
+  for (let i = 1; i < total; i++) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  poner(xref + `trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF\n`);
+  return new Blob(partes, { type: 'application/pdf' });
+}
+
+// Compartir un archivo (WhatsApp, correo…) o, si el navegador no deja, descargarlo.
+async function compartirArchivo(blob, nombre, titulo) {
+  const archivo = new File([blob], nombre, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try { await navigator.share({ files: [archivo], title: titulo }); } catch { /* cancelado */ }
+  } else {
+    descargar(blob, nombre);
+    aviso('Este navegador no permite compartir: se ha descargado el PDF');
+  }
 }
 
 function descargar(blob, nombre) {
@@ -1392,16 +1457,7 @@ $('#btnImagen').addEventListener('click', async () => {
 });
 
 $('#btnCompartir').addEventListener('click', async () => {
-  const blob = await hojaComoBlob();
-  const archivo = new File([blob], nombreArchivo(), { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-    try {
-      await navigator.share({ files: [archivo], title: 'Plano ' + (trabajo.datos.cliente || '') });
-    } catch { /* cancelado */ }
-  } else {
-    descargar(blob, archivo.name);
-    aviso('Este navegador no permite compartir: se ha descargado la imagen');
-  }
+  compartirArchivo(await hojaComoBlob(), nombreArchivo(), 'Plano ' + (trabajo.datos.cliente || ''));
 });
 
 // Por defecto se imprime la hoja del plano; el presupuesto pasa su propia hoja.
@@ -1461,6 +1517,9 @@ function pintarLista() {
     dup.addEventListener('click', () => {
       const copia = structuredClone(t);
       copia.id = nuevoId();
+      // la copia tiene su propio presupuesto y su propio cliente automático
+      delete copia.presupuestoId;
+      delete copia.clienteId;
       copia.datos.referencia = (copia.datos.referencia || '') + ' (copia)';
       copia.creado = copia.modificado = Date.now();
       escribirTrabajos([...leerTrabajos(), copia]);
@@ -1506,7 +1565,11 @@ const CLAVE_ULTIMA_COPIA = 'planosCocina.ultimaCopia';
 function hacerCopia() {
   guardar();
   // copia completa: trabajos y, si existe, la gestión (clientes, documentos, empresa)
-  const copia = { version: 2, trabajos: leerTrabajos(), gestion: typeof exportarGestion === 'function' ? exportarGestion() : null };
+  const ajustes = {};
+  for (const k of ['planosCocina.tarifas', 'planosCocina.logo']) {
+    try { const v = localStorage.getItem(k); if (v !== null) ajustes[k] = v; } catch { /* sin almacenamiento */ }
+  }
+  const copia = { version: 2, trabajos: leerTrabajos(), gestion: typeof exportarGestion === 'function' ? exportarGestion() : null, ajustes };
   const blob = new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' });
   descargar(blob, `carbonell-copia-${hoy()}.json`);
   try { localStorage.setItem(CLAVE_ULTIMA_COPIA, String(Date.now())); } catch { /* sin almacenamiento */ }
@@ -1537,6 +1600,14 @@ $('#fileImportar').addEventListener('change', async (e) => {
       n++;
     }
     escribirTrabajos(lista);
+    // tarifas y logo propios
+    if (datos.ajustes && typeof datos.ajustes === 'object') {
+      for (const k of ['planosCocina.tarifas', 'planosCocina.logo']) {
+        if (typeof datos.ajustes[k] === 'string') try { localStorage.setItem(k, datos.ajustes[k]); } catch { /* lleno */ }
+      }
+      cargarLogo();
+      if (typeof leerTarifasGuardadas === 'function') { tarifas = leerTarifasGuardadas(); llenarListas(); }
+    }
     pintarLista();
     aviso(`${n} trabajos restaurados` + (nDocs ? ` y ${nDocs} documentos` : ''));
   } catch {
@@ -1562,6 +1633,7 @@ $('#fileLogo').addEventListener('change', async (e) => {
     lc.getContext('2d').drawImage(img, 0, 0, lc.width, lc.height);
     URL.revokeObjectURL(img.src);
     localStorage.setItem(CLAVE_LOGO, lc.toDataURL('image/png'));
+    if (typeof programarSync === 'function') programarSync();
     cargarLogo();
     aviso('Logo guardado: saldrá en la ficha y en el presupuesto');
   } catch {
@@ -1570,6 +1642,7 @@ $('#fileLogo').addEventListener('change', async (e) => {
 });
 $('#btnQuitarLogo').addEventListener('click', () => {
   try { localStorage.removeItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
+  if (typeof programarSync === 'function') programarSync();
   cargarLogo();
   aviso('Se vuelve a usar el logo de Mármoles Carbonell');
 });

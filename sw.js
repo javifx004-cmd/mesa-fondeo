@@ -1,7 +1,8 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v29';
-const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js', 'contabilidad.js', 'sync.js',
-  'vendor/anthropic-sdk.js', 'vendor/qrcode.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg',
+const CACHE = 'planos-cocina-v30';
+const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js', 'contabilidad.js', 'sync.js', 'inicio.js',
+  'vendor/anthropic-sdk.js', 'vendor/qrcode.js', 'fuentes/cormorant-garamond-latin-600-normal.woff2',
+  'fuentes/cormorant-garamond-latin-700-normal.woff2', 'fuentes/manrope-latin-wght-normal.woff2', 'manifest.webmanifest', 'icon.svg', 'logo.svg',
   'Manual-Carbonell-Planos.pdf', 'iconos/icono-180.png', 'iconos/icono-192.png', 'iconos/icono-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -21,10 +22,14 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request, { cache: 'no-cache' })
       .then((r) => {
-        const copia = r.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copia));
-        return r;
+        // solo se guardan respuestas buenas (un error durante una actualización no se queda guardado)
+        if (r.ok) {
+          const copia = r.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copia));
+          return r;
+        }
+        return caches.match(e.request).then((g) => g || r);
       })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match('index.html')))
+      .catch(() => caches.match(e.request).then((r) => r || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error())))
   );
 });

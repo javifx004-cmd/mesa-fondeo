@@ -60,7 +60,8 @@ function guardarDoc(doc) {
   escribirJSON(CLAVE_DOCS, lista);
 }
 
-const redondear = (n) => Math.round(n * 100) / 100;
+// redondeo a céntimos, simétrico para negativos (rectificativas) y sin errores de coma flotante
+const redondear = (n) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-7) / 100;
 const anioDe = (fecha) => Number(String(fecha || hoy()).slice(0, 4));
 
 function totales(doc) {
@@ -70,9 +71,10 @@ function totales(doc) {
 }
 
 // Número correlativo por tipo y año: F2026-001, F2026-002…
-function siguienteNumero(tipo, fecha) {
+// Las facturas rectificativas llevan su propia serie: R2026-001…
+function siguienteNumero(tipo, fecha, serie) {
   const anio = anioDe(fecha);
-  const prefijo = `${TIPOS_DOC[tipo].prefijo}${anio}-`;
+  const prefijo = `${serie || TIPOS_DOC[tipo].prefijo}${anio}-`;
   const usados = leerDocs()
     .filter((d) => d.tipo === tipo && String(d.numero).startsWith(prefijo))
     .map((d) => Number(String(d.numero).slice(prefijo.length)) || 0);
@@ -82,10 +84,11 @@ function siguienteNumero(tipo, fecha) {
 function nuevoDoc(tipo, base = {}) {
   const fecha = base.fecha || hoy();
   return {
-    id: nuevoId(), tipo, fecha, numero: siguienteNumero(tipo, fecha),
+    id: nuevoId(), tipo, fecha, numero: siguienteNumero(tipo, fecha, base.rectifica ? 'R' : ''),
     estado: TIPOS_DOC[tipo].estados[0], clienteId: base.clienteId || '',
     lineas: base.lineas || [], conIva: base.conIva !== false, pago: base.pago || '',
     notas: base.notas || '', origen: base.origen || null, trabajoId: base.trabajoId || '',
+    rectifica: base.rectifica || null,
     creado: Date.now(), modificado: Date.now(),
   };
 }
@@ -164,8 +167,12 @@ function sincronizarPresupuesto(silencioso = false) {
     return null;
   }
   const previo = leerDocs().find((d) => d.id === trabajo.presupuestoId && d.tipo === 'presupuesto');
+  // se borró en Gestión: no se vuelve a crear solo, solo al pedirlo
+  if (trabajo.presupuestoId && !previo && silencioso) return null;
   // aceptado o rechazado: ya no se toca
   if (previo && previo.estado !== 'Pendiente') return previo;
+  // retocado a mano en Gestión (precios, descuentos…): se respeta
+  if (previo && previo.lineasAuto && JSON.stringify(previo.lineas) !== previo.lineasAuto) return previo;
   const cli = clienteDeTrabajo(trabajo);
   const material = r.material ? etiquetaMaterial(r.material) : trabajo.datos.material;
   const lineas = [
@@ -181,8 +188,12 @@ function sincronizarPresupuesto(silencioso = false) {
   } else {
     doc = nuevoDoc('presupuesto', { clienteId: cli.id, lineas, conIva: r.conIva, trabajoId: trabajo.id, notas });
   }
+  doc.lineasAuto = JSON.stringify(lineas);
   guardarDoc(doc);
-  trabajo.presupuestoId = doc.id;
+  if (trabajo.presupuestoId !== doc.id) {
+    trabajo.presupuestoId = doc.id;
+    sucio = true;
+  }
   return doc;
 }
 
@@ -295,7 +306,7 @@ function pintarDocs() {
     if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro') acciones.push(['cobrar', 'Cobrada']);
     return `<div class="doc" data-id="${d.id}">
       <div class="doc-info" data-accion="abrir">
-        <strong>${TIPOS_DOC[d.tipo].nombre} ${escapar(d.numero)}</strong>
+        <strong>${nombreTipoDoc(d)} ${escapar(d.numero)}</strong>
         <span>${escapar(cli ? cli.nombre : 'Sin cliente')} · ${fechaLegible(d.fecha)}</span>
       </div>
       <span class="estado ${claseEstado(d.estado)}">${escapar(d.estado)}</span>
@@ -366,7 +377,7 @@ $('#btnExportarCSV').addEventListener('click', () => {
   for (const d of filas) {
     const c = clientes[d.clienteId] || {};
     const t = totales(d);
-    lineas.push([TIPOS_DOC[d.tipo].nombre, d.numero, fechaLegible(d.fecha), c.nombre, c.nif, num(t.base), num(t.iva), num(t.total), d.estado].map(celda).join(';'));
+    lineas.push([nombreTipoDoc(d), d.numero, fechaLegible(d.fecha), c.nombre, c.nif, num(t.base), num(t.iva), num(t.total), d.estado].map(celda).join(';'));
   }
   descargar(new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv' }), `documentos-${hoy()}.csv`);
 });
@@ -375,6 +386,23 @@ $('#btnExportarCSV').addEventListener('click', () => {
 // Editor de documento
 // ---------------------------------------------------------------------------
 const dlgDoc = $('#dlgDocumento');
+// Para avisar si se cierra el documento con cambios sin guardar
+let fotoEditor = '';
+function leerEditorSinTocar() {
+  return { f: $('#docFecha').value, e: $('#docEstado').value, c: $('#docCliente').value, p: $('#docPago').value,
+    n: $('#docNotas').value, i: $('#docIva').checked, l: docEditado ? docEditado.lineas : [] };
+}
+function editorConCambios() {
+  return dlgDoc.open && fotoEditor && JSON.stringify(leerEditorSinTocar()) !== fotoEditor;
+}
+dlgDoc.addEventListener('click', (e) => {
+  if (e.target.closest('[data-close]') && editorConCambios() && !confirm('Hay cambios sin guardar. ¿Cerrar sin guardar?')) {
+    e.stopPropagation();
+  }
+}, true);
+dlgDoc.addEventListener('cancel', (e) => {
+  if (editorConCambios() && !confirm('Hay cambios sin guardar. ¿Cerrar sin guardar?')) e.preventDefault();
+});
 let docEditado = null;
 let docEsNuevo = false;
 
@@ -395,7 +423,7 @@ function editarDoc(doc, nuevo = false) {
   docEditado = structuredClone(doc);
   docEsNuevo = nuevo;
   const tipoInfo = TIPOS_DOC[doc.tipo];
-  $('#docTitulo').textContent = `${tipoInfo.nombre} ${doc.numero}`;
+  $('#docTitulo').textContent = `${nombreTipoDoc(doc)} ${doc.numero}`;
   $('#docFecha').value = doc.fecha;
   $('#docEstado').replaceChildren(...tipoInfo.estados.map((e) => new Option(e, e)));
   $('#docEstado').value = doc.estado;
@@ -410,8 +438,10 @@ function editarDoc(doc, nuevo = false) {
   if (doc.tipo === 'factura' && !leerEmpresa().nif && leerEmpresa().qr !== 'no') aviso('Pon tu NIF en Gestión → Mi empresa para que salga el QR de Hacienda');
   $('#btnDocAlbaran').hidden = doc.tipo !== 'presupuesto';
   $('#btnDocFactura').hidden = doc.tipo === 'factura';
+  $('#btnDocRectificar').hidden = nuevo || doc.tipo !== 'factura' || !!doc.rectifica || doc.estado === 'Anulada';
   pintarLineas();
   if (!dlgDoc.open) dlgDoc.showModal();
+  fotoEditor = JSON.stringify(leerEditorSinTocar());
 }
 
 // Importe de una línea; en blanco si es solo texto (sin cantidad o sin precio).
@@ -472,7 +502,7 @@ function leerEditor() {
   const d = docEditado;
   const fechaNueva = $('#docFecha').value || hoy();
   // un documento nuevo que cambia de año toma el número de ese año
-  if (docEsNuevo && anioDe(fechaNueva) !== anioDe(d.fecha)) d.numero = siguienteNumero(d.tipo, fechaNueva);
+  if (docEsNuevo && anioDe(fechaNueva) !== anioDe(d.fecha)) d.numero = siguienteNumero(d.tipo, fechaNueva, d.rectifica ? 'R' : '');
   d.fecha = fechaNueva;
   d.estado = $('#docEstado').value;
   d.clienteId = $('#docCliente').value;
@@ -486,11 +516,14 @@ function leerEditor() {
 function guardarEditor() {
   const d = leerEditor();
   if (d.tipo === 'factura' && !d.clienteId) { aviso('Una factura necesita un cliente'); return false; }
+  // el número definitivo se da al guardar por primera vez (por si mientras tanto llegó otro de otro aparato)
+  if (docEsNuevo && !leerDocs().some((x) => x.id === d.id)) d.numero = siguienteNumero(d.tipo, d.fecha, d.rectifica ? 'R' : '');
   guardarDoc(d);
   docEsNuevo = false;
+  fotoEditor = JSON.stringify(leerEditorSinTocar());
   $('#btnDocBorrar').hidden = false;
   $('#btnDocAnular').hidden = d.tipo !== 'factura' || d.estado === 'Anulada';
-  $('#docTitulo').textContent = `${TIPOS_DOC[d.tipo].nombre} ${d.numero}`;
+  $('#docTitulo').textContent = `${nombreTipoDoc(d)} ${d.numero}`;
   pintarDocs();
   return true;
 }
@@ -501,6 +534,27 @@ for (const [id, tipo] of [['#btnDocAlbaran', 'albaran'], ['#btnDocFactura', 'fac
     convertir(structuredClone(docEditado), tipo);
   });
 }
+
+// Factura rectificativa por diferencias: copia la factura con los importes en negativo.
+// Se puede dejar entera (anula la original) o cambiar las líneas para corregir solo una parte.
+$('#btnDocRectificar').addEventListener('click', () => {
+  if (!guardarEditor()) return;
+  const orig = structuredClone(docEditado);
+  const ya = leerDocs().find((d) => d.rectifica && d.rectifica.id === orig.id);
+  if (ya && !confirm(`La factura ${orig.numero} ya tiene la rectificativa ${ya.numero}. ¿Hacer otra?`)) return;
+  const motivo = prompt(`Motivo de la rectificación de la factura ${orig.numero}:`, 'Error en el importe');
+  if (motivo === null) return;
+  const doc = nuevoDoc('factura', {
+    clienteId: orig.clienteId, conIva: orig.conIva, pago: orig.pago, trabajoId: orig.trabajoId,
+    lineas: orig.lineas.map((l) => ({ ...l, precio: l.precio === '' ? '' : -Number(l.precio) })),
+    rectifica: { id: orig.id, numero: orig.numero, fecha: orig.fecha, motivo: motivo.trim() },
+    notas: '',
+  });
+  guardarDoc(doc);
+  pintarDocs();
+  aviso(`Rectificativa ${doc.numero} creada: revisa las líneas`);
+  editarDoc(doc);
+});
 
 $('#btnDocGuardar').addEventListener('click', () => {
   if (guardarEditor()) { aviso('Documento guardado'); dlgDoc.close(); }
@@ -515,7 +569,7 @@ $('#btnDocAnular').addEventListener('click', () => {
 });
 $('#btnDocBorrar').addEventListener('click', () => {
   const d = docEditado;
-  const nombre = `${TIPOS_DOC[d.tipo].nombre.toLowerCase()} ${d.numero}`;
+  const nombre = `${nombreTipoDoc(d).toLowerCase()} ${d.numero}`;
   let pregunta = `¿Borrar ${nombre}? No se puede deshacer.`;
   if (d.tipo === 'factura') {
     // Hacienda pide numeración correlativa: si no es la última, queda un hueco
@@ -542,14 +596,14 @@ $('#btnDocBorrar').addEventListener('click', () => {
   escribirJSON(CLAVE_DOCS, docs);
   dlgDoc.close();
   pintarDocs();
-  aviso(`${TIPOS_DOC[d.tipo].nombre} ${d.numero} borrado`);
+  aviso(`${nombreTipoDoc(d)} ${d.numero} borrado`);
 });
 
 async function hojaDocBlob() {
   await logoListo();
-  return new Promise((ok) => componerDocumento(leerEditor()).toBlob(ok, 'image/png'));
+  return hojasAPdf([componerDocumento(leerEditor())]);
 }
-const nombreDoc = (d) => `${TIPOS_DOC[d.tipo].nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}_${d.numero}.png`;
+const nombreDoc = (d) => `${nombreTipoDoc(d).toLowerCase().replace(/ /g, '-').normalize('NFD').replace(/[̀-ͯ]/g, '')}_${d.numero}.pdf`;
 
 $('#btnDocImprimir').addEventListener('click', () => {
   if (!guardarEditor()) return;
@@ -562,14 +616,7 @@ $('#btnDocDescargar').addEventListener('click', async () => {
 });
 $('#btnDocCompartir').addEventListener('click', async () => {
   if (!guardarEditor()) return;
-  const blob = await hojaDocBlob();
-  const archivo = new File([blob], nombreDoc(docEditado), { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-    try { await navigator.share({ files: [archivo], title: `${TIPOS_DOC[docEditado.tipo].nombre} ${docEditado.numero}` }); } catch { /* cancelado */ }
-  } else {
-    descargar(blob, archivo.name);
-    aviso('Este navegador no permite compartir: se ha descargado la imagen');
-  }
+  compartirArchivo(await hojaDocBlob(), nombreDoc(docEditado), `${TIPOS_DOC[docEditado.tipo].nombre} ${docEditado.numero}`);
 });
 
 // ---------------------------------------------------------------------------
@@ -613,6 +660,8 @@ function pintarQr(c, url, x, y, lado) {
   c.textAlign = 'left';
 }
 
+const nombreTipoDoc = (d) => (d.rectifica ? 'Factura rectificativa' : TIPOS_DOC[d.tipo].nombre);
+
 function componerDocumento(doc) {
   const tipoInfo = TIPOS_DOC[doc.tipo];
   const emp = leerEmpresa();
@@ -626,9 +675,22 @@ function componerDocumento(doc) {
   c.fillStyle = '#fff';
   c.fillRect(0, 0, W, HOJA_H);
 
-  const cab = pintarCabecera(c, M, [`${tipoInfo.titulo} Nº ${doc.numero}`, `Fecha: ${fechaLegible(doc.fecha)}`,
-    doc.estado === 'Anulada' ? 'ANULADA' : '']);
+  const cab = pintarCabecera(c, M, [`${doc.rectifica ? 'FACTURA RECTIFICATIVA' : tipoInfo.titulo} Nº ${doc.numero}`,
+    `Fecha: ${fechaLegible(doc.fecha)}`, doc.estado === 'Anulada' ? 'ANULADA' : '']);
   let y = M + cab + 10;
+  if (doc.rectifica) {
+    // datos obligatorios de la rectificativa: factura que corrige y motivo
+    const r = doc.rectifica;
+    c.fillStyle = '#f6efe3';
+    c.fillRect(M, y - 6, W - M * 2, 64);
+    c.fillStyle = '#5a3f14';
+    c.font = '600 26px system-ui, sans-serif';
+    c.textAlign = 'left';
+    c.textBaseline = 'middle';
+    c.fillText(`Rectifica la factura ${r.numero} del ${fechaLegible(r.fecha)} (rectificación por diferencias, art. 15 RD 1619/2012)`
+      + (r.motivo ? ` · Motivo: ${r.motivo}` : ''), M + 20, y + 26, W - M * 2 - 40);
+    y += 80;
+  }
 
   // datos del emisor y del cliente
   let anchoBloque = (W - M * 2 - 40) / 2;

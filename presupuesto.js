@@ -139,6 +139,8 @@ function llenarListas() {
 const fmtEuro = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 const fmtCant = (n, u) => (u === 'ud' ? String(n) : n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + ' ' + u;
 
+const r2 = (n) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-7) / 100;
+
 function calcular(t) {
   const d = t.datos;
   const lineas = [];
@@ -149,7 +151,9 @@ function calcular(t) {
       avisos.push(`Sin precio en la tarifa para «${concepto}».`);
       precio = 0;
     }
-    lineas.push({ concepto, cantidad, unidad, precio, importe: Math.round(cantidad * precio * 100) / 100 });
+    // la cantidad que se ve (2 decimales) es la que se cobra
+    if (unidad !== 'ud') cantidad = r2(cantidad);
+    lineas.push({ concepto, cantidad, unidad, precio, importe: r2(cantidad * precio) });
   };
 
   const piezas = t.piezas || [];
@@ -230,10 +234,10 @@ function calcular(t) {
     else avisos.push('Colocación de aplacado marcada, pero no hay piezas frontales.');
   }
 
-  const base = Math.round(lineas.reduce((s, l) => s + l.importe, 0) * 100) / 100;
+  const base = r2(lineas.reduce((s, l) => s + l.importe, 0));
   const conIva = extras.iva !== false;
-  const iva = conIva ? Math.round(base * IVA * 100) / 100 : 0;
-  return { lineas, avisos, base, iva, conIva, total: Math.round((base + iva) * 100) / 100, material };
+  const iva = conIva ? r2(base * IVA) : 0;
+  return { lineas, avisos, base, iva, conIva, total: r2(base + iva), material };
 }
 
 // ---------------------------------------------------------------------------
@@ -370,6 +374,7 @@ $('#fileTarifas').addEventListener('change', async (e) => {
     const nuevas = parsearTarifas(csv);
     const nombre = f.name.replace(/\.csv$/i, '');
     localStorage.setItem(CLAVE_TARIFAS, JSON.stringify({ nombre, csv }));
+    if (typeof programarSync === 'function') programarSync();
     tarifas = { nombre, ...nuevas };
     llenarListas();
     pintarResultado();
@@ -485,7 +490,7 @@ function nombrePresupuesto() {
 
 async function presupuestoComoBlob() {
   await logoListo();
-  return new Promise((ok) => componerPresupuesto().toBlob(ok, 'image/png'));
+  return hojasAPdf([componerPresupuesto()]);
 }
 
 function comprobarPresupuesto() {
@@ -500,16 +505,7 @@ $('#btnPresuImagen').addEventListener('click', async () => {
 
 $('#btnPresuCompartir').addEventListener('click', async () => {
   if (!comprobarPresupuesto()) return;
-  const blob = await presupuestoComoBlob();
-  const archivo = new File([blob], nombrePresupuesto(), { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-    try {
-      await navigator.share({ files: [archivo], title: 'Presupuesto ' + (trabajo.datos.cliente || '') });
-    } catch { /* cancelado */ }
-  } else {
-    descargar(blob, archivo.name);
-    aviso('Este navegador no permite compartir: se ha descargado la imagen');
-  }
+  compartirArchivo(await presupuestoComoBlob(), nombrePresupuesto(), 'Presupuesto ' + (trabajo.datos.cliente || ''));
 });
 
 $('#btnPresuImprimir').addEventListener('click', () => {
