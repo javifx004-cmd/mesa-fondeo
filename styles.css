@@ -945,3 +945,8 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .contador b { font-family: var(--serif); font-size: 24px; }
 .contador small { font-size: 11px; color: #b4442f; font-weight: 600; }
 .ini-lista li > span.ev-ico { flex: none; width: 34px; }
+#bienvenida { gap: 16px; }
+#bienvenida .bv-hola { font-family: var(--serif); font-size: clamp(18px, 5vw, 24px); letter-spacing: .04em; text-transform: none; color: rgba(241, 220, 171, .85); animation: aparecer .6s ease both; }
+#bienvenida b { animation-delay: .15s; }
+#bienvenida img { width: 120px; height: 120px; animation-delay: .3s; }
+#bienvenida .bv-firma { font-size: 11px; letter-spacing: .18em; color: rgba(226, 201, 146, .6); font-style: italic; animation: aparecer .6s .5s ease both; }

@@ -342,7 +342,7 @@ setTimeout(() => {
   const b = $('#bienvenida');
   b.classList.add('fuera');
   setTimeout(() => b.remove(), 600);
-}, 650);
+}, 2200);
 
 // La app se abre en Inicio
 abrirInicio();
