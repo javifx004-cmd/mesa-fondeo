@@ -117,6 +117,11 @@ function pintarInicio() {
     : presus.length ? `Todo cobrado. ${presus.length} ${presus.length === 1 ? 'presupuesto espera' : 'presupuestos esperan'} respuesta.`
       : 'Todo al día. ¡A por la siguiente cocina!';
 
+  // aviso si el aparato se está quedando sin espacio
+  if (pintarEspacio() >= 85 && !sessionStorage.getItem('avisoEspacio')) {
+    try { sessionStorage.setItem('avisoEspacio', '1'); } catch { /* nada */ }
+    setTimeout(() => aviso('El aparato se está quedando sin espacio para la app: mira Gestión → Mi empresa'), 6000);
+  }
   pintarGraficoAnio(anio, delAnio, gastos);
   pintarPlazo();
 
@@ -346,6 +351,32 @@ $('.barra-movil').addEventListener('click', (e) => {
   if (v === 'trabajos') $('#btnTrabajos').click();
   if (v === 'nuevo') { irAPlanos(); guardar(); abrir(trabajoVacio()); aviso('Nuevo plano'); }
 });
+
+// Espacio usado en el aparato (el navegador deja unos 5 MB a cada app)
+const LIMITE_ESPACIO = 5 * 1024 * 1024;
+function espacioUsado() {
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      total += (k.length + (localStorage.getItem(k) || '').length) * 2;
+    }
+  } catch { /* sin almacenamiento */ }
+  return total;
+}
+function pintarEspacio() {
+  const usado = espacioUsado();
+  const pct = Math.min(100, Math.round(usado / LIMITE_ESPACIO * 100));
+  const barra = $('#espacioBarra');
+  if (barra) {
+    barra.style.width = `${pct}%`;
+    barra.classList.toggle('lleno', pct >= 80);
+    $('#espacioTexto').textContent = `Usado ${(usado / 1048576).toLocaleString('es-ES', { maximumFractionDigits: 1 })} MB de unos 5 MB (${pct} %). `
+      + (pct >= 80 ? 'Queda poco: haz una copia de seguridad y borra trabajos viejos que ya no necesites.' : 'Todo bien.');
+  }
+  return pct;
+}
+$$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarEspacio));
 
 // Enlaces a la web y redes sociales (se ponen en Mi empresa)
 function enlacesEmpresa(emp) {

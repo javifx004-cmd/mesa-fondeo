@@ -38,11 +38,11 @@ function confFiscal() {
 
 // Facturas válidas (no anuladas) de un año, opcionalmente hasta un trimestre.
 function facturasDe(anio, hastaTrim = 4, soloTrim = null) {
-  return leerDocs().filter((d) => d.tipo === 'factura' && d.estado !== 'Anulada' && anioDe(d.fecha) === anio
+  return leerRapido(CLAVE_DOCS, []).filter((d) => d.tipo === 'factura' && d.estado !== 'Anulada' && anioDe(d.fecha) === anio
     && (soloTrim ? trimDe(d.fecha) === soloTrim : trimDe(d.fecha) <= hastaTrim));
 }
 function gastosDe(anio, hastaTrim = 4, soloTrim = null) {
-  return leerGastos().filter((g) => g.deducible && anioDe(g.fecha) === anio
+  return leerRapido(CLAVE_GASTOS, []).filter((g) => g.deducible && anioDe(g.fecha) === anio
     && (soloTrim ? trimDe(g.fecha) === soloTrim : trimDe(g.fecha) <= hastaTrim));
 }
 
@@ -79,16 +79,31 @@ function irpfTrimestre(anio, trim) {
 
 // Gastos asignados a una cocina: los apuntados a la factura, a sus documentos de origen
 // (presupuesto, albarán) o a cualquier documento del mismo trabajo.
+// Índices para no recorrer todo en cada cocina (se rehacen solo si cambian los datos)
+let indiceCocinas = null;
+function indicesCocinas() {
+  const docs = leerRapido(CLAVE_DOCS, []);
+  const gastos = leerRapido(CLAVE_GASTOS, []);
+  const conf = JSON.stringify(confFiscal());
+  if (indiceCocinas && indiceCocinas.docs === docs && indiceCocinas.gastos === gastos && indiceCocinas.conf === conf) return indiceCocinas;
+  const porId = new Map(docs.map((d) => [d.id, d]));
+  const porTrabajo = new Map();
+  for (const d of docs) if (d.trabajoId) (porTrabajo.get(d.trabajoId) || porTrabajo.set(d.trabajoId, []).get(d.trabajoId)).push(d);
+  const gastosPorDoc = new Map();
+  for (const g of gastos) if (g.docId) (gastosPorDoc.get(g.docId) || gastosPorDoc.set(g.docId, []).get(g.docId)).push(g);
+  indiceCocinas = { docs, gastos, conf, porId, porTrabajo, gastosPorDoc, anual: new Map() };
+  return indiceCocinas;
+}
 function gastosDeCocina(doc) {
-  const docs = leerDocs();
+  const ix = indicesCocinas();
   const ids = new Set([doc.id]);
   let o = doc.origen;
   while (o && !ids.has(o.id)) {
     ids.add(o.id);
-    o = (docs.find((d) => d.id === o.id) || {}).origen;
+    o = (ix.porId.get(o.id) || {}).origen;
   }
-  if (doc.trabajoId) docs.filter((d) => d.trabajoId === doc.trabajoId).forEach((d) => ids.add(d.id));
-  return leerGastos().filter((g) => g.docId && ids.has(g.docId));
+  if (doc.trabajoId) for (const d of ix.porTrabajo.get(doc.trabajoId) || []) ids.add(d.id);
+  return [...ids].flatMap((id) => ix.gastosPorDoc.get(id) || []);
 }
 
 // Beneficio aproximado de una cocina (factura o presupuesto):
@@ -98,15 +113,22 @@ function beneficioCocina(doc) {
   const base = totales(doc).base;
   // una rectificativa no vuelve a restar los gastos de la cocina (ya los resta la factura original)
   const directos = doc.rectifica ? 0 : redondear(gastosDeCocina(doc).filter((g) => g.deducible).reduce((s, g) => s + (Number(g.base) || 0), 0));
-  const facturado = facturasDe(anio).reduce((s, d) => s + totales(d).base, 0);
-  const generalesAnio = gastosDe(anio).filter((g) => !g.docId).reduce((s, g) => s + (Number(g.base) || 0), 0);
+  // datos del año: se calculan una vez y sirven para todas las cocinas
+  const ix = indicesCocinas();
+  if (!ix.anual.has(anio)) {
+    ix.anual.set(anio, {
+      facturado: facturasDe(anio).reduce((s, d) => s + totales(d).base, 0),
+      generales: gastosDe(anio).filter((g) => !g.docId).reduce((s, g) => s + (Number(g.base) || 0), 0),
+      rend: rendimientoAcumulado(anio, 4),
+    });
+  }
+  const { facturado, generales: generalesAnio, rend: anual } = ix.anual.get(anio);
   // un presupuesto aún no facturado cuenta como si se sumara a lo facturado
   const totalBase = doc.tipo === 'factura' ? facturado : facturado + base;
   const generales = totalBase > 0 ? redondear(generalesAnio * base / totalBase) : 0;
   const antes = redondear(base - directos - generales);
   // el IRPF se calcula sobre el rendimiento neto (con el 5 % de difícil justificación),
   // repartido igual que en el resumen del año para que las cifras cuadren
-  const anual = rendimientoAcumulado(anio, 4);
   const beneficioAnual = anual.ingresos - anual.gastos;
   const factor = beneficioAnual > 0 ? Math.max(0, anual.rendimiento) / beneficioAnual : 1;
   const irpf = redondear(Math.max(0, antes) * confFiscal().irpfMedio * factor);
@@ -126,6 +148,7 @@ function opcionesCocina(sel, elegido) {
   sel.value = elegido || '';
 }
 
+let limiteGastos = 150;
 function pintarGastos() {
   const gastos = leerGastos();
   llenarAnios($('#gastosAnio'), gastos);
@@ -147,7 +170,7 @@ function pintarGastos() {
     cont.innerHTML = '<p class="vacio">No hay gastos en este periodo. Apunta las compras de tablas, el gasoil, la cuota de autónomos, la gestoría…</p>';
     return;
   }
-  cont.innerHTML = lista.map((g) => {
+  cont.innerHTML = lista.slice(0, limiteGastos).map((g) => {
     const doc = docs[g.docId];
     return `<div class="doc" data-id="${g.id}">
       <div class="doc-info" data-accion="editar" tabindex="0" role="button">
@@ -157,11 +180,14 @@ function pintarGastos() {
       <span class="estado ${g.deducible ? 'ok' : 'mal'}">${doc ? `${TIPOS_DOC[doc.tipo].nombre} ${escapar(doc.numero)}` : g.deducible ? 'General' : 'No deducible'}</span>
       <strong class="doc-total">${fmtEuro(redondear((Number(g.base) || 0) + ivaGasto(g)))}</strong>
     </div>`;
-  }).join('');
+  }).join('')
+    + (lista.length > limiteGastos ? `<button type="button" class="ver-mas" data-mas-gastos>Ver más (quedan ${lista.length - limiteGastos})</button>` : '');
 }
-['#gastosAnio', '#gastosTrim'].forEach((s) => $(s).addEventListener('change', pintarGastos));
-$('#gastosTexto').addEventListener('input', pintarGastos);
+const pintarGastosDesdeArriba = () => { limiteGastos = 150; pintarGastos(); };
+['#gastosAnio', '#gastosTrim'].forEach((s) => $(s).addEventListener('change', pintarGastosDesdeArriba));
+$('#gastosTexto').addEventListener('input', pintarGastosDesdeArriba);
 $('#listaGastos').addEventListener('click', (e) => {
+  if (e.target.closest('[data-mas-gastos]')) { limiteGastos += 300; pintarGastos(); return; }
   const el = e.target.closest('[data-accion]');
   if (!el) return;
   const g = leerGastos().find((x) => x.id === el.closest('.doc').dataset.id);

@@ -78,7 +78,7 @@ function firmaComoImagen() {
   if (x1 <= x0) return null;
   const m = 12;
   x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(lienzoFirma.width, x1 + m); y1 = Math.min(lienzoFirma.height, y1 + m);
-  const esc = Math.min(1, 600 / (x1 - x0));
+  const esc = Math.min(1, 460 / (x1 - x0));   // pequeña: ocupa poco en el aparato y en la nube
   const c = document.createElement('canvas');
   c.width = Math.round((x1 - x0) * esc);
   c.height = Math.round((y1 - y0) * esc);
@@ -86,7 +86,7 @@ function firmaComoImagen() {
   cc.fillStyle = '#fff';
   cc.fillRect(0, 0, c.width, c.height);
   cc.drawImage(lienzoFirma, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.85);
+  return c.toDataURL('image/jpeg', 0.72);
 }
 
 // --- ventana ---

@@ -131,10 +131,10 @@ function caeEn(r, dia) {
 // Todo lo que pasa un día: recordatorios, colocaciones, plazos de Hacienda y cobros atrasados
 function eventosDelDia(dia) {
   const ev = [];
-  for (const r of leerRecordatorios()) {
+  for (const r of leerRapido(CLAVE_RECORDATORIOS, [])) {
     if (caeEn(r, dia)) ev.push({ tipo: 'recordatorio', hora: r.hora || '', titulo: r.titulo, sub: r.notas, ref: r.id, hecho: (r.hechos || []).includes(dia) });
   }
-  for (const t of leerTrabajos()) {
+  for (const t of leerRapido(CLAVE, [])) {
     if (t.datos.colocacion === dia) ev.push({ tipo: 'colocacion', titulo: `Colocación · ${t.datos.cliente || 'Sin cliente'}`, sub: t.datos.direccion || t.datos.material || '', ref: t.id, mapa: urlMapa(t.datos) });
   }
   // plazos de Hacienda: último día y aviso una semana antes
@@ -146,8 +146,8 @@ function eventosDelDia(dia) {
     if (d === ultimo) ev.push({ tipo: 'hacienda', titulo: `Último día: IVA (303) e IRPF (130) del ${trim}.º trimestre`, sub: `Trimestre de ${anioT}` });
     if (d === ultimo - 7) ev.push({ tipo: 'hacienda', titulo: `Quedan 7 días: IVA e IRPF del ${trim}.º trimestre`, sub: `Trimestre de ${anioT}` });
   }
-  const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c.nombre]));
-  for (const f of leerDocs()) {
+  const clientes = Object.fromEntries(leerRapido(CLAVE_CLIENTES, []).map((c) => [c.id, c.nombre]));
+  for (const f of leerRapido(CLAVE_DOCS, [])) {
     if (f.tipo !== 'factura' || f.estado !== 'Pendiente de cobro' || totales(f).total <= 0) continue;
     const v = new Date(`${f.fecha}T12:00`);
     v.setDate(v.getDate() + 30);

@@ -1051,3 +1051,7 @@ details.ia[open] > summary { margin-bottom: 8px; }
 }
 .grid .campo-dir.wide { grid-column: span 2; }
 @media (max-width: 520px) { .grid .campo-dir.wide { grid-column: auto; } }
+.ver-mas { width: 100%; min-height: 44px; border-style: dashed; color: var(--oro-osc); font-weight: 700; }
+.medidor { height: 10px; border-radius: 10px; background: var(--suave); border: 1px solid var(--border); overflow: hidden; margin: 6px 0; }
+.medidor i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #d9bd84, #9c7a43); transition: width .3s; }
+.medidor i.lleno { background: linear-gradient(90deg, #e08a73, #b4442f); }

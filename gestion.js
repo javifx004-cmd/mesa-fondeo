@@ -31,6 +31,20 @@ function leerJSON(clave, defecto) {
     return defecto;
   }
 }
+// Lectura rápida SOLO para consultar (cálculos, listas, Inicio): si los datos no han cambiado
+// se reutilizan ya leídos en vez de volver a descifrarlos. No modificar lo que devuelve.
+const cacheLectura = new Map();
+function leerRapido(clave, defecto) {
+  let crudo = null;
+  try { crudo = localStorage.getItem(clave); } catch { /* sin almacenamiento */ }
+  const c = cacheLectura.get(clave);
+  if (c && c.crudo === crudo) return c.valor;
+  let valor = defecto;
+  try { valor = JSON.parse(crudo) ?? defecto; } catch { /* dañado */ }
+  cacheLectura.set(clave, { crudo, valor });
+  return valor;
+}
+
 function escribirJSON(clave, valor) {
   try {
     localStorage.setItem(clave, JSON.stringify(valor));
@@ -322,6 +336,8 @@ function claseEstado(estado) {
   return 'pendiente';
 }
 
+let limiteDocs = 120;
+let docsFiltrados = [];
 function pintarDocs() {
   const docs = leerDocs();
   llenarAnios($('#filtroAnio'), docs);
@@ -339,8 +355,10 @@ function pintarDocs() {
     cont.innerHTML = '<p class="vacio">No hay documentos. Crea uno con «+ Nuevo» o desde el presupuesto de un plano con «Pasar a Gestión».</p>';
     return;
   }
+  docsFiltrados = lista;
   const rectificadaPor = Object.fromEntries(docs.filter((x) => x.rectifica).map((x) => [x.rectifica.id, x.numero]));
-  cont.innerHTML = lista.map((d) => {
+  // con muchos documentos se enseñan por tandas (va mucho más rápido)
+  cont.innerHTML = lista.slice(0, limiteDocs).map((d) => {
     const cli = clientes[d.clienteId];
     const acciones = [];
     if (d.tipo === 'presupuesto') {
@@ -360,15 +378,18 @@ function pintarDocs() {
       <strong class="doc-total">${fmtEuro(totales(d).total)}</strong>
       <div class="doc-acciones">${acciones.map(([a, t]) => `<button type="button" data-accion="${a}">${t}</button>`).join('')}</div>
     </div>`;
-  }).join('');
+  }).join('')
+    + (lista.length > limiteDocs ? `<button type="button" class="ver-mas" data-accion="mas">Ver más (quedan ${lista.length - limiteDocs})</button>` : '');
 }
 
-['#filtroTipo', '#filtroAnio'].forEach((s) => $(s).addEventListener('change', pintarDocs));
-$('#filtroTexto').addEventListener('input', pintarDocs);
+const pintarDocsDesdeArriba = () => { limiteDocs = 120; pintarDocs(); };
+['#filtroTipo', '#filtroAnio'].forEach((s) => $(s).addEventListener('change', pintarDocsDesdeArriba));
+$('#filtroTexto').addEventListener('input', pintarDocsDesdeArriba);
 
 $('#listaDocs').addEventListener('click', (e) => {
   const el = e.target.closest('[data-accion]');
   if (!el) return;
+  if (el.dataset.accion === 'mas') { limiteDocs += 200; pintarDocs(); return; }
   const doc = leerDocs().find((d) => d.id === el.closest('.doc').dataset.id);
   if (!doc) return;
   const accion = el.dataset.accion;
@@ -443,7 +464,7 @@ function elegirTipo() {
 // Exporta los documentos que se ven (para el gestor), en formato para Excel.
 $('#btnExportarCSV').addEventListener('click', () => {
   const clientes = Object.fromEntries(leerClientes().map((c) => [c.id, c]));
-  const filas = [...$('#listaDocs').querySelectorAll('.doc')].map((el) => leerDocs().find((d) => d.id === el.dataset.id)).filter(Boolean);
+  const filas = docsFiltrados;   // todos los del filtro, aunque no se vean todos en pantalla
   if (!filas.length) { aviso('No hay documentos que exportar'); return; }
   const num = (n) => n.toFixed(2).replace('.', ',');
   const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
