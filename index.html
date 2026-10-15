@@ -392,6 +392,8 @@
       <button type="button" id="btnImagen">Descargar PDF</button>
       <button type="button" id="btnCompartir">Compartir PDF</button>
       <button type="button" id="btnImprimir">Imprimir / PDF</button>
+      <button type="button" id="btnConformidad" class="oro">Parte de conformidad</button>
+      <span id="estadoConformidad" class="estado-conf"></span>
     </section>
   </main>
 
@@ -526,6 +528,7 @@
         <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
         <label>QR de Hacienda en las facturas <select name="qr"><option value="">Sí</option><option value="no">No</option></select></label>
         <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
+        <label class="wide">Texto del parte de conformidad <textarea name="textoConformidad" rows="3" placeholder="Si lo dejas vacío se usa el texto de serie."></textarea></label>
       </form>
 
       <div id="panelBloqueo" class="panel-sync">
@@ -679,6 +682,33 @@
         <button type="button" id="btnIcsRecordatorio">Al calendario del móvil</button>
         <button value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgConformidad" class="grande">
+    <form id="formConformidad" method="dialog">
+      <div class="dlg-head"><h2>Parte de conformidad</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <p class="ayuda" id="confTrabajo"></p>
+      <div class="grid doc-cab">
+        <label>Nombre y apellidos <input name="nombre" autocomplete="off" required></label>
+        <label>DNI / NIE <input name="dni" autocomplete="off" required placeholder="12345678Z"><small id="confDniAviso" class="aviso-dni"></small></label>
+        <label>Fecha <input name="fecha" type="date" required></label>
+        <label>Instalado por <input name="instalador" autocomplete="off" placeholder="Nombre del colocador"></label>
+        <label class="wide">Texto de conformidad <textarea name="texto" rows="4"></textarea></label>
+        <label class="wide">Incidencias u observaciones <textarea name="incidencias" rows="2" placeholder="Si no hay ninguna, déjalo vacío"></textarea></label>
+      </div>
+      <div class="firma-caja">
+        <div class="firma-cab"><b>Firma del cliente</b><button type="button" id="btnBorrarFirma" class="mini">Borrar firma</button></div>
+        <canvas id="lienzoFirma" width="1200" height="400" aria-label="Firma con el dedo o el ratón"></canvas>
+        <small class="ayuda">Firma aquí con el dedo o el ratón.</small>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnConfQuitar" class="peligro">Quitar parte</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button type="button" id="btnConfPdf">Descargar PDF</button>
+        <button type="button" id="btnConfCompartir">Compartir PDF</button>
+        <button value="ok" type="submit" class="primary">Guardar firmado</button>
       </div>
     </form>
   </dialog>
@@ -859,6 +889,7 @@
   <script src="almacen.js"></script>
   <script src="despiece.js"></script>
   <script src="plantillas.js"></script>
+  <script src="conformidad.js"></script>
   <script src="sync.js"></script>
   <script src="inicio.js"></script>
   <script src="bloqueo.js"></script>

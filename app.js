@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '40';   // cambiar junto con CACHE en sw.js
+const VERSION = '41';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion'];
@@ -1613,6 +1613,7 @@ function pintarLista() {
       // la copia tiene su propio presupuesto y su propio cliente automático
       delete copia.presupuestoId;
       delete copia.clienteId;
+      delete copia.conformidad;
       copia.datos.referencia = (copia.datos.referencia || '') + ' (copia)';
       copia.datos.estado = 'Medido';
       copia.datos.colocacion = '';

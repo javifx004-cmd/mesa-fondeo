@@ -126,6 +126,14 @@ Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja c�
 datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y las facturas también salen en PDF; el
 PDF del presupuesto lleva el plano en la segunda página.
 
+### Parte de conformidad
+
+Al terminar la colocación, en el paso 4 del plano pulsa **Parte de conformidad**:
+- Sale el nombre del cliente y la fecha de colocación; pon el **DNI** (la app avisa si la letra no cuadra) y quién lo instaló.
+- El texto de conformidad sale de serie (se puede cambiar en **Mi empresa**). Apunta las incidencias si las hay.
+- El cliente **firma con el dedo** en la pantalla. **Guardar firmado** lo deja guardado en esa cocina.
+- **Descargar PDF** o **Compartir PDF**: el parte con tu logo y las firmas, y el plano en la segunda página.
+
 ## 4. Presupuestos, albaranes y facturas (pestaña Gestión)
 
 - El presupuesto de cada plano **pasa solo** a Gestión en cuanto tiene cliente y piezas.
