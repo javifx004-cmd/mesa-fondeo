@@ -255,7 +255,7 @@ function programarSync(ms = 3000) {
 // y se repintan las listas visibles.
 function refrescarTrasSync(cambios) {
   // el trabajo abierto se recarga solo si aquí no hay cambios a medio guardar
-  if (cambios.trabajos.has(String(trabajo.id)) && !sucio) {
+  if (cambios.trabajos.has(String(trabajo.id)) && !sucio && !(typeof generandoPdfConformidad !== 'undefined' && generandoPdfConformidad)) {
     const nuevo = leerTrabajos().find((t) => t.id === trabajo.id);
     if (nuevo) abrir(nuevo); else abrir(trabajoVacio());
   }

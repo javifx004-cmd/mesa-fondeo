@@ -19,7 +19,7 @@ const TEXTO_CONFORMIDAD = 'Una vez terminada la instalación, el cliente abajo f
 function dniValido(v) {
   const t = String(v || '').toUpperCase().replace(/[\s.-]/g, '');
   const m = /^([XYZ]?)(\d{7,8})([A-Z])$/.exec(t);
-  if (!m) return false;
+  if (!m || (m[1] ? m[2].length !== 7 : m[2].length !== 8)) return false;
   const num = Number(({ X: '0', Y: '1', Z: '2' }[m[1]] || '') + m[2]);
   return 'TRWAGMYFPDXBNJZSQVHLCKE'[num % 23] === m[3];
 }
@@ -201,16 +201,25 @@ function componerConformidad(c) {
   // texto de conformidad
   g.fillStyle = '#111';
   g.font = '400 32px system-ui, sans-serif';
-  for (const l of partirTexto(g, c.texto, W - M * 2)) { g.fillText(l, M, y); y += 46; }
+  // los textos no pueden bajar de aquí, para que las firmas quepan siempre en la hoja
+  const tope = HOJA_H - M - 560 - 120;
+  const escribir = (lineas, alto) => {
+    for (const [i, l] of lineas.entries()) {
+      if (y > tope) { g.fillText('…', M, y); y += alto; break; }
+      g.fillText(l + (y + alto > tope && i < lineas.length - 1 ? ' …' : ''), M, y);
+      y += alto;
+    }
+  };
+  escribir(partirTexto(g, c.texto, W - M * 2), 46);
   y += 30;
   g.font = '700 30px system-ui, sans-serif';
   g.fillText('Incidencias u observaciones', M, y);
   y += 46;
   g.font = '400 30px system-ui, sans-serif';
   g.fillStyle = c.incidencias ? '#111' : '#5f6b75';
-  for (const l of partirTexto(g, c.incidencias || 'Ninguna.', W - M * 2)) { g.fillText(l, M, y); y += 42; }
+  escribir(partirTexto(g, c.incidencias || 'Ninguna.', W - M * 2), 42);
   // firmas
-  const yf = Math.max(y + 80, HOJA_H - M - 560);
+  const yf = HOJA_H - M - 560;
   const anchoF = (W - M * 2 - 80) / 2;
   const caja = (x, titulo, nombre) => {
     g.strokeStyle = '#9aa5ae';
@@ -250,11 +259,13 @@ async function pdfConformidad() {
 const nombreConformidad = () => nombreArchivo().replace(/^plano_/, 'conformidad_');
 
 // PDF del parte firmado de cualquier trabajo (sin cambiar el que está abierto)
+let generandoPdfConformidad = false;
 async function pdfConformidadDe(t) {
   if (!t || !t.conformidad) return null;
   guardar();
   const abierto = trabajo;
   trabajo = structuredClone(t);
+  generandoPdfConformidad = true;   // mientras, la sincronización no cambia el trabajo abierto
   try {
     await logoListo();
     const c = { ...trabajo.conformidad };
@@ -264,6 +275,7 @@ async function pdfConformidadDe(t) {
     return { pdf: await hojasAPdf(hojas), nombre: nombreConformidad() };
   } finally {
     trabajo = abierto;
+    generandoPdfConformidad = false;
   }
 }
 
@@ -277,7 +289,7 @@ function pintarConformidades() {
         <strong>${escapar(t.conformidad.nombre)} · DNI ${escapar(t.conformidad.dni)}</strong>
         <span>${escapar([t.datos.direccion, t.datos.material].filter(Boolean).join(' · '))}${t.conformidad.incidencias ? ' · con incidencias' : ''}</span>
       </div>
-      <span class="estado ${t.conformidad.incidencias ? 'pendiente' : 'ok'}">${fechaLegible(t.conformidad.fecha)}</span>
+      <span class="estado ${t.conformidad.incidencias ? 'pendiente' : 'ok'}">${escapar(fechaLegible(t.conformidad.fecha))}</span>
       <div class="doc-acciones"><button type="button" data-accion="pdf">Descargar PDF</button><button type="button" data-accion="compartir">Compartir PDF</button></div>
     </div>`).join('') || '<p class="vacio">Todavía no hay partes firmados. Se hacen desde el plano de cada cocina, con «Parte de conformidad», al terminar la instalación.</p>';
 }
@@ -305,7 +317,7 @@ $('#btnConformidad').addEventListener('click', abrirConformidad);
 
 function pintarEstadoConformidad() {
   const c = trabajo && trabajo.conformidad;
-  $('#estadoConformidad').innerHTML = c ? `<span class="estado ok">✓ Firmado por ${escapar(c.nombre)} el ${fechaLegible(c.fecha)}</span>
+  $('#estadoConformidad').innerHTML = c ? `<span class="estado ok">✓ Firmado por ${escapar(c.nombre)} el ${escapar(fechaLegible(c.fecha))}</span>
     <button type="button" class="mini" id="btnConfPdfRapido">PDF del parte</button>` : '';
   $('#btnConformidad').textContent = c ? 'Ver parte firmado' : 'Parte de conformidad';
   const rapido = $('#btnConfPdfRapido');

@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '44';   // cambiar junto con CACHE en sw.js
+const VERSION = '45';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion', 'ubicacion'];
@@ -156,6 +156,8 @@ function guardar(manual = false) {
 }
 
 function abrir(t) {
+  // lo que se estuviera escribiendo en el trabajo anterior se guarda antes de cambiar
+  if (sucio && trabajo && (!t || t.id !== trabajo.id)) guardar();
   sucio = false;
   trabajo = structuredClone(t);
   for (const c of CAMPOS) if (!(c in trabajo.datos)) trabajo.datos[c] = '';
@@ -1025,10 +1027,14 @@ async function editar(o) {
       cota: 'Medida en cm', texto: 'Texto', luz: 'Nota de la caja de luz (ej. 2 enchufes)',
       arista: 'Medida de la arista redondeada (ej. 5x5)', ...PREGUNTAS,
     };
-    const texto = await pedirTexto(etiquetas[o.tipo], o.texto || '', o.tipo !== 'texto');
+    // las cotas antiguas estaban en mm: se enseñan y se guardan ya en cm
+    const antigua = o.tipo === 'cota' && o.unidad !== 'cm' && parseFloat(String(o.texto).replace(',', '.')) > 0;
+    const valor = antigua ? String(parseFloat(String(o.texto).replace(',', '.')) / 10).replace('.', ',') : (o.texto || '');
+    const texto = await pedirTexto(etiquetas[o.tipo], valor, o.tipo !== 'texto');
     if (texto !== null) {
       if (o.tipo === 'texto' && !texto) return;
       o.texto = texto;
+      if (o.tipo === 'cota') o.unidad = 'cm';
       ok = true;
     }
   } else {
@@ -1145,6 +1151,9 @@ document.addEventListener('keydown', (e) => {
   const ok = formD && formD.querySelector('button[value="ok"]');
   if (!ok) return;
   e.preventDefault();
+  // si queda una casilla obligatoria vacía, Intro pasa a ella en vez de aceptar
+  const vacia = [...formD.querySelectorAll('input[required]')].find((x) => x !== e.target && !x.value && x.offsetParent);
+  if (vacia) { vacia.focus(); return; }
   ok.click();
 });
 
@@ -1730,8 +1739,21 @@ $('#fileImportar').addEventListener('change', async (e) => {
     escribirTrabajos(lista);
     // tarifas y logo propios
     if (datos.ajustes && typeof datos.ajustes === 'object') {
-      for (const k of ['planosCocina.tarifas', 'planosCocina.logo', 'planosCocina.coloresExtra', 'planosCocina.stock', 'planosCocina.recordatorios']) {
+      for (const k of ['planosCocina.tarifas', 'planosCocina.logo', 'planosCocina.coloresExtra']) {
         if (typeof datos.ajustes[k] === 'string') try { localStorage.setItem(k, datos.ajustes[k]); } catch { /* lleno */ }
+      }
+      // almacén y recordatorios se unen con lo que hay (no se pierde lo apuntado después de la copia)
+      for (const k of ['planosCocina.stock', 'planosCocina.recordatorios']) {
+        if (typeof datos.ajustes[k] !== 'string') continue;
+        try {
+          const actuales = JSON.parse(localStorage.getItem(k) || '[]');
+          for (const n of JSON.parse(datos.ajustes[k]) || []) {
+            const i = actuales.findIndex((x) => x.id === n.id);
+            if (i < 0) actuales.push(n);
+            else if ((n.modificado || 0) > (actuales[i].modificado || 0)) actuales[i] = n;
+          }
+          localStorage.setItem(k, JSON.stringify(actuales));
+        } catch { /* copia dañada */ }
       }
       cargarLogo();
       if (typeof leerTarifasGuardadas === 'function') { tarifas = leerTarifasGuardadas(); llenarListas(); }

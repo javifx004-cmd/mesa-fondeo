@@ -137,7 +137,16 @@ function empaquetar(orden, regla, L, A, girar) {
 // Ancho de tabla que hace falta en la última, de arriba abajo (para saber si basta media tabla)
 const altoUsado = (tabla) => Math.max(0, ...tabla.puestas.map((p) => p.y + p.h)) + DISCO;
 
+// Mismo trabajo y mismas opciones → mismo resultado: no se vuelve a calcular
+let memoriaDespiece = { clave: '', valor: null };
 function calcularDespiece(t) {
+  const clave = JSON.stringify([t.piezas, t.extras && t.extras.tabla, t.datos.canto, t.datos.material]);
+  if (memoriaDespiece.clave === clave) return memoriaDespiece.valor;
+  const valor = calcularDespieceSinMemoria(t);
+  memoriaDespiece = { clave, valor };
+  return valor;
+}
+function calcularDespieceSinMemoria(t) {
   const conf = confDespiece(t);
   if (!conf.l || !conf.a) return { conf, tablas: [], avisos: ['Pon la medida de la tabla.'], piezas: [] };
   const { piezas, avisos } = piezasACortar(t, conf);
@@ -398,10 +407,16 @@ function pintarDespiece() {
   }));
 }
 
+let despiecePendiente = false;
+let anchoDespiece = 0;
 function programarDespiece() {
   clearTimeout(temporizadorDespiece);
+  // si el plano no se está viendo, se deja para cuando se abra
+  if ($('#planos').hidden) { despiecePendiente = true; return; }
   temporizadorDespiece = setTimeout(pintarDespiece, 150);
 }
+new MutationObserver(() => { if (despiecePendiente && !$('#planos').hidden) { despiecePendiente = false; programarDespiece(); } })
+  .observe($('#planos'), { attributes: true, attributeFilter: ['hidden'] });
 
 // Hoja A4 del despiece para el taller (hasta 3 tablas por página)
 function componerDespiece() {
@@ -467,5 +482,9 @@ pintarResultado = function pintarResultadoConDespiece() {
   pintarResultadoSinDespiece();
   programarDespiece();
 };
-window.addEventListener('resize', programarDespiece);
+// al girar el móvil o cambiar el ancho (no al abrir el teclado, que solo cambia el alto)
+window.addEventListener('resize', () => {
+  const w = $('#despieceDibujo').clientWidth;
+  if (w && w !== anchoDespiece) { anchoDespiece = w; programarDespiece(); }
+});
 programarDespiece();

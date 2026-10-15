@@ -118,7 +118,7 @@ function pintarInicio() {
       : 'Todo al día. ¡A por la siguiente cocina!';
 
   // aviso si el aparato se está quedando sin espacio
-  if (pintarEspacio() >= 85 && !sessionStorage.getItem('avisoEspacio')) {
+  if (Date.now() - ultimoEspacio > 600000 && (ultimoEspacio = Date.now()) && pintarEspacio() >= 85 && !sessionStorage.getItem('avisoEspacio')) {
     try { sessionStorage.setItem('avisoEspacio', '1'); } catch { /* nada */ }
     setTimeout(() => aviso('El aparato se está quedando sin espacio para la app: mira Gestión → Mi empresa'), 6000);
   }
@@ -130,11 +130,11 @@ function pintarInicio() {
   const nombreCli = (id) => escapar((clientes[id] || {}).nombre || 'Sin cliente');
   $('#iniCobros').innerHTML = pendientes.slice(0, 6).map((d) => {
     const dias = diasEntre(d.fecha, hoyIso);
-    return `<li data-doc="${d.id}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b><small>${escapar(d.numero)} · hace ${dias} ${dias === 1 ? 'día' : 'días'}</small></span>
+    return `<li data-doc="${escapar(d.id)}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b><small>${escapar(d.numero)} · hace ${dias} ${dias === 1 ? 'día' : 'días'}</small></span>
       <span class="ini-num ${dias > 30 ? 'baja' : ''}">${fmtEuro(totales(d).total)}</span>
       <span class="ini-acc"><button type="button" data-cobrar="${d.id}" title="Marcar como cobrada">✓</button><button type="button" class="wa" data-wa="${d.id}" title="Recordar por WhatsApp">WA</button></span></li>`;
   }).join('') || vacio('No hay nada pendiente de cobro');
-  $('#iniPresus').innerHTML = presus.slice(0, 6).map((d) => `<li data-doc="${d.id}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b>
+  $('#iniPresus').innerHTML = presus.slice(0, 6).map((d) => `<li data-doc="${escapar(d.id)}" tabindex="0" role="button"><span><b>${nombreCli(d.clienteId)}</b>
     <small>${escapar(d.numero)} · ${fechaLegible(d.fecha)}</small></span><span class="ini-num">${fmtEuro(totales(d).total)}</span></li>`).join('')
     || vacio('No hay presupuestos pendientes');
   $('#iniTrabajos').innerHTML = trabajos.slice().sort((a, b) => (b.modificado || 0) - (a.modificado || 0)).slice(0, 6)
@@ -327,6 +327,7 @@ $('#btnGestion').addEventListener('click', salirDeInicio, { capture: true });
 
 // Teclado: Intro o espacio abren documentos, trabajos, clientes y gastos de las listas
 document.addEventListener('keydown', (e) => {
+  if (e.defaultPrevented) return;   // ya lo atendió la propia lista
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button][tabindex]:not(button)')) {
     e.preventDefault();
     e.target.click();
@@ -354,6 +355,7 @@ $('.barra-movil').addEventListener('click', (e) => {
 
 // Espacio usado en el aparato (el navegador deja unos 5 MB a cada app)
 const LIMITE_ESPACIO = 5 * 1024 * 1024;
+let ultimoEspacio = 0;
 function espacioUsado() {
   let total = 0;
   try {

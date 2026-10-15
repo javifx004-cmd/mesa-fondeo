@@ -35,6 +35,9 @@ function bloquear() {
   $('#bloqueoTexto').textContent = 'Introduce tu PIN';
   $('#btnBio').style.visibility = c.bio ? 'visible' : 'hidden';
   $('#btnOlvidePin').hidden = !(typeof confSync === 'function' && confSync().sesion);
+  // nada de lo de detrás se puede tocar ni alcanzar con el teclado
+  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  document.querySelectorAll('body > header, body > main, body > .contenido, .barra-movil, #pie-app').forEach((el) => { el.inert = true; });
   pantallaBloqueo.hidden = false;
   document.body.classList.add('sin-scroll');
   // con Face ID / huella se pide nada más bloquear (tras la bienvenida)
@@ -45,6 +48,7 @@ function bloquear() {
   }
 }
 function desbloquear() {
+  document.querySelectorAll('[inert]').forEach((el) => { el.inert = false; });
   pantallaBloqueo.hidden = true;
   document.body.classList.remove('sin-scroll');
   fallos = 0;

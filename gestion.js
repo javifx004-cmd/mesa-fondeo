@@ -351,6 +351,7 @@ function pintarDocs() {
     .filter((d) => !texto || normalizar(`${d.numero} ${(clientes[d.clienteId] || {}).nombre || ''}`).includes(texto))
     .sort((a, b) => (b.fecha + b.numero).localeCompare(a.fecha + a.numero));
   const cont = $('#listaDocs');
+  docsFiltrados = lista;
   if (!lista.length) {
     cont.innerHTML = '<p class="vacio">No hay documentos. Crea uno con «+ Nuevo» o desde el presupuesto de un plano con «Pasar a Gestión».</p>';
     return;
@@ -924,11 +925,18 @@ function pintarClientes() {
     cont.innerHTML = '<p class="vacio">Todavía no hay clientes. Se crean solos al pasar un presupuesto a Gestión, o con «+ Nuevo cliente».</p>';
     return;
   }
+  // lo facturado y lo pendiente de cada cliente, en una sola pasada
+  const cifras = new Map();
+  for (const d of docs) {
+    if (d.tipo !== 'factura' || d.estado === 'Anulada') continue;
+    const t = totales(d).total;
+    const x = cifras.get(d.clienteId) || cifras.set(d.clienteId, { facturado: 0, pendiente: 0 }).get(d.clienteId);
+    x.facturado += t;
+    if (d.estado === 'Pendiente de cobro' && t > 0) x.pendiente += t;
+  }
   cont.innerHTML = lista.map((c) => {
-    const suyos = docs.filter((d) => d.clienteId === c.id && d.tipo === 'factura' && d.estado !== 'Anulada');
-    const facturado = suyos.reduce((s, d) => s + totales(d).total, 0);
-    const pendiente = suyos.filter((d) => d.estado === 'Pendiente de cobro' && totales(d).total > 0).reduce((s, d) => s + totales(d).total, 0);
-    return `<div class="doc" data-id="${c.id}">
+    const { facturado, pendiente } = cifras.get(c.id) || { facturado: 0, pendiente: 0 };
+    return `<div class="doc" data-id="${escapar(c.id)}">
       <div class="doc-info" data-accion="editar" tabindex="0" role="button">
         <strong>${escapar(c.nombre)}</strong>
         <span>${escapar([c.nif, c.telefono, c.poblacion].filter(Boolean).join(' · ') || 'Sin datos')}</span>

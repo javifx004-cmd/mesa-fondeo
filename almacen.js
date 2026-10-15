@@ -36,7 +36,7 @@ function pintarAlmacen() {
   const valor = todos.reduce((s, a) => s + (Number(a.cantidad) || 0) * (Number(a.precio) || 0), 0);
   $('#almResumen').innerHTML = `<span><b>${todos.length}</b> artículos</span><span>Valor del almacén <b>${fmtEuro(redondear(valor))}</b></span>`
     + (bajos ? `<span class="mal-txt"><b>${bajos}</b> con poco stock</span>` : '');
-  $('#listaAlmacen').innerHTML = lista.map((a) => `<div class="articulo${stockBajo(a) ? ' bajo' : ''}" data-id="${a.id}">
+  $('#listaAlmacen').innerHTML = lista.map((a) => `<div class="articulo${stockBajo(a) ? ' bajo' : ''}" data-id="${escapar(a.id)}">
       <div class="doc-info" data-accion="editar" tabindex="0" role="button">
         <strong>${escapar(a.nombre)}</strong>
         <span>${escapar(a.categoria || '')}${a.proveedor ? ` · ${escapar(a.proveedor)}` : ''}${a.notas ? ` · ${escapar(a.notas)}` : ''}</span>
@@ -123,19 +123,50 @@ function caeEn(r, dia) {
   const a = new Date(`${r.fecha}T12:00`);
   const b = new Date(`${dia}T12:00`);
   if (r.repetir === 'semanal') return Math.round((b - a) / 86400000) % 7 === 0;
-  if (r.repetir === 'mensual') return a.getDate() === b.getDate();
+  if (r.repetir === 'mensual') {
+    // el día 31 (o 29, 30) cae el último día en los meses más cortos
+    const ultimo = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
+    return Math.min(a.getDate(), ultimo) === b.getDate();
+  }
   if (r.repetir === 'anual') return a.getDate() === b.getDate() && a.getMonth() === b.getMonth();
   return false;
 }
 
 // Todo lo que pasa un día: recordatorios, colocaciones, plazos de Hacienda y cobros atrasados
+// Índices de colocaciones y cobros por día (se rehacen solo si cambian los datos)
+let contextoAgenda = null;
+function contextoEventos() {
+  const rec = leerRapido(CLAVE_RECORDATORIOS, []);
+  const trab = leerRapido(CLAVE, []);
+  const docs = leerRapido(CLAVE_DOCS, []);
+  const cli = leerRapido(CLAVE_CLIENTES, []);
+  const c = contextoAgenda;
+  if (c && c.rec === rec && c.trab === trab && c.docs === docs && c.cli === cli) return c;
+  const colocaciones = new Map();
+  for (const t of trab) if (t.datos.colocacion) (colocaciones.get(t.datos.colocacion) || colocaciones.set(t.datos.colocacion, []).get(t.datos.colocacion)).push(t);
+  const nombres = Object.fromEntries(cli.map((x) => [x.id, x.nombre]));
+  const cobros = new Map();
+  for (const f of docs) {
+    if (f.tipo !== 'factura' || f.estado !== 'Pendiente de cobro') continue;
+    const total = totales(f).total;
+    if (total <= 0) continue;
+    const v = new Date(`${f.fecha}T12:00`);
+    v.setDate(v.getDate() + 30);
+    const dia = isoDia(v);
+    (cobros.get(dia) || cobros.set(dia, []).get(dia)).push({ f, total });
+  }
+  contextoAgenda = { rec, trab, docs, cli, colocaciones, nombres, cobros };
+  return contextoAgenda;
+}
+
 function eventosDelDia(dia) {
+  const ctx = contextoEventos();
   const ev = [];
-  for (const r of leerRapido(CLAVE_RECORDATORIOS, [])) {
+  for (const r of ctx.rec) {
     if (caeEn(r, dia)) ev.push({ tipo: 'recordatorio', hora: r.hora || '', titulo: r.titulo, sub: r.notas, ref: r.id, hecho: (r.hechos || []).includes(dia) });
   }
-  for (const t of leerRapido(CLAVE, [])) {
-    if (t.datos.colocacion === dia) ev.push({ tipo: 'colocacion', titulo: `Colocación · ${t.datos.cliente || 'Sin cliente'}`, sub: t.datos.direccion || t.datos.material || '', ref: t.id, mapa: urlMapa(t.datos) });
+  for (const t of ctx.colocaciones.get(dia) || []) {
+    ev.push({ tipo: 'colocacion', titulo: `Colocación · ${t.datos.cliente || 'Sin cliente'}`, sub: t.datos.direccion || t.datos.material || '', ref: t.id, mapa: urlMapa(t.datos) });
   }
   // plazos de Hacienda: último día y aviso una semana antes
   const [y, m, d] = dia.split('-').map(Number);
@@ -146,12 +177,8 @@ function eventosDelDia(dia) {
     if (d === ultimo) ev.push({ tipo: 'hacienda', titulo: `Último día: IVA (303) e IRPF (130) del ${trim}.º trimestre`, sub: `Trimestre de ${anioT}` });
     if (d === ultimo - 7) ev.push({ tipo: 'hacienda', titulo: `Quedan 7 días: IVA e IRPF del ${trim}.º trimestre`, sub: `Trimestre de ${anioT}` });
   }
-  const clientes = Object.fromEntries(leerRapido(CLAVE_CLIENTES, []).map((c) => [c.id, c.nombre]));
-  for (const f of leerRapido(CLAVE_DOCS, [])) {
-    if (f.tipo !== 'factura' || f.estado !== 'Pendiente de cobro' || totales(f).total <= 0) continue;
-    const v = new Date(`${f.fecha}T12:00`);
-    v.setDate(v.getDate() + 30);
-    if (isoDia(v) === dia) ev.push({ tipo: 'cobro', titulo: `Cobrar ${f.numero} · ${clientes[f.clienteId] || ''}`, sub: fmtEuro(totales(f).total), ref: f.id });
+  for (const { f, total } of ctx.cobros.get(dia) || []) {
+    ev.push({ tipo: 'cobro', titulo: `Cobrar ${f.numero} · ${ctx.nombres[f.clienteId] || ''}`, sub: fmtEuro(total), ref: f.id });
   }
   return ev.sort((a, b) => (a.hora || '99').localeCompare(b.hora || '99'));
 }
@@ -307,7 +334,13 @@ function revisarRecordatorios() {
       const texto = `${r.hora ? `${r.hora} · ` : ''}${r.titulo}`;
       aviso(`🔔 ${texto}`);
       if ('Notification' in window && Notification.permission === 'granted') {
-        try { new Notification('Mármoles Carbonell', { body: texto, icon: 'iconos/icono-192.png', tag: clave }); } catch { /* móvil sin soporte directo */ }
+        const opciones = { body: texto, icon: 'iconos/icono-192.png', tag: clave };
+        // en Android solo valen las notificaciones del service worker
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then((r) => r.showNotification('Mármoles Carbonell', opciones)).catch(() => {});
+        } else {
+          try { new Notification('Mármoles Carbonell', opciones); } catch { /* sin soporte */ }
+        }
       }
     }
   }
