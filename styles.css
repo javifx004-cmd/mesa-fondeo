@@ -1034,3 +1034,5 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .aviso-dni { font-size: 12px; color: #b4442f; text-transform: none; letter-spacing: 0; font-weight: 600; min-height: 1em; }
 .aviso-dni.ok { color: #2c7a3f; }
 .estado-conf { display: inline-flex; align-items: center; }
+.estado-conf { gap: 8px; flex-wrap: wrap; }
+.estado-conf .mini { min-height: 32px; padding: 2px 12px; font-size: 13px; border-radius: 999px; }

@@ -11,7 +11,7 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '41';   // cambiar junto con CACHE en sw.js
+const VERSION = '42';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion'];
@@ -1590,7 +1590,7 @@ function pintarLista() {
     const titulo = document.createElement('strong');
     titulo.textContent = [t.datos.cliente || 'Sin cliente', t.datos.referencia].filter(Boolean).join(' · ');
     const sub = document.createElement('small');
-    sub.textContent = [t.datos.telefono, t.datos.direccion, fechaLegible(t.datos.fecha)].filter(Boolean).join(' · ');
+    sub.textContent = [t.datos.telefono, t.datos.direccion, fechaLegible(t.datos.fecha), t.conformidad && '✓ conformidad firmada'].filter(Boolean).join(' · ');
     const est = document.createElement('span');
     est.className = `estado est-${(t.datos.estado || 'Medido').toLowerCase().replace(/\s+/g, '-')}`;
     est.textContent = t.datos.estado || 'Medido';

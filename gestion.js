@@ -290,7 +290,7 @@ $('#btnVistaPlanos').addEventListener('click', () => { if (!vistaGestion.hidden)
 
 function mostrarPestana(nombre) {
   $$('.pestanas [data-pestana]').forEach((b) => b.classList.toggle('active', b.dataset.pestana === nombre));
-  const paneles = { documentos: '#pDocumentos', agenda: '#pAgenda', clientes: '#pClientes', almacen: '#pAlmacen', gastos: '#pGastos', impuestos: '#pImpuestos', balance: '#pBalance', empresa: '#pEmpresa' };
+  const paneles = { documentos: '#pDocumentos', agenda: '#pAgenda', clientes: '#pClientes', almacen: '#pAlmacen', conformidades: '#pConformidades', gastos: '#pGastos', impuestos: '#pImpuestos', balance: '#pBalance', empresa: '#pEmpresa' };
   for (const [k, sel] of Object.entries(paneles)) $(sel).hidden = k !== nombre;
   if (nombre === 'documentos') pintarDocs();
   if (nombre === 'clientes') pintarClientes();
@@ -300,6 +300,7 @@ function mostrarPestana(nombre) {
   if (nombre === 'empresa') volcarEmpresa();
   if (nombre === 'agenda' && typeof pintarAgenda === 'function') pintarAgenda();
   if (nombre === 'almacen' && typeof pintarAlmacen === 'function') pintarAlmacen();
+  if (nombre === 'conformidades' && typeof pintarConformidades === 'function') pintarConformidades();
 }
 $$('.pestanas [data-pestana]').forEach((b) => b.addEventListener('click', () => mostrarPestana(b.dataset.pestana)));
 

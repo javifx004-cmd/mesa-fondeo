@@ -11,9 +11,9 @@ const ctxFirma = lienzoFirma.getContext('2d');
 let firmaTrazada = false;
 let firmaPrevia = null;   // imagen de la firma ya guardada
 
-const TEXTO_CONFORMIDAD = 'El cliente abajo firmante declara que el trabajo de encimera descrito ha sido fabricado e '
-  + 'instalado a su entera satisfacción, conforme a lo presupuestado y acordado, y que lo recibe en buen estado, '
-  + 'sin daños, golpes ni defectos visibles. Las incidencias, si las hay, se indican en este parte.';
+const TEXTO_CONFORMIDAD = 'Una vez terminada la instalación, el cliente abajo firmante declara que la encimera ha quedado '
+  + 'instalada y que todo está correcto y sin fallos: sin daños, golpes, grietas ni defectos, con las medidas, cantos, '
+  + 'huecos y acabados acordados. La recibe a su entera satisfacción, conforme a lo presupuestado.';
 
 // DNI (8 números + letra) o NIE (X/Y/Z + 7 números + letra): se comprueba la letra
 function dniValido(v) {
@@ -146,6 +146,12 @@ formConf.addEventListener('submit', (e) => {
   if (error) { e.preventDefault(); aviso(error); return; }
   if (!dniValido(c.dni) && !confirm('La letra del DNI no cuadra. ¿Guardar igualmente?')) { e.preventDefault(); return; }
   trabajo.conformidad = { ...c, firmado: Date.now() };
+  // firmada la instalación, la cocina queda como colocada (si no estaba ya cobrada)
+  if (ESTADOS_TRABAJO.indexOf(trabajo.datos.estado || 'Medido') < ESTADOS_TRABAJO.indexOf('Colocado')) {
+    trabajo.datos.estado = 'Colocado';
+    const sel = document.querySelector('#planos [name="estado"]');
+    if (sel) sel.value = 'Colocado';
+  }
   sucio = true;
   guardar();
   pintarEstadoConformidad();
@@ -242,6 +248,51 @@ async function pdfConformidad() {
   return hojasAPdf(hojas);
 }
 const nombreConformidad = () => nombreArchivo().replace(/^plano_/, 'conformidad_');
+
+// PDF del parte firmado de cualquier trabajo (sin cambiar el que está abierto)
+async function pdfConformidadDe(t) {
+  if (!t || !t.conformidad) return null;
+  guardar();
+  const abierto = trabajo;
+  trabajo = structuredClone(t);
+  try {
+    await logoListo();
+    const c = { ...trabajo.conformidad };
+    c.firmaImg = await new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = c.firma; });
+    const hojas = [componerConformidad(c)];
+    if (trabajo.objetos.length) hojas.push(componerHoja());
+    return { pdf: await hojasAPdf(hojas), nombre: nombreConformidad() };
+  } finally {
+    trabajo = abierto;
+  }
+}
+
+// Lista de partes firmados (Gestión → Conformidades)
+function pintarConformidades() {
+  const q = normalizar($('#confBuscar').value);
+  const lista = leerTrabajos().filter((t) => t.conformidad && (!q || normalizar(`${t.datos.cliente} ${t.datos.direccion} ${t.conformidad.dni}`).includes(q)))
+    .sort((a, b) => String(b.conformidad.fecha).localeCompare(String(a.conformidad.fecha)));
+  $('#listaConformidades').innerHTML = lista.map((t) => `<div class="doc" data-id="${escapar(t.id)}">
+      <div class="doc-info" data-accion="abrir" tabindex="0" role="button">
+        <strong>${escapar(t.conformidad.nombre)} · DNI ${escapar(t.conformidad.dni)}</strong>
+        <span>${escapar([t.datos.direccion, t.datos.material].filter(Boolean).join(' · '))}${t.conformidad.incidencias ? ' · con incidencias' : ''}</span>
+      </div>
+      <span class="estado ${t.conformidad.incidencias ? 'pendiente' : 'ok'}">${fechaLegible(t.conformidad.fecha)}</span>
+      <div class="doc-acciones"><button type="button" data-accion="pdf">Descargar PDF</button><button type="button" data-accion="compartir">Compartir PDF</button></div>
+    </div>`).join('') || '<p class="vacio">Todavía no hay partes firmados. Se hacen desde el plano de cada cocina, con «Parte de conformidad», al terminar la instalación.</p>';
+}
+$('#confBuscar').addEventListener('input', pintarConformidades);
+$('#listaConformidades').addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-accion]');
+  if (!el) return;
+  const t = leerTrabajos().find((x) => x.id === el.closest('.doc').dataset.id);
+  if (!t) return;
+  if (el.dataset.accion === 'abrir') { irAPlanos(); abrir(t); abrirConformidad(); return; }
+  const r = await pdfConformidadDe(t);
+  if (!r) return;
+  if (el.dataset.accion === 'pdf') descargar(r.pdf, r.nombre);
+  else compartirArchivo(r.pdf, r.nombre, `Parte de conformidad ${t.datos.cliente || ''}`);
+});
 $('#btnConfPdf').addEventListener('click', async () => {
   const pdf = await pdfConformidad();
   if (pdf) descargar(pdf, nombreConformidad());
@@ -254,7 +305,11 @@ $('#btnConformidad').addEventListener('click', abrirConformidad);
 
 function pintarEstadoConformidad() {
   const c = trabajo && trabajo.conformidad;
-  $('#estadoConformidad').innerHTML = c ? `<span class="estado ok">✓ Firmado por ${escapar(c.nombre)} el ${fechaLegible(c.fecha)}</span>` : '';
+  $('#estadoConformidad').innerHTML = c ? `<span class="estado ok">✓ Firmado por ${escapar(c.nombre)} el ${fechaLegible(c.fecha)}</span>
+    <button type="button" class="mini" id="btnConfPdfRapido">PDF del parte</button>` : '';
+  $('#btnConformidad').textContent = c ? 'Ver parte firmado' : 'Parte de conformidad';
+  const rapido = $('#btnConfPdfRapido');
+  if (rapido) rapido.addEventListener('click', async () => { const r = await pdfConformidadDe(trabajo); if (r) compartirOdescargar(r.pdf, r.nombre, `Parte de conformidad ${trabajo.datos.cliente || ''}`); });
 }
 // al abrir otro trabajo se pone al día el estado
 const abrirSinConformidad = abrir;

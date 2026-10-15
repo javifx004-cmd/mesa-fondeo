@@ -404,6 +404,7 @@
       <button type="button" data-pestana="agenda">Calendario</button>
       <button type="button" data-pestana="clientes">Clientes</button>
       <button type="button" data-pestana="almacen">Almacén</button>
+      <button type="button" data-pestana="conformidades">Conformidades</button>
       <button type="button" data-pestana="gastos">Gastos</button>
       <button type="button" data-pestana="impuestos">Impuestos y beneficio</button>
       <button type="button" data-pestana="balance">Balance</button>
@@ -502,6 +503,12 @@
       </div>
       <p class="resumen" id="almResumen"></p>
       <div id="listaAlmacen" class="lista-almacen"></div>
+    </section>
+
+    <section class="panel-g" id="pConformidades" hidden>
+      <p class="ayuda">Partes de conformidad firmados por los clientes al terminar la instalación. Descárgalos en PDF cuando quieras.</p>
+      <div class="barra-filtros"><input type="search" id="confBuscar" placeholder="Buscar cliente, dirección o DNI…"></div>
+      <div id="listaConformidades"></div>
     </section>
 
     <section class="panel-g" id="pEmpresa" hidden>
@@ -688,7 +695,7 @@
 
   <dialog id="dlgConformidad" class="grande">
     <form id="formConformidad" method="dialog">
-      <div class="dlg-head"><h2>Parte de conformidad</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="dlg-head"><h2>Conformidad de la instalación</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
       <p class="ayuda" id="confTrabajo"></p>
       <div class="grid doc-cab">
         <label>Nombre y apellidos <input name="nombre" autocomplete="off" required></label>

@@ -126,13 +126,15 @@ Debajo de las piezas, la app calcula **cuántas tablas hacen falta** y dibuja c�
 datos, el plano y la leyenda, para el taller. El presupuesto, los albaranes y las facturas también salen en PDF; el
 PDF del presupuesto lleva el plano en la segunda página.
 
-### Parte de conformidad
+### Parte de conformidad (al terminar la instalación)
 
-Al terminar la colocación, en el paso 4 del plano pulsa **Parte de conformidad**:
+Cuando la encimera ya está instalada y todo está correcto, en el paso 4 del plano pulsa **Parte de conformidad**:
 - Sale el nombre del cliente y la fecha de colocación; pon el **DNI** (la app avisa si la letra no cuadra) y quién lo instaló.
 - El texto de conformidad sale de serie (se puede cambiar en **Mi empresa**). Apunta las incidencias si las hay.
 - El cliente **firma con el dedo** en la pantalla. **Guardar firmado** lo deja guardado en esa cocina.
 - **Descargar PDF** o **Compartir PDF**: el parte con tu logo y las firmas, y el plano en la segunda página.
+- Al firmarlo, la cocina pasa sola a **Colocado**. Junto al botón sale «✓ Firmado» y **PDF del parte**.
+- Todos los partes firmados están en **Gestión → Conformidades**, para descargarlos o compartirlos en PDF cuando quieras.
 
 ## 4. Presupuestos, albaranes y facturas (pestaña Gestión)
 
@@ -165,6 +167,7 @@ Al terminar la colocación, en el paso 4 del plano pulsa **Parte de conformidad*
 | Impuestos y beneficio | IVA y IRPF de cada trimestre, resumen del año y beneficio limpio por cocina. |
 | Balance | Por meses: facturas, base, IVA, facturado, cobrado, pendiente, gastos, beneficio y presupuestos. |
 | Calendario | Mes a mes: tus recordatorios, las colocaciones, los plazos de Hacienda y los cobros pendientes a los 30 días. |
+| Conformidades | Los partes de conformidad firmados, con su PDF para descargar o compartir. |
 | Almacén | Brocas, discos, lijas, disolventes, siliconas… con cantidad, mínimo, proveedor y precio. Avisa del stock bajo. |
 | Mi empresa | Nombre, NIF, dirección, IBAN, texto del pie y logo. **Rellénala lo primero.** |
 
