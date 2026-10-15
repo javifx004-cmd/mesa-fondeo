@@ -135,7 +135,7 @@ function eventosDelDia(dia) {
     if (caeEn(r, dia)) ev.push({ tipo: 'recordatorio', hora: r.hora || '', titulo: r.titulo, sub: r.notas, ref: r.id, hecho: (r.hechos || []).includes(dia) });
   }
   for (const t of leerTrabajos()) {
-    if (t.datos.colocacion === dia) ev.push({ tipo: 'colocacion', titulo: `Colocación · ${t.datos.cliente || 'Sin cliente'}`, sub: t.datos.direccion || t.datos.material || '', ref: t.id });
+    if (t.datos.colocacion === dia) ev.push({ tipo: 'colocacion', titulo: `Colocación · ${t.datos.cliente || 'Sin cliente'}`, sub: t.datos.direccion || t.datos.material || '', ref: t.id, mapa: urlMapa(t.datos) });
   }
   // plazos de Hacienda: último día y aviso una semana antes
   const [y, m, d] = dia.split('-').map(Number);
@@ -188,7 +188,8 @@ function pintarDia() {
   $('#diaLista').innerHTML = ev.map((e) => `<li class="ev ev-${e.tipo}${e.hecho ? ' hecho' : ''}" data-tipo="${e.tipo}" data-ref="${escapar(e.ref || '')}" tabindex="0" role="button">
       <span class="ev-ico">${icono[e.tipo]}</span>
       <span><b>${e.hora ? `${e.hora} · ` : ''}${escapar(e.titulo)}</b><small>${escapar(e.sub || '')}</small></span>
-      ${e.tipo === 'recordatorio' ? `<button type="button" class="mini" data-hecho="${escapar(e.ref)}">${e.hecho ? 'Hecho ✓' : 'Hecho'}</button>` : ''}</li>`).join('')
+      ${e.tipo === 'recordatorio' ? `<button type="button" class="mini" data-hecho="${escapar(e.ref)}">${e.hecho ? 'Hecho ✓' : 'Hecho'}</button>` : ''}
+      ${e.mapa ? `<a class="btn-ir" href="${escapar(e.mapa)}" target="_blank" rel="noopener">Ir</a>` : ''}</li>`).join('')
     || '<li class="vacio">Nada para este día. Añade un recordatorio con «+ Recordatorio».</li>';
 }
 
@@ -202,6 +203,7 @@ $('#mesAnt').addEventListener('click', () => { mesVisto.setMonth(mesVisto.getMon
 $('#mesSig').addEventListener('click', () => { mesVisto.setMonth(mesVisto.getMonth() + 1); pintarAgenda(); });
 $('#mesHoy').addEventListener('click', () => { mesVisto = new Date(); mesVisto.setDate(1); diaElegido = hoy(); pintarAgenda(); });
 $('#diaLista').addEventListener('click', (e) => {
+  if (e.target.closest('.btn-ir')) return;
   const hecho = e.target.closest('[data-hecho]');
   if (hecho) {
     const lista = leerRecordatorios();

@@ -45,6 +45,9 @@ teléfono o número.
 ### Paso 1 · Datos del trabajo
 
 - **Cliente:** al escribir, la app sugiere los clientes ya guardados y rellena su teléfono y su dirección.
+- **Dirección:** el botón **Ir** abre Google Maps con la ruta hasta la obra. Estando en la obra, **📍** guarda la ubicación
+  exacta del GPS, y entonces Ir lleva justo allí aunque la dirección esté incompleta. **Ir** sale también en la agenda de
+  colocaciones de Inicio y en el calendario.
 - **Material:** escribe y elige de la lista; salen todos los materiales de la tarifa.
 - **Tipo de canto:** sencillo (1,2 o 2 cm) o ingletado (de 2 a 9 cm).
 - **Vitrocerámica y fregadero:** tipo y medidas. Del fregadero, además, el radio y si lleva **grifo**,

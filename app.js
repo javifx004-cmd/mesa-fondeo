@@ -11,10 +11,10 @@ const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
 const CLAVE = 'planosCocina.trabajos';
 const CLAVE_ACTUAL = 'planosCocina.actual';
-const VERSION = '42';   // cambiar junto con CACHE en sw.js
+const VERSION = '43';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
-  'osmosis', 'observaciones', 'estado', 'colocacion'];
+  'osmosis', 'observaciones', 'estado', 'colocacion', 'ubicacion'];
 // Seguimiento de cada cocina, de la medición al cobro
 const ESTADOS_TRABAJO = ['Medido', 'Presupuestado', 'Aceptado', 'En taller', 'Colocado', 'Cobrado'];
 const ROJO = '#c62828';
@@ -76,7 +76,7 @@ function trabajoVacio() {
 
 function tieneContenido(t) {
   return t.objetos.length > 0 || (t.piezas || []).length > 0 ||
-    CAMPOS.some((c) => c !== 'fecha' && c !== 'estado' && (t.datos[c] || '').trim() !== '');
+    CAMPOS.some((c) => c !== 'fecha' && c !== 'estado' && c !== 'ubicacion' && (t.datos[c] || '').trim() !== '');
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +163,7 @@ function abrir(t) {
   historial = [];
   rehacer = [];
   volcarFormulario();
+  if (typeof pintarUbicacion === 'function') pintarUbicacion();
   dibujar();
   if (typeof pintarPresupuesto === 'function') pintarPresupuesto();
   try { localStorage.setItem(CLAVE_ACTUAL, trabajo.id); } catch { /* sin almacenamiento */ }
@@ -1146,6 +1147,37 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   ok.click();
 });
+
+// ---------------------------------------------------------------------------
+// Ir a la obra con Google Maps (por la ubicación guardada o por la dirección)
+// ---------------------------------------------------------------------------
+function urlMapa(datos) {
+  const destino = (datos.ubicacion || '').trim() || (datos.direccion || '').trim();
+  if (!destino) return '';
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}&travelmode=driving`;
+}
+function irAObra(datos) {
+  const url = urlMapa(datos);
+  if (!url) { aviso('Pon la dirección de la obra (o guarda la ubicación con 📍)'); return; }
+  window.open(url, '_blank', 'noopener');
+}
+$('#btnIr').addEventListener('click', () => irAObra(trabajo.datos));
+$('#btnUbicacion').addEventListener('click', () => {
+  if (!navigator.geolocation) { aviso('Este aparato no da la ubicación'); return; }
+  aviso('Buscando tu ubicación…');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const coord = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+    trabajo.datos.ubicacion = coord;
+    form.querySelector('[name="ubicacion"]').value = coord;
+    pintarUbicacion();
+    cambio();
+    aviso(`Ubicación de la obra guardada (precisión ${Math.round(pos.coords.accuracy)} m)`);
+  }, () => aviso('No se pudo saber la ubicación: da permiso de ubicación a la app'), { enableHighAccuracy: true, timeout: 15000 });
+});
+function pintarUbicacion() {
+  $('#btnUbicacion').classList.toggle('activo', !!trabajo.datos.ubicacion);
+  $('#btnUbicacion').title = trabajo.datos.ubicacion ? `Ubicación guardada: ${trabajo.datos.ubicacion} (toca para actualizar)` : 'Guardar mi ubicación exacta (estando en la obra)';
+}
 
 function pedirTexto(etiqueta, valor, permitirVacio = false) {
   const dlg = $('#dlgTexto');

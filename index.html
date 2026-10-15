@@ -169,9 +169,14 @@
         <label>Teléfono
           <input name="telefono" type="tel" inputmode="tel" autocomplete="off">
         </label>
-        <label class="wide">Dirección
-          <input name="direccion" autocomplete="off">
-        </label>
+        <div class="wide campo-dir">
+          <label>Dirección
+            <input name="direccion" autocomplete="off" placeholder="Calle, número y población">
+          </label>
+          <input name="ubicacion" type="hidden">
+          <button type="button" id="btnUbicacion" title="Guardar mi ubicación exacta (estando en la obra)">📍</button>
+          <button type="button" id="btnIr" class="oro" title="Ir con Google Maps">Ir</button>
+        </div>
         <label>Referencia
           <input name="referencia" autocomplete="off">
         </label>

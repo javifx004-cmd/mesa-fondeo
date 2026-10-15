@@ -159,7 +159,8 @@ function pintarInicio() {
     const cuando = dias < 0 ? `<b class="baja">atrasada ${-dias} ${dias === -1 ? 'día' : 'días'}</b>` : dias === 0 ? '<b>hoy</b>' : dias === 1 ? 'mañana' : `en ${dias} días`;
     return `<li data-trabajo="${escapar(t.id)}" tabindex="0" role="button"><span class="cal"><b>${f.getDate()}</b><small>${MESES_CORTOS[f.getMonth()]}</small></span>
       <span><b>${escapar(t.datos.cliente || 'Sin cliente')}</b><small>${escapar(t.datos.direccion || t.datos.material || '')}</small></span>
-      <span class="ini-fecha">${cuando}<br><small>${escapar(t.datos.estado || 'Medido')}</small></span></li>`;
+      <span class="ini-fecha">${cuando}<br><small>${escapar(t.datos.estado || 'Medido')}</small></span>
+      ${urlMapa(t.datos) ? `<a class="btn-ir" href="${escapar(urlMapa(t.datos))}" target="_blank" rel="noopener" title="Ir con Google Maps">Ir</a>` : ''}</li>`;
   }).join('') || vacio('Sin colocaciones previstas. Pon la fecha de colocación en la ficha del plano.');
 
   // para hoy: recordatorios, colocaciones, plazos, cobros y lo que falta en el almacén
@@ -256,6 +257,7 @@ function pintarPlazo() {
 
 // Navegación desde Inicio
 vistaInicio.addEventListener('click', (e) => {
+  if (e.target.closest('.btn-ir')) return;   // el enlace de Google Maps se abre solo
   const cobrar = e.target.closest('[data-cobrar]');
   if (cobrar) {
     const d = leerDocs().find((x) => x.id === cobrar.dataset.cobrar);
