@@ -370,7 +370,7 @@ function pintarDocs() {
     if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro') acciones.push(['cobrar', 'Cobrada']);
     if (d.tipo === 'factura' && d.estado === 'Pendiente de cobro' && totales(d).total > 0) acciones.push(['whatsapp', 'Recordar por WhatsApp']);
     if (d.tipo === 'presupuesto' && d.estado === 'Pendiente') acciones.push(['whatsapp', 'Enviar por WhatsApp']);
-    return `<div class="doc" data-id="${d.id}">
+    return `<div class="doc tipo-${d.rectifica ? 'rectificativa' : d.tipo}" data-id="${escapar(d.id)}">
       <div class="doc-info" data-accion="abrir" tabindex="0" role="button">
         <strong>${nombreTipoDoc(d)} ${escapar(d.numero)}</strong>
         <span>${escapar(cli ? cli.nombre : 'Sin cliente')} · ${fechaLegible(d.fecha)}${rectificadaPor[d.id] ? ` · rectificada por ${escapar(rectificadaPor[d.id])}` : ''}${d.rectifica ? ` · rectifica ${escapar(d.rectifica.numero)}` : ''}</span>

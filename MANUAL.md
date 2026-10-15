@@ -49,6 +49,8 @@ teléfono o número.
   exacta del GPS, y entonces Ir lleva justo allí aunque la dirección esté incompleta. **Ir** sale también en la agenda de
   colocaciones de Inicio y en el calendario.
 - **Material:** escribe y elige de la lista; salen todos los materiales de la tarifa.
+  Si el material no está en la tarifa, escríbelo a mano: en el presupuesto saldrá un recuadro para poner su precio por ml, por m²,
+  el del zócalo y el espesor, y se cobrará con él también en albaranes y facturas.
 - **Tipo de canto:** sencillo (1,2 o 2 cm) o ingletado (de 2 a 9 cm).
 - **Vitrocerámica y fregadero:** tipo y medidas. Del fregadero, además, el radio y si lleva **grifo**,
   **jabonera** u **ósmosis**.

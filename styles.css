@@ -1055,3 +1055,50 @@ details.ia[open] > summary { margin-bottom: 8px; }
 .medidor { height: 10px; border-radius: 10px; background: var(--suave); border: 1px solid var(--border); overflow: hidden; margin: 6px 0; }
 .medidor i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #d9bd84, #9c7a43); transition: width .3s; }
 .medidor i.lleno { background: linear-gradient(90deg, #e08a73, #b4442f); }
+
+/* =========================================================================
+   PULIDO ESTÉTICO
+   ========================================================================= */
+/* botones secundarios con relieve suave */
+:is(main, .panel-g, dialog) button:not(.primary):not(.oro):not(.peligro):not(.enlace):not(.cerrar):not([data-tool]):not(.cal-dia):not(.paso-embudo):not(.color):not(.ver-mas):not(.active) {
+  background: linear-gradient(180deg, var(--panel), var(--suave));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 1px 2px rgba(60, 45, 20, .06);
+}
+:is(main, .panel-g, dialog, .hero-acciones) button:hover { transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+button.peligro { background: transparent; }
+.dlg-head .cerrar { width: 40px; height: 40px; padding: 0; border-radius: 50%; }
+/* tarjetas: filo dorado arriba */
+.ficha, .plano, .presupuesto, .acciones, .tarjeta, .panel-g { position: relative; }
+.ficha::before, .plano::before, .presupuesto::before, .acciones::before {
+  content: ''; position: absolute; left: 24px; right: 24px; top: 0; height: 2px; border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, transparent, var(--oro), transparent); opacity: .55;
+}
+.seccion { padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+/* campos más cómodos */
+.grid input, .grid textarea, .grid select { min-height: 46px; background: var(--campo); }
+.grid label { gap: 7px; }
+.grupo { border-color: rgba(184, 149, 90, .28); }
+.grupo legend { color: var(--oro-osc); }
+/* herramientas del plano */
+.tools button { border-color: transparent; box-shadow: 0 1px 2px rgba(60, 45, 20, .08); }
+.tools button:hover { border-color: rgba(184, 149, 90, .5); }
+.grupo-t { color: var(--oro-osc); }
+/* listas de documentos con color por tipo */
+.doc { border-left: 4px solid var(--border); }
+.doc.tipo-presupuesto { border-left-color: #c9a66b; }
+.doc.tipo-albaran { border-left-color: #6f8fb5; }
+.doc.tipo-factura { border-left-color: #3f8a55; }
+.doc.tipo-rectificativa { border-left-color: #b4442f; }
+.doc-info strong { font-size: 15.5px; }
+/* tablas */
+#tablaPresupuesto thead th, .tabla-balance thead th { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#tablaPresupuesto tbody tr:nth-child(even), .tabla-balance tbody tr:nth-child(even) { background: rgba(184, 149, 90, .05); }
+/* material fuera de tarifa */
+.material-manual { margin: 10px 0; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--oro); background: rgba(226, 201, 146, .12); }
+.material-manual p { margin: 0 0 8px; font-size: 14px; }
+/* pie */
+#pie-app { padding-bottom: 24px; }
+#version { letter-spacing: .08em; }
+:root[data-theme="dark"] button:not(.primary):not(.oro) { box-shadow: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button:not(.primary):not(.oro):not(.peligro) { box-shadow: none; } }

@@ -81,7 +81,30 @@ function leerTarifasGuardadas() {
 
 
 function etiquetaMaterial(m) {
-  return [`${m.marca} ${m.material}`, m.grupo, m.espesor].filter(Boolean).join(' · ');
+  return [`${m.marca || ''} ${m.material}`.trim(), m.grupo, m.espesor].filter(Boolean).join(' · ');
+}
+
+// Material que no está en la tarifa: nombre escrito a mano y precios puestos por el usuario
+function materialManual(t) {
+  const nombre = String(t.datos.material || '').trim();
+  const mm = t.extras && t.extras.matManual;
+  if (!nombre || !mm || normalizar(mm.nombre) !== normalizar(nombre)) return null;
+  const n = (v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.')) || 0);
+  if (n(mm.ml) == null && n(mm.m2) == null) return null;
+  return { marca: '', material: nombre, grupo: '', espesor: mm.espesor || '', ml: n(mm.ml) ?? 0, m2: n(mm.m2) ?? 0, zocalo: n(mm.zocalo), manual: true };
+}
+function pintarMaterialManual() {
+  const caja = $('#materialManual');
+  const nombre = String(trabajo.datos.material || '').trim();
+  const enTarifa = buscarMaterial(nombre);
+  caja.hidden = !nombre || !!enTarifa;
+  if (caja.hidden) return;
+  const mm = (trabajo.extras.matManual && normalizar(trabajo.extras.matManual.nombre) === normalizar(nombre)) ? trabajo.extras.matManual : {};
+  $('#mmNombre').textContent = nombre;
+  for (const k of ['ml', 'm2', 'zocalo', 'espesor']) {
+    const el = $(`#mm_${k}`);
+    if (document.activeElement !== el) el.value = mm[k] ?? '';
+  }
 }
 
 const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD')
@@ -190,10 +213,11 @@ function calcular(t) {
   };
 
   const piezas = t.piezas || [];
-  const material = buscarMaterial(d.material);
+  // material de la tarifa o, si no está, el escrito a mano con sus precios
+  const material = buscarMaterial(d.material) || materialManual(t);
   if (piezas.length && !material) {
     avisos.push(d.material
-      ? `El material «${d.material}» no está en la tarifa. Elígelo de la lista.`
+      ? `El material «${d.material}» no está en la tarifa: elígelo de la lista o pon su precio abajo.`
       : 'Falta el material.');
   }
 
@@ -335,6 +359,7 @@ function pintarPresupuesto() {
 
 function pintarResultado() {
   asegurarDatos();
+  pintarMaterialManual();
   const r = calcular(trabajo);
   const tabla = $('#tablaPresupuesto');
   if (!r.lineas.length) {
@@ -1081,3 +1106,13 @@ $('#btnGrupos').addEventListener('click', () => {
   pintarConceptos();
 });
 dlgGrupos.addEventListener('close', () => { delete dlgGrupos.dataset.modo; });
+
+// precios del material escrito a mano
+['ml', 'm2', 'zocalo', 'espesor'].forEach((k) => $(`#mm_${k}`).addEventListener('input', (e) => {
+  asegurarDatos();
+  const nombre = String(trabajo.datos.material || '').trim();
+  const previo = trabajo.extras.matManual && normalizar(trabajo.extras.matManual.nombre) === normalizar(nombre) ? trabajo.extras.matManual : {};
+  trabajo.extras.matManual = { ...previo, nombre, [k]: e.target.value.trim() };
+  pintarResultado();
+  cambio();
+}));
