@@ -16,8 +16,10 @@
     accounts: [],
     movements: [],
     copyGroups: [],
+    deleted: {},
     settings: { currency: 'USD' },
   });
+  const LISTS = ['accounts', 'movements', 'copyGroups'];
 
   let S = load();
   let ui = { tab: 'home', accFilter: 'Activas', accQuery: '', moneyType: 'all', moneyRange: 'all' };
@@ -37,9 +39,25 @@
     d.accounts.forEach((a) => { if (map[a.phase]) a.phase = map[a.phase]; });
     return d;
   }
-  function save() {
+  // Cada guardado marca con fecha lo que cambió y lo que se borró, para poder combinar datos entre dispositivos.
+  const sig = (x) => JSON.stringify({ ...x, updatedAt: 0 });
+  let snap = new Map();
+  function snapshot() { snap = new Map(LISTS.flatMap((k) => S[k].map((x) => [x.id, sig(x)]))); }
+  function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast('No se pudo guardar en este dispositivo'); }
   }
+  function save() {
+    const now = Date.now();
+    const seen = new Set();
+    S.deleted ??= {};
+    for (const k of LISTS) for (const x of S[k]) { seen.add(x.id); if (snap.get(x.id) !== sig(x)) x.updatedAt = now; }
+    for (const id of snap.keys()) if (!seen.has(id)) S.deleted[id] = now;
+    const old = now - 365 * 864e5;
+    for (const [id, t] of Object.entries(S.deleted)) if (t < old) delete S.deleted[id];
+    snapshot();
+    persist();
+  }
+  snapshot();
 
   // ---------------------------------------------------------------- utils
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -610,13 +628,20 @@
         <label class="f"><span>Moneda</span><select data-setting="currency">${['USD', 'EUR', 'GBP', 'MXN', 'COP', 'ARS', 'CLP'].map((c) => `<option ${c === s.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       </div>
 
-      <div class="card"><h3>Copia de seguridad</h3>
-        <p class="small muted">Tus datos se guardan solo en este dispositivo. Exporta una copia para pasarla a otro móvil.</p>
+      <div class="card"><h3>Compartir entre dispositivos</h3>
+        <p class="small muted">Todo se guarda automáticamente en este dispositivo. Para pasarlo a otro móvil, tablet u ordenador:</p>
+        <ol class="small muted" style="padding-left:18px;margin:6px 0 12px">
+          <li>Pulsa <b>Compartir datos</b> y envía el archivo (WhatsApp, AirDrop, correo, Drive…).</li>
+          <li>En el otro dispositivo abre la app → Ajustes → <b>Recibir datos</b> y elige el archivo.</li>
+          <li>Los datos se <b>combinan</b>: se añade lo nuevo, se actualiza lo más reciente y se aplican los borrados. No se pierde nada.</li>
+        </ol>
+        <label class="f"><span>Contraseña del archivo (recomendado: incluye tus credenciales)</span><input type="password" id="sharePass" autocomplete="new-password" placeholder="Mínimo 4 caracteres"></label>
         <div class="row">
-          <button class="btn grow" data-act="backup">Exportar copia</button>
-          <label class="btn grow" style="justify-content:center">Importar copia<input type="file" accept="application/json,.json" id="restore" hidden></label>
+          <button class="btn primary grow" data-act="share">Compartir datos</button>
+          <label class="btn grow" style="justify-content:center">Recibir datos<input type="file" id="restore" hidden></label>
         </div>
-        <button class="btn danger block" data-act="wipe" style="margin-top:10px">Borrar todos los datos</button>
+        ${S.lastSync ? `<p class="small muted" style="margin:10px 0 0">Última combinación: ${new Date(S.lastSync).toLocaleString('es-ES')}</p>` : ''}
+        <button class="btn danger block" data-act="wipe" style="margin-top:12px">Borrar todos los datos de este dispositivo</button>
       </div>
 
       <div class="card"><h3>Instalar en el móvil</h3>
@@ -624,6 +649,79 @@
         <b>Android:</b> abre en Chrome → menú ⋮ → “Instalar aplicación”.</p>
       </div>
       <div class="note warn">Las contraseñas se guardan sin cifrar en el almacenamiento del navegador de este dispositivo. No compartas tu móvil desbloqueado ni tus copias de seguridad.</div>`;
+  }
+
+  // ---------------------------------------------------------------- compartir
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  async function deriveKey(pass, salt) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptData(obj, pass) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deriveKey(pass, salt), new TextEncoder().encode(JSON.stringify(obj)));
+    return { app: 'mesa-fondeo', format: 1, enc: 'AES-GCM', salt: b64(salt), iv: b64(iv), data: b64(ct) };
+  }
+  async function decryptData(p, pass) {
+    const key = await deriveKey(pass, unb64(p.salt));
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p.iv) }, key, unb64(p.data));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  async function shareData() {
+    const pass = $('#sharePass')?.value || '';
+    if (pass && pass.length < 4) { toast('La contraseña debe tener al menos 4 caracteres'); return; }
+    if (!pass && !confirm('Sin contraseña, el archivo lleva tus credenciales legibles. ¿Compartir igualmente?')) return;
+    const { lastSync: _l, ...data } = S;
+    const payload = pass ? await encryptData(data, pass) : { app: 'mesa-fondeo', format: 1, data };
+    const name = `mesa-fondeo-${today()}.json`;
+    const text = JSON.stringify(payload);
+    const file = new File([text], name, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Datos Mesa Fondeo' }); return; } catch (err) { if (err.name === 'AbortError') return; }
+    }
+    download(name, text, 'application/json');
+  }
+
+  async function receiveData(file) {
+    let p;
+    try { p = JSON.parse(await file.text()); } catch { toast('Archivo no válido'); return; }
+    let d = p;
+    if (p.enc) {
+      const pass = prompt('Contraseña del archivo');
+      if (!pass) return;
+      try { d = await decryptData(p, pass); } catch { toast('Contraseña incorrecta'); return; }
+    } else if (p.app === 'mesa-fondeo') d = p.data;
+    if (!Array.isArray(d?.accounts) || !Array.isArray(d?.movements)) { toast('Archivo no válido'); return; }
+    const r = mergeData(migrate({ ...blank(), ...d }));
+    render();
+    toast(`Combinado: ${r.added} nuevo(s), ${r.updated} actualizado(s), ${r.removed} borrado(s)`);
+  }
+
+  // Combina por id: gana la versión modificada más tarde; los borrados se aplican si son posteriores al último cambio.
+  function mergeData(remote) {
+    const stamp = (x) => x.updatedAt || x.createdAt || 0;
+    const deleted = { ...S.deleted };
+    for (const [id, t] of Object.entries(remote.deleted || {})) deleted[id] = Math.max(deleted[id] || 0, t);
+    const isDel = (x) => deleted[x.id] && deleted[x.id] >= stamp(x);
+    const r = { added: 0, updated: 0, removed: 0 };
+    for (const k of LISTS) {
+      const map = new Map(S[k].map((x) => [x.id, x]));
+      for (const x of remote[k] || []) {
+        const l = map.get(x.id);
+        if (!l) { map.set(x.id, x); if (!isDel(x)) r.added++; }
+        else if (stamp(x) > stamp(l)) { map.set(x.id, x); if (sig(x) !== sig(l)) r.updated++; }
+      }
+      const kept = [...map.values()].filter((x) => !isDel(x));
+      r.removed += S[k].filter((x) => isDel(x)).length;
+      S[k] = kept;
+    }
+    S.deleted = deleted;
+    S.lastSync = Date.now();
+    snapshot();
+    persist();
+    return r;
   }
 
   function download(name, content, type) {
@@ -676,15 +774,10 @@
       render();
       const s = $('#accSearch'); s.focus(); s.setSelectionRange(pos, pos);
     });
-    $('#restore')?.addEventListener('change', async (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      try {
-        const d = JSON.parse(await file.text());
-        if (!Array.isArray(d.accounts) || !Array.isArray(d.movements)) throw new Error();
-        if (!confirm('Esto reemplazará los datos actuales. ¿Continuar?')) return;
-        S = migrate({ ...blank(), ...d, settings: { currency: d.settings?.currency || 'USD' } });
-        save(); render(); toast('Copia restaurada');
-      } catch { toast('Archivo no válido'); }
+    $('#restore')?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (file) receiveData(file);
     });
     $$('[data-setting]', v).forEach((el) => el.addEventListener('change', () => {
       S.settings[el.dataset.setting] = el.value.trim(); save(); render(); toast('Ajuste guardado');
@@ -747,9 +840,9 @@
       case 'fees': return registerFees();
       case 'demo': return loadDemo();
       case 'csv': return exportCSV();
-      case 'backup': return download(`mesa-fondeo-${today()}.json`, JSON.stringify(S, null, 2), 'application/json');
+      case 'share': return shareData();
       case 'wipe':
-        if (confirm('¿Borrar TODAS las cuentas, movimientos y grupos de este dispositivo?')) { S = blank(); save(); render(); toast('Datos borrados'); }
+        if (confirm('¿Borrar TODAS las cuentas, movimientos y grupos de este dispositivo?')) { S = blank(); snapshot(); persist(); render(); toast('Datos borrados'); }
         return;
     }
   });

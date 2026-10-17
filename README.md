@@ -18,7 +18,9 @@ Quantower, NinjaTrader, Tradovate, TradingView, R|Trader Pro… y conexión Rith
 - **Copiador**: grupos líder → seguidoras con ratio fijo o proporcional al tamaño, en minis o micros, respetando el
   máximo de contratos de cada cuenta. La app no envía órdenes: la copia en tiempo real la hace el copiador de tu
   plataforma; aquí calculas contratos y copias IDs y ratios para configurarlo.
-- **Copia de seguridad**: exportar/importar JSON para pasar los datos a otro móvil. Funciona sin conexión.
+- **Compartir entre dispositivos**: todo se guarda automáticamente en el dispositivo. "Compartir datos" envía un
+  archivo cifrado con contraseña (AES-GCM) por WhatsApp, AirDrop, correo…; "Recibir datos" en el otro dispositivo
+  lo **combina** con lo que ya hay (gana el cambio más reciente y se aplican los borrados). Funciona sin conexión.
 
 Los datos se guardan solo en el navegador del dispositivo (localStorage). Las contraseñas no van cifradas.
 
