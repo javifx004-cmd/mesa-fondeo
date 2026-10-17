@@ -168,6 +168,12 @@
   }
 
   // ---------------------------------------------------------------- INICIO
+  const BRAND = `
+    <div class="brand">
+      <img src="icons/icon.svg" alt="FundedLab">
+      <div><div class="brand-name">Mesa Fondeo</div><div class="brand-by">by Javier Carbonell</div></div>
+    </div>`;
+
   function renderHome() {
     const t = totals();
     const active = S.accounts.filter(isActive);
@@ -179,8 +185,8 @@
     const atRisk = active.filter((a) => num(a.maxDD) && accStats(a).ddPct < 30);
 
     if (!S.accounts.length && !S.movements.length) {
-      return `
-        <div class="empty"><div class="big">📊</div>
+      return BRAND + `
+        <div class="empty">
           <h3>Bienvenido a Mesa Fondeo</h3>
           <p>Registra tus cuentas de fondeo de futuros, lo que gastas en evaluaciones, resets y activaciones, y lo que cobras en payouts.</p>
           <div class="row" style="justify-content:center">
@@ -190,7 +196,7 @@
         </div>`;
     }
 
-    return `
+    return BRAND + `
       ${atRisk.length ? `<div class="note warn" style="margin-bottom:12px">⚠️ Cerca del drawdown: ${atRisk.map((a) => `<b>${esc(accLabel(a))}</b> (${money(accStats(a).ddRoom)})`).join(', ')}</div>` : ''}
       <div class="kpis">
         <div class="kpi"><div class="l">Gastado</div><div class="v neg">${money(t.spent)}</div></div>
