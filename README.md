@@ -12,8 +12,9 @@ Quantower, NinjaTrader, Tradovate, TradingView, R|Trader Pro… y conexión Rith
   Muestra el nivel de liquidación y el margen que te queda, y avisa en Inicio si una cuenta está cerca.
 - **Copiar credenciales**: ID de cuenta, usuario, contraseña, sistema Rithmic y gateway con un toque, o todo junto.
   Actualización rápida del balance y del pico. Duplicar cuenta para dar de alta otra igual.
-- **Finanzas**: gastos (evaluación, reset, activación PA, cuota mensual, datos, licencia de plataforma, copiador/VPS)
-  e ingresos (payouts, reembolsos). Neto, ROI, gráfico de 6 meses, desglose por empresa, CSV y registro de todas
+- **Finanzas**: gastos/compras (evaluación, reset, activación PA, cuota mensual, datos, licencia de plataforma,
+  copiador/VPS) y retiros (payouts, reembolsos), cada uno con su **factura adjunta** (foto o PDF; las fotos se
+  comprimen). Filtro «Sin factura», neto, ROI, gráfico de 6 meses, desglose por empresa, CSV y registro de todas
   las cuotas mensuales del mes con un botón.
 - **Copiador**: grupos líder → seguidoras con ratio fijo o proporcional al tamaño, en minis o micros, respetando el
   máximo de contratos de cada cuenta. La app no envía órdenes: la copia en tiempo real la hace el copiador de tu
@@ -24,7 +25,8 @@ Quantower, NinjaTrader, Tradovate, TradingView, R|Trader Pro… y conexión Rith
   ganancia mínima) frente a los días que exige la empresa, y el número y total de retiros de cada cuenta. Historial
   por cuenta con cierres, retiros y gastos.
 - **Sincronización automática** entre PC, móvil y tablet: los datos se guardan en cada dispositivo y se suben cifrados
-  (AES-GCM, con tu contraseña) a un gist secreto de tu cuenta de GitHub. Se sincroniza al abrir la app, tras cada
+  (AES-GCM, con tu contraseña) a un gist secreto de tu cuenta de GitHub; las facturas, también cifradas, a un
+  segundo gist. Se sincroniza al abrir la app, tras cada
   cambio y cada minuto.
 - **Pasar datos por archivo** (sin nube): archivo cifrado por WhatsApp, AirDrop, correo… que se combina al recibirlo.
 

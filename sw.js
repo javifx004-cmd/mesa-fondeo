@@ -1,6 +1,7 @@
-// Cache offline de la app (los datos viven en localStorage)
-const CACHE = 'mesa-fondeo-v6';
-const ASSETS = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
+// Funciona sin conexión: responde al instante desde la caché y actualiza en segundo plano.
+// Los datos viven en localStorage / IndexedDB; las peticiones a otros orígenes (GitHub) no se interceptan.
+const CACHE = 'mesa-fondeo-v7';
+const ASSETS = ['./', 'index.html', 'app.css', 'app.js', 'files.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -10,14 +11,13 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
-// Red primero para la app (para recibir actualizaciones), caché si no hay conexión.
-// Las peticiones a otros orígenes no se interceptan.
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res; })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match('index.html')))
-  );
+  e.respondWith(caches.open(CACHE).then(async (cache) => {
+    const cached = await cache.match(e.request, { ignoreSearch: true });
+    const fresh = fetch(e.request).then((res) => { if (res.ok) cache.put(e.request, res.clone()); return res; }).catch(() => null);
+    if (cached) { e.waitUntil(fresh); return cached; }
+    return (await fresh) || cache.match('index.html');
+  }));
 });
