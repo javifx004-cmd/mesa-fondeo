@@ -1,7 +1,7 @@
 {
   "name": "Mesa Fondeo",
   "short_name": "Fondeo",
-  "description": "Gestiona tus cuentas de fondeo: credenciales, copiador, gastos y payouts.",
+  "description": "Gestiona tus cuentas de fondeo de futuros: credenciales, copiador de contratos, gastos y payouts.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",
