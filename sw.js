@@ -1,5 +1,5 @@
 // Cache offline de la app (los datos viven en localStorage)
-const CACHE = 'mesa-fondeo-v3';
+const CACHE = 'mesa-fondeo-v4';
 const ASSETS = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

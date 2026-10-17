@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Icono provisional FundedLab: sustituir por el logo oficial -->
-  <rect width="512" height="512" rx="112" fill="#0b0f17"/>
-  <path d="M206 92h100M226 92v118L132 372a34 34 0 0 0 30 52h188a34 34 0 0 0 30-52L286 210V92" fill="none" stroke="#e6ebf5" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M168 330l52-40 40 26 72-62" fill="none" stroke="#22c55e" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="256" y="478" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="44" fill="#4f8cff" letter-spacing="2">FUNDEDLAB</text>
+  <!-- Logo fundedlab_es (vectorizado) -->
+  <rect width="512" height="512" fill="#0b1120"/>
+  <path d="M222 104V206L126 386Q114 420 150 420H362Q398 420 386 386L290 206V104" fill="none" stroke="#f4f6f8" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M194 104H318" stroke="#f4f6f8" stroke-width="22" stroke-linecap="round"/>
+  <path d="M162 380L218 336L256 360L316 306" fill="none" stroke="#7fd8ef" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="318" cy="304" r="21" fill="#7fd8ef"/>
 </svg>

@@ -170,8 +170,8 @@
   // ---------------------------------------------------------------- INICIO
   const BRAND = `
     <div class="brand">
-      <img src="icons/icon.svg" alt="FundedLab">
-      <div><div class="brand-name">Mesa Fondeo</div><div class="brand-by">by Javier Carbonell</div></div>
+      <img src="icons/icon.svg" alt="fundedlab_es">
+      <div><div class="brand-name">fundedlab<span>_es</span></div><div class="brand-by">Mesa Fondeo · by Javier Carbonell</div></div>
     </div>`;
 
   function renderHome() {
