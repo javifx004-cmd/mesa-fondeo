@@ -18,11 +18,17 @@ Quantower, NinjaTrader, Tradovate, TradingView, R|Trader Pro… y conexión Rith
 - **Copiador**: grupos líder → seguidoras con ratio fijo o proporcional al tamaño, en minis o micros, respetando el
   máximo de contratos de cada cuenta. La app no envía órdenes: la copia en tiempo real la hace el copiador de tu
   plataforma; aquí calculas contratos y copias IDs y ratios para configurarlo.
-- **Compartir entre dispositivos**: todo se guarda automáticamente en el dispositivo. "Compartir datos" envía un
-  archivo cifrado con contraseña (AES-GCM) por WhatsApp, AirDrop, correo…; "Recibir datos" en el otro dispositivo
-  lo **combina** con lo que ya hay (gana el cambio más reciente y se aplican los borrados). Funciona sin conexión.
+- **Cierre de día**: guarda el balance de cierre de cada cuenta, calcula el P/L del día y el **nuevo balance mínimo**
+  (liquidación) según el drawdown. Inicio muestra qué cuentas faltan por cerrar hoy.
+- **Días mínimos y retiros**: cuenta los días operados desde el último retiro (opcionalmente solo los días con una
+  ganancia mínima) frente a los días que exige la empresa, y el número y total de retiros de cada cuenta. Historial
+  por cuenta con cierres, retiros y gastos.
+- **Sincronización automática** entre PC, móvil y tablet: los datos se guardan en cada dispositivo y se suben cifrados
+  (AES-GCM, con tu contraseña) a un gist secreto de tu cuenta de GitHub. Se sincroniza al abrir la app, tras cada
+  cambio y cada minuto.
+- **Pasar datos por archivo** (sin nube): archivo cifrado por WhatsApp, AirDrop, correo… que se combina al recibirlo.
 
-Los datos se guardan solo en el navegador del dispositivo (localStorage). Las contraseñas no van cifradas.
+Los datos se guardan en el navegador de cada dispositivo (localStorage, sin cifrar) y, si activas la sincronización, cifrados en tu GitHub.
 
 ## Publicarla y ponerla en el móvil
 

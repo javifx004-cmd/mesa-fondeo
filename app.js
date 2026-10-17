@@ -16,10 +16,11 @@
     accounts: [],
     movements: [],
     copyGroups: [],
+    days: [],
     deleted: {},
     settings: { currency: 'USD' },
   });
-  const LISTS = ['accounts', 'movements', 'copyGroups'];
+  const LISTS = ['accounts', 'movements', 'copyGroups', 'days'];
 
   let S = load();
   let ui = { tab: 'home', accFilter: 'Activas', accQuery: '', moneyType: 'all', moneyRange: 'all' };
@@ -37,6 +38,8 @@
   function migrate(d) {
     const map = { 'Fase 1': 'Evaluación', 'Fase 2': 'Evaluación', Fondeada: 'Fondeada (PA)' };
     d.accounts.forEach((a) => { if (map[a.phase]) a.phase = map[a.phase]; });
+    LISTS.forEach((k) => { if (!Array.isArray(d[k])) d[k] = []; });
+    d.deleted ??= {};
     return d;
   }
   // Cada guardado marca con fecha lo que cambió y lo que se borró, para poder combinar datos entre dispositivos.
@@ -56,6 +59,7 @@
     for (const [id, t] of Object.entries(S.deleted)) if (t < old) delete S.deleted[id];
     snapshot();
     persist();
+    scheduleSync();
   }
   snapshot();
 
@@ -137,6 +141,21 @@
     };
   }
 
+  // Días operados (cierres) y retiros de una cuenta. Los días mínimos se cuentan desde el último retiro.
+  function accDays(a) {
+    const closes = S.days.filter((d) => d.accountId === a.id).sort((x, y) => x.date.localeCompare(y.date));
+    const payouts = S.movements.filter((m) => m.accountId === a.id && m.type === 'ingreso' && m.category === 'Payout');
+    const lastPayout = payouts.map((m) => m.date || '').sort().pop() || '';
+    const minProfit = num(a.minDayProfit);
+    const cycle = closes.filter((d) => d.date > lastPayout && (!minProfit || num(d.pnl) >= minProfit));
+    return {
+      closes, cycle: cycle.length, total: closes.length, lastPayout, lastClose: closes[closes.length - 1],
+      payouts: payouts.length, withdrawn: payouts.reduce((s, m) => s + num(m.amount), 0),
+      minDays: num(a.minDays),
+    };
+  }
+  const closedToday = (a) => S.days.some((d) => d.accountId === a.id && d.date === today());
+
   function inRange(date, range) {
     if (range === 'all') return true;
     const now = new Date();
@@ -216,6 +235,11 @@
 
     return BRAND + `
       ${atRisk.length ? `<div class="note warn" style="margin-bottom:12px">⚠️ Cerca del drawdown: ${atRisk.map((a) => `<b>${esc(accLabel(a))}</b> (${money(accStats(a).ddRoom)})`).join(', ')}</div>` : ''}
+      ${active.length ? `<div class="card"><div class="row between"><h3 style="margin:0">Cierre del día</h3><span class="small muted">${active.filter(closedToday).length}/${active.length} cerradas</span></div>
+        ${active.map((a) => { const dd = accDays(a); return `<div class="list-item">
+          <div><div class="t">${esc(accLabel(a))}</div><div class="small muted">Mín. ${money(accStats(a).floor)} · Días ${dd.cycle}${dd.minDays ? '/' + dd.minDays : ''}</div></div>
+          ${closedToday(a) ? `<button class="btn sm" data-closeday="${a.id}">✓ Cerrada</button>` : `<button class="btn sm primary" data-closeday="${a.id}">Cerrar día</button>`}</div>`; }).join('')}
+      </div>` : ''}
       <div class="kpis">
         <div class="kpi"><div class="l">Gastado</div><div class="v neg">${money(t.spent)}</div></div>
         <div class="kpi"><div class="l">Cobrado</div><div class="v pos">${money(t.earned)}</div></div>
@@ -317,17 +341,27 @@
           <div><div class="l">Neto cobrado</div><div class="v ${st.net >= 0 ? 'pos' : 'neg'}">${money(st.net, true)}</div></div>
         </div>
         ${num(a.target) && isEval(a) ? `<div class="small muted">Objetivo ${money(num(a.target))} · ${pct(st.targetPct)} completado</div><div class="bar g"><i style="width:${st.targetPct}%"></i></div>` : ''}
-        ${num(a.maxDD) ? `<div class="small muted" style="margin-top:6px">${esc(a.ddType || 'Drawdown')}: liquidación en ${money(st.floor)} · margen <b>${money(st.ddRoom)}</b></div><div class="bar ${st.ddPct < 30 ? 'r' : st.ddPct < 60 ? 'a' : ''}"><i style="width:${st.ddPct}%"></i></div>` : ''}
+        ${num(a.maxDD) ? `<div class="small muted" style="margin-top:6px">Balance mínimo <b class="minbal">${money(st.floor)}</b> · margen <b>${money(st.ddRoom)}</b> · ${esc(a.ddType || 'Drawdown')}</div><div class="bar ${st.ddPct < 30 ? 'r' : st.ddPct < 60 ? 'a' : ''}"><i style="width:${st.ddPct}%"></i></div>` : ''}
+        ${daysLine(a)}
         ${rules ? `<div class="small muted" style="margin-top:6px">${rules}</div>` : ''}
         ${cred('ID cuenta', a.accountId, 'accountId')}${cred('Usuario', a.login, 'login')}${cred('Contraseña', a.password, 'password', true)}${cred('Sistema', a.server, 'server')}${cred('Gateway', a.gateway, 'gateway')}
         <div class="row" style="margin-top:10px">
           <button class="btn sm" data-edit="${a.id}">Editar</button>
-          <button class="btn sm" data-balance="${a.id}">Balance</button>
+          <button class="btn sm primary" data-closeday="${a.id}">Cierre de día</button>
+          <button class="btn sm" data-history="${a.id}">Historial</button>
           <button class="btn sm" data-addmov="${a.id}:gasto">− Gasto</button>
           <button class="btn sm" data-addmov="${a.id}:ingreso">+ Payout</button>
           <button class="btn sm" data-copyall="${a.id}">Copiar datos</button>
         </div>
       </div>`;
+  }
+
+  function daysLine(a) {
+    const d = accDays(a);
+    const pctDays = d.minDays ? Math.min(100, (d.cycle / d.minDays) * 100) : 0;
+    return `<div class="small muted" style="margin-top:8px">Días ${d.lastPayout ? 'desde el último retiro' : 'operados'}: <b>${d.cycle}${d.minDays ? ' / ' + d.minDays : ''}</b>${d.minDays && d.cycle >= d.minDays ? ' ✓' : ''}
+        · Retiros: <b>${d.payouts}</b> (${money(d.withdrawn)})${d.lastClose ? ` · Último cierre ${esc(d.lastClose.date)} <span class="${num(d.lastClose.pnl) >= 0 ? 'pos' : 'neg'}">${money(num(d.lastClose.pnl), true)}</span>` : ''}</div>
+      ${d.minDays ? `<div class="bar g"><i style="width:${pctDays}%"></i></div>` : ''}`;
   }
 
   function accountSheet(id, preset = {}) {
@@ -365,6 +399,8 @@
           <label class="f"><span>Máx. contratos</span><input name="maxContracts" inputmode="numeric" value="${esc(a.maxContracts)}"></label>
           <label class="f"><span>Profit split %</span><input name="split" inputmode="decimal" value="${esc(a.split)}"></label>
           <label class="f"><span>Cuota mensual</span><input name="monthlyFee" inputmode="decimal" value="${esc(a.monthlyFee)}" placeholder="0"></label>
+          <label class="f"><span>Días mínimos (para retiro)</span><input name="minDays" inputmode="numeric" value="${esc(a.minDays)}" placeholder="8"></label>
+          <label class="f"><span>Ganancia mín. para contar día</span><input name="minDayProfit" inputmode="decimal" value="${esc(a.minDayProfit)}" placeholder="0 = todos"></label>
         </div>
         ${id ? '' : `<label class="f"><span>Precio pagado ahora (se registra como gasto)</span><input name="cost" inputmode="decimal" placeholder="0"></label>`}
         <label class="f"><span>Notas</span><textarea name="notes" rows="2">${esc(a.notes)}</textarea></label>
@@ -395,6 +431,7 @@
     sh.querySelector('[data-del]')?.addEventListener('click', () => {
       if (!confirm('¿Eliminar esta cuenta? Sus movimientos se conservan.')) return;
       S.accounts = S.accounts.filter((x) => x.id !== id);
+      S.days = S.days.filter((x) => x.accountId !== id);
       S.copyGroups.forEach((g) => { g.slaves = g.slaves.filter((s) => s.accountId !== id); if (g.masterId === id) g.masterId = ''; });
       save(); closeSheet(); render(); toast('Cuenta eliminada');
     });
@@ -404,26 +441,89 @@
     });
   }
 
-  // Actualización rápida del balance diario
-  function balanceSheet(id) {
+  // Cierre de día: guarda el balance de cierre, calcula el P/L del día y el nuevo balance mínimo.
+  function closeDaySheet(id) {
     const a = accById(id);
-    const st = accStats(a);
+    const intraday = a.ddType === 'Trailing intradía';
+    const existing = S.days.find((d) => d.accountId === id && d.date === today());
     sheet(`
-      <h2>Balance · ${esc(accLabel(a))}</h2>
-      <form id="balForm">
-        <label class="f"><span>Balance actual ($)</span><input name="balance" inputmode="decimal" required value="${esc(a.balance ?? '')}" placeholder="${esc(st.bal)}"></label>
-        <p class="small muted">Pico registrado: ${money(st.peak)}. Si el nuevo balance lo supera, se actualiza solo.</p>
-        <label class="f"><span>Estado</span><select name="phase">${PHASES.map((p) => `<option ${p === a.phase ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
-        <button class="btn primary block" type="submit">Guardar</button>
+      <h2>Cierre de día · ${esc(accLabel(a))}</h2>
+      <form id="dayForm">
+        <div class="grid2">
+          <label class="f"><span>Fecha</span><input name="date" type="date" required value="${esc(existing?.date || today())}"></label>
+          <label class="f"><span>Balance de cierre ($)</span><input name="balance" inputmode="decimal" required value="${esc(existing?.balance ?? '')}" placeholder="${esc(accStats(a).bal)}"></label>
+        </div>
+        ${intraday ? `<label class="f"><span>Balance máximo del día (intradía, opcional)</span><input name="high" inputmode="decimal" value="${esc(existing?.high ?? '')}" placeholder="Si el trailing subió durante el día"></label>` : ''}
+        <div class="grid2">
+          <label class="f"><span>Estado</span><select name="phase">${PHASES.map((p) => `<option ${p === a.phase ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+          <label class="f"><span>Nota</span><input name="note" value="${esc(existing?.note ?? '')}"></label>
+        </div>
+        <button class="btn primary block" type="submit">Guardar cierre</button>
       </form>`);
-    $('#balForm [name=balance]').focus();
-    $('#balForm').onsubmit = (e) => {
+    $('#dayForm [name=balance]').focus();
+    $('#dayForm').onsubmit = (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target));
-      a.balance = f.balance; a.phase = f.phase; a.updatedAt = Date.now();
-      if (num(a.balance) > st.peak) a.peak = a.balance;
-      save(); closeSheet(); render(); toast('Balance actualizado');
+      const before = S.days.filter((d) => d.accountId === id && d.date < f.date).sort((x, y) => x.date.localeCompare(y.date)).pop();
+      const hasLater = S.days.some((d) => d.accountId === id && d.date > f.date);
+      const same = S.days.find((d) => d.accountId === id && d.date === f.date);
+      const prevBal = before ? num(before.balance) : same?.prev != null ? num(same.prev) : accStats(a).bal;
+      const bal = num(f.balance);
+      const day = same || (S.days.push({ id: uid(), accountId: id, date: f.date }), S.days[S.days.length - 1]);
+      Object.assign(day, { balance: bal, prev: prevBal, pnl: Math.round((bal - prevBal) * 100) / 100, high: f.high || '', note: f.note || '' });
+      if (!hasLater) a.balance = bal;
+      a.phase = f.phase;
+      a.peak = Math.max(num(a.peak) || num(a.size), bal, intraday ? num(f.high) : 0);
+      save(); render();
+      const st = accStats(a), dd = accDays(a);
+      const summary = [
+        `${accLabel(a)}${a.accountId ? ' [' + a.accountId + ']' : ''} · cierre ${f.date}`,
+        `P/L del día: ${money(day.pnl, true)}`,
+        `Balance: ${money(st.bal)}`,
+        num(a.maxDD) ? `Balance mínimo nuevo: ${money(st.floor)} (margen ${money(st.ddRoom)})` : '',
+        `Días: ${dd.cycle}${dd.minDays ? '/' + dd.minDays : ''}`,
+      ].filter(Boolean);
+      sheet(`
+        <h2>Día cerrado ✓</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="l">P/L del día</div><div class="v ${day.pnl >= 0 ? 'pos' : 'neg'}">${money(day.pnl, true)}</div></div>
+          <div class="kpi"><div class="l">Balance</div><div class="v">${money(st.bal)}</div></div>
+          ${num(a.maxDD) ? `<div class="kpi wide"><div class="l">Balance mínimo nuevo</div><div class="v" id="newMin">${money(st.floor)}</div><div class="small muted">Margen ${money(st.ddRoom)} · ${esc(a.ddType)}</div></div>` : ''}
+          <div class="kpi wide"><div class="l">Días ${dd.lastPayout ? 'desde el último retiro' : 'operados'}</div><div class="v">${dd.cycle}${dd.minDays ? ' / ' + dd.minDays : ''}${dd.minDays && dd.cycle >= dd.minDays ? ' ✓' : ''}</div></div>
+        </div>
+        <div class="row"><button class="btn grow" id="copySummary">Copiar resumen</button><button class="btn primary grow" id="okClose">Listo</button></div>`);
+      $('#copySummary').onclick = () => copyText(summary.join('\n'), 'Resumen copiado');
+      $('#okClose').onclick = closeSheet;
     };
+  }
+
+  function historySheet(id) {
+    const a = accById(id);
+    const dd = accDays(a);
+    const movs = S.movements.filter((m) => m.accountId === id).sort(byDateDesc);
+    const t = totals(movs);
+    sheet(`
+      <h2>Historial · ${esc(accLabel(a))}</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Días operados</div><div class="v">${dd.total}</div><div class="small muted">${dd.cycle}${dd.minDays ? '/' + dd.minDays : ''} desde último retiro</div></div>
+        <div class="kpi"><div class="l">Retirado</div><div class="v pos">${money(dd.withdrawn)}</div><div class="small muted">${dd.payouts} retiro(s)</div></div>
+        <div class="kpi"><div class="l">Gastado</div><div class="v neg">${money(t.spent)}</div></div>
+        <div class="kpi"><div class="l">Neto</div><div class="v ${t.net >= 0 ? 'pos' : 'neg'}">${money(t.net, true)}</div></div>
+      </div>
+      <div class="section-title"><span>Cierres diarios</span><span class="small">toca para borrar</span></div>
+      <div class="card">${dd.closes.length ? dd.closes.slice().reverse().map((d) => `
+        <div class="list-item" data-delday="${d.id}"><div><div class="t">${esc(d.date)}</div><div class="small muted">Balance ${money(num(d.balance))}${d.note ? ' · ' + esc(d.note) : ''}</div></div>
+        <div class="amt ${num(d.pnl) >= 0 ? 'pos' : 'neg'}">${money(num(d.pnl), true)}</div></div>`).join('') : '<div class="small muted">Sin cierres todavía.</div>'}</div>
+      <div class="section-title"><span>Retiros y gastos</span></div>
+      <div class="card">${movementList(movs) || '<div class="small muted">Sin movimientos.</div>'}</div>`);
+    $$('.sheet [data-delday]').forEach((el) => el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm('¿Borrar este cierre?')) return;
+      S.days = S.days.filter((x) => x.id !== el.dataset.delday);
+      const last = S.days.filter((x) => x.accountId === id).sort((x, y) => x.date.localeCompare(y.date)).pop();
+      if (last) a.balance = last.balance;
+      save(); render(); historySheet(id);
+    }));
   }
 
   // ---------------------------------------------------------------- FINANZAS
@@ -628,7 +728,22 @@
         <label class="f"><span>Moneda</span><select data-setting="currency">${['USD', 'EUR', 'GBP', 'MXN', 'COP', 'ARS', 'CLP'].map((c) => `<option ${c === s.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       </div>
 
-      <div class="card"><h3>Compartir entre dispositivos</h3>
+      <div class="card"><h3>☁ Sincronización automática (PC, móvil, tablet…)</h3>
+        ${syncOn() ? `
+          <p class="small ${sync.error ? 'neg' : 'pos'}">${sync.error ? '⚠ ' + esc(sync.error) : '✓ Activada'}${sync.last ? ` · última vez ${new Date(sync.last).toLocaleString('es-ES')}` : ''}</p>
+          <p class="small muted">Cada cambio se guarda en este dispositivo y se sube cifrado a tu GitHub. Los demás dispositivos lo reciben al abrir la app.</p>
+          <div class="row"><button class="btn primary grow" data-act="sync-now">Sincronizar ahora</button><button class="btn grow" data-act="sync-off">Desconectar este dispositivo</button></div>` : `
+          <p class="small muted">Haz esto una vez en cada dispositivo con el <b>mismo token</b> y la <b>misma contraseña</b>:</p>
+          <ol class="small muted" style="padding-left:18px;margin:6px 0 12px">
+            <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=Mesa%20Fondeo" target="_blank" rel="noopener" style="color:var(--brand)">Crea un token de GitHub</a> (permiso <b>gist</b> ya marcado, sin caducidad) y cópialo.</li>
+            <li>Pégalo aquí y elige una contraseña de sincronización.</li>
+          </ol>
+          <label class="f"><span>Token de GitHub</span><input id="syncToken" type="password" autocomplete="off" placeholder="ghp_…"></label>
+          <label class="f"><span>Contraseña de sincronización (cifra tus datos)</span><input id="syncPass" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label>
+          <button class="btn primary block" data-act="sync-on">Activar sincronización</button>`}
+      </div>
+
+      <div class="card"><h3>Pasar datos por archivo (sin nube)</h3>
         <p class="small muted">Todo se guarda automáticamente en este dispositivo. Para pasarlo a otro móvil, tablet u ordenador:</p>
         <ol class="small muted" style="padding-left:18px;margin:6px 0 12px">
           <li>Pulsa <b>Compartir datos</b> y envía el archivo (WhatsApp, AirDrop, correo, Drive…).</li>
@@ -654,18 +769,31 @@
   // ---------------------------------------------------------------- compartir
   const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
   const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  const keyCache = new Map();
   async function deriveKey(pass, salt) {
+    const ck = pass + '|' + b64(salt);
+    if (keyCache.has(ck)) return keyCache.get(ck);
+    const k = await deriveKeyRaw(pass, salt);
+    keyCache.set(ck, k);
+    return k;
+  }
+  let lastSalt = null;
+  async function deriveKeyRaw(pass, salt) {
     const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
   async function encryptData(obj, pass) {
-    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const salt = lastSalt?.pass === pass ? lastSalt.salt : crypto.getRandomValues(new Uint8Array(16));
+    lastSalt = { pass, salt };
+    const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deriveKey(pass, salt), new TextEncoder().encode(JSON.stringify(obj)));
     return { app: 'mesa-fondeo', format: 1, enc: 'AES-GCM', salt: b64(salt), iv: b64(iv), data: b64(ct) };
   }
   async function decryptData(p, pass) {
-    const key = await deriveKey(pass, unb64(p.salt));
+    const salt = unb64(p.salt);
+    const key = await deriveKey(pass, salt);
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p.iv) }, key, unb64(p.data));
+    lastSalt = { pass, salt };
     return JSON.parse(new TextDecoder().decode(pt));
   }
 
@@ -724,6 +852,102 @@
     return r;
   }
 
+  // ---------------------------------------------------------------- sincronización automática
+  // Los datos se guardan cifrados (misma contraseña en todos los dispositivos) en un gist secreto de tu cuenta de GitHub.
+  const SYNC_KEY = 'mesa-fondeo-sync';
+  const GIST_DESC = 'mesa-fondeo-sync', GIST_FILE = 'mesa-fondeo.json';
+  let sync = (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch { return {}; } })();
+  let syncing = false, syncAgain = false, syncTimer = null;
+  const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch { /* no-op */ } };
+  const syncOn = () => !!(sync.token && sync.pass);
+  const shareable = () => { const { lastSync: _l, ...d } = S; return d; };
+  const stateSig = (d) => JSON.stringify([LISTS.map((k) => (d[k] || []).map(sig).sort()), Object.keys(d.deleted || {}).sort()]);
+
+  function scheduleSync() {
+    if (!syncOn()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => syncNow(), 1500);
+  }
+
+  async function gh(path, opts = {}) {
+    const res = await fetch('https://api.github.com' + path, {
+      ...opts,
+      headers: { Authorization: `Bearer ${sync.token}`, Accept: 'application/vnd.github+json', ...(opts.body ? { 'Content-Type': 'application/json' } : {}) },
+    });
+    if (res.status === 401) throw new Error('El token de GitHub no es válido');
+    if (res.status === 403 || res.status === 404) throw new Error('El token no tiene permiso de gists');
+    if (!res.ok) throw new Error(`GitHub respondió ${res.status}`);
+    return res.status === 204 ? null : res.json();
+  }
+
+  async function findGist() {
+    for (let page = 1; page <= 5; page++) {
+      const list = await gh(`/gists?per_page=100&page=${page}`);
+      const g = list.find((x) => x.description === GIST_DESC && x.files?.[GIST_FILE]);
+      if (g) return g.id;
+      if (list.length < 100) break;
+    }
+    return null;
+  }
+
+  async function syncNow(manual = false) {
+    if (!syncOn()) return;
+    if (syncing) { syncAgain = true; return; }
+    if (!navigator.onLine) { sync.error = 'Sin conexión'; saveSync(); syncBadge(); return; }
+    syncing = true; syncBadge();
+    try {
+      if (!sync.gistId) sync.gistId = await findGist();
+      let remote = null;
+      if (sync.gistId) {
+        const g = await gh(`/gists/${sync.gistId}`);
+        const f = g.files?.[GIST_FILE];
+        const content = f?.truncated ? await (await fetch(f.raw_url)).text() : f?.content;
+        if (content) {
+          try { remote = await decryptData(JSON.parse(content), sync.pass); } catch { throw new Error('La contraseña de sincronización no coincide'); }
+        }
+      }
+      let changed = null;
+      if (remote) {
+        const before = stateSig(S);
+        changed = mergeData(migrate({ ...blank(), ...remote }));
+        if (stateSig(S) === before) changed = null;
+      }
+      if (!remote || stateSig(remote) !== stateSig(S)) {
+        const body = { description: GIST_DESC, files: { [GIST_FILE]: { content: JSON.stringify(await encryptData(shareable(), sync.pass)) } } };
+        if (sync.gistId) await gh(`/gists/${sync.gistId}`, { method: 'PATCH', body: JSON.stringify(body) });
+        else sync.gistId = (await gh('/gists', { method: 'POST', body: JSON.stringify({ ...body, public: false }) })).id;
+      }
+      sync.last = Date.now(); sync.error = '';
+      saveSync();
+      if (changed || ui.tab === 'settings') render();
+      if (manual) toast('Sincronizado ✓');
+    } catch (err) {
+      sync.error = err.message; saveSync();
+      if (manual) toast(err.message);
+    } finally {
+      syncing = false; syncBadge();
+      if (syncAgain) { syncAgain = false; syncNow(); }
+    }
+  }
+
+  function syncBadge() {
+    const el = $('#headerActions');
+    if (!el) return;
+    if (!syncOn()) { el.innerHTML = ''; return; }
+    const st = syncing ? ['⟳', 'Sincronizando…', ''] : sync.error ? ['⚠', sync.error, 'neg'] : ['☁ ✓', 'Sincronizado', 'pos'];
+    el.innerHTML = `<button class="btn sm ${st[2]}" data-act="sync-now" title="${esc(st[1])}">${st[0]}</button>`;
+  }
+
+  async function enableSync() {
+    const token = $('#syncToken').value.trim(), pass = $('#syncPass').value;
+    if (!token || pass.length < 6) { toast('Pega el token y una contraseña de al menos 6 caracteres'); return; }
+    sync = { token, pass };
+    saveSync();
+    toast('Conectando…');
+    await syncNow(true);
+    if (sync.error) { sync = {}; saveSync(); syncBadge(); render(); }
+  }
+
   function download(name, content, type) {
     const blob = new Blob([content], { type });
     const a = document.createElement('a');
@@ -748,6 +972,18 @@
     mv('ingreso', 'Payout', 2000, d(2, 22), a1); mv('ingreso', 'Payout', 1500, d(1, 18), a2);
     mv('gasto', 'Evaluación / suscripción', 149, d(1, 2), a3);
     mv('ingreso', 'Payout', 2500, d(0, 6), a1);
+    // Cierres de los últimos días laborables
+    const closes = (acc, pnls) => {
+      let bal = num(acc.size) + 1000;
+      const dates = [];
+      for (let i = 1, x = new Date(); dates.length < pnls.length; i++) { x = new Date(); x.setDate(x.getDate() - i); if (x.getDay() % 6) dates.unshift(x.toISOString().slice(0, 10)); }
+      pnls.forEach((p, i) => { const prev = bal; bal += p; S.days.push({ id: uid(), accountId: acc.id, date: dates[i], balance: bal, prev, pnl: p, note: '' }); });
+      acc.balance = bal; acc.peak = Math.max(num(acc.peak), bal);
+    };
+    a1.minDays = 8; a2.minDays = 8; a3.minDays = 5; a3.minDayProfit = 150;
+    closes(a1, [420, -180, 650, 310, 220, -90, 380]);
+    closes(a2, [250, 300, -400, 180]);
+    closes(a3, [900, 150, -300, 1200, 640, 410]);
     S.copyGroups.push({ id: uid(), name: 'NQ Apex', masterId: a1.id, mode: 'fixed', unit: 'mini', calcLot: 2, slaves: [{ accountId: a2.id, multiplier: 1 }, { accountId: a3.id, multiplier: 1.5 }] });
     save(); render(); toast('Datos de ejemplo cargados');
   }
@@ -798,7 +1034,8 @@
     if (d.accfilter) { ui.accFilter = d.accfilter; return render(); }
     if (d.ui) { const [k, val] = d.ui.split(':'); ui[k] = val; return render(); }
     if (d.edit) return accountSheet(d.edit);
-    if (d.balance) return balanceSheet(d.balance);
+    if (d.closeday) return closeDaySheet(d.closeday);
+    if (d.history) return historySheet(d.history);
     if (d.editgroup) return groupSheet(d.editgroup);
     if (d.mov) return movementSheet(d.mov);
     if (d.addmov) {
@@ -841,8 +1078,16 @@
       case 'demo': return loadDemo();
       case 'csv': return exportCSV();
       case 'share': return shareData();
+      case 'sync-on': return enableSync();
+      case 'sync-now': return syncNow(true);
+      case 'sync-off':
+        if (confirm('¿Desconectar la sincronización en este dispositivo? Los datos se quedan aquí.')) { sync = {}; saveSync(); syncBadge(); render(); }
+        return;
       case 'wipe':
-        if (confirm('¿Borrar TODAS las cuentas, movimientos y grupos de este dispositivo?')) { S = blank(); snapshot(); persist(); render(); toast('Datos borrados'); }
+        if (confirm(`¿Borrar TODAS las cuentas, movimientos y grupos de este dispositivo?${syncOn() ? ' También se desconectará la sincronización (los demás dispositivos y la nube no se tocan).' : ''}`)) {
+          sync = {}; saveSync(); syncBadge();
+          S = blank(); snapshot(); persist(); render(); toast('Datos borrados');
+        }
         return;
     }
   });
@@ -850,5 +1095,10 @@
   // ---------------------------------------------------------------- inicio
   try { const t = sessionStorage.getItem('tab'); if (t && VIEWS[t]) ui.tab = t; } catch { /* no-op */ }
   render();
+  syncBadge();
+  syncNow();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+  window.addEventListener('online', () => syncNow());
+  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 60000);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
