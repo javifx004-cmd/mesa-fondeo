@@ -210,3 +210,6 @@ Aunque se use la sincronización, conviene hacer copias de vez en cuando.
   obligatorio (1 de enero de 2027 sociedades, 1 de julio de 2027 autónomos).
 - **Tarifas:** se cambian en el presupuesto, con **Cambiar tarifas**, cargando el CSV con el mismo formato.
 - **Clave de la IA:** es personal; no la compartáis. Se guarda solo en el aparato.
+
+## Contacto
+Para dudas, ideas o soporte: **grupolab@proton.me**

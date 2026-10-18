@@ -19,10 +19,10 @@ const MARMOLAB = {
     nombre: '',        // nombre y apellidos o razón social
     nif: '',
     domicilio: '',     // dirección completa
-    email: '',         // correo de contacto y para ejercer derechos de privacidad
+    email: 'grupolab@proton.me',   // correo de contacto y para ejercer derechos de privacidad
   },
   // Contacto de soporte que ven los clientes (correo o WhatsApp)
-  soporte: '',
+  soporte: 'grupolab@proton.me',
   // Acceso de administrador (gratis). Solo se guarda la huella de la contraseña (PBKDF2), nunca la contraseña.
   admin: { sal: 'f9487cfb5c9dc8366572385dde1eaf67', huella: '4e3109362eb33862958e3ac45d0bc176d2386ac7ebcb5accbafba4fd3056d12d', vueltas: 200000 },
 };

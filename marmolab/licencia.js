@@ -64,6 +64,7 @@ function mostrarAcceso(modo, mensaje = '') {
   $('#accesoCuenta').textContent = s && s.usuario ? s.usuario.email : '';
   $('#accesoMensaje').textContent = mensaje;
   $('#accesoPrecio').textContent = `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`;
+  $('#accesoContacto').textContent = MARMOLAB.soporte ? `Contacto: ${MARMOLAB.soporte}` : '';
 }
 function ocultarAcceso() {
   pantallaAcceso.hidden = true;
