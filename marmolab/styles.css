@@ -1141,3 +1141,4 @@ body.sin-facturas .ini-cols:has(#iniPlazo) { grid-template-columns: 1fr; }
 .acceso-legal .enlace { font-size: 12px; color: rgba(241, 220, 171, .55); padding: 0; min-height: 0; text-decoration: underline; }
 #formAdmin { margin-top: 10px; }
 .acceso-tarjetas { margin: 4px 0 0; font-size: 12px; text-align: center; color: rgba(241, 220, 171, .6); }
+img.logo-serie { border-radius: 50% !important; box-shadow: none !important; }

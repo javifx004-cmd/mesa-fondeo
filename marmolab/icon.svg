@@ -1,17 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f1dcab"/><stop offset=".55" stop-color="#c9a66b"/><stop offset="1" stop-color="#8c6a34"/>
-    </linearGradient>
-    <radialGradient id="fondo" cx=".5" cy=".3" r=".8">
-      <stop offset="0" stop-color="#2a2620"/><stop offset="1" stop-color="#0d0c0b"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="104" fill="url(#fondo)"/>
-  <rect x="14" y="14" width="484" height="484" rx="92" fill="none" stroke="#e2c992" stroke-opacity=".35" stroke-width="3"/>
-  <path d="M60 330 C 160 290, 220 360, 300 318 S 430 260, 470 282" fill="none" stroke="#e2c992" stroke-opacity=".25" stroke-width="3"/>
-  <!-- M de dos tablas de piedra -->
-  <path d="M128 352 V160 l64 0 64 104 64 -104 64 0 V352 h-58 V250 l-70 112 -70 -112 V352 z" fill="url(#oro)"/>
-  <path d="M128 160 l64 0 64 104 -22 34 -48 -78 V352 h-58 z" fill="#000" fill-opacity=".12"/>
-  <text x="256" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" letter-spacing="10" fill="#e2c992">MARMOLAB</text>
+<defs>
+ <radialGradient id="f" cx=".3" cy=".22" r=".95"><stop offset="0" stop-color="#3a3127"/><stop offset="1" stop-color="#0d0c0b"/></radialGradient>
+ <radialGradient id="a" cx=".5" cy=".45" r=".5"><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".10"/></radialGradient>
+ <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf7ef"/><stop offset="1" stop-color="#e3d8c3"/></linearGradient>
+ <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#d9c49a"/></linearGradient>
+ <linearGradient id="o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e2b0"/><stop offset=".55" stop-color="#d2ad6c"/><stop offset="1" stop-color="#9a7539"/></linearGradient>
+ <clipPath id="c"><path d="M222 196 V246 L146 380 Q138 398 158 400 H354 Q374 398 366 380 L290 246 V196 Z"/></clipPath>
+ <filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".35"/></filter>
+</defs>
+<circle cx="256" cy="256" r="248" fill="url(#f)"/>
+<circle cx="256" cy="256" r="248" fill="url(#a)"/>
+<circle cx="256" cy="268" r="168" fill="#fff" fill-opacity=".05"/>
+<g filter="url(#s)">
+ <g clip-path="url(#c)">
+  <path d="M120 318 C 180 296, 230 336, 290 314 S 380 300, 400 312 V420 H120 Z" fill="url(#l)"/>
+  <path d="M150 352 C 200 336, 236 372, 300 350 S 360 344, 380 352" fill="none" stroke="#c9a45f" stroke-width="5" stroke-linecap="round"/>
+  <path d="M176 382 C 214 370, 256 394, 320 378" fill="none" stroke="#c9a45f" stroke-width="3" stroke-opacity=".7" stroke-linecap="round"/>
+  <circle cx="214" cy="336" r="9" fill="#fff" fill-opacity=".75"/><circle cx="262" cy="366" r="6" fill="#fff" fill-opacity=".7"/><circle cx="300" cy="330" r="5" fill="#fff" fill-opacity=".7"/>
+ </g>
+ <path d="M222 196 V246 L146 380 Q138 398 158 400 H354 Q374 398 366 380 L290 246 V196" fill="none" stroke="url(#b)" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/>
+ <rect x="204" y="180" width="104" height="22" rx="11" fill="url(#b)"/>
+ <path d="M256 96 Q262.12 123.88 290 130 Q262.12 136.12 256 164 Q249.88 136.12 222 130 Q249.88 123.88 256 96 Z" fill="url(#o)"/><path d="M316 80 Q318.88 93.12 332 96 Q318.88 98.88 316 112 Q313.12 98.88 300 96 Q313.12 93.12 316 80 Z" fill="#f1dcab"/><path d="M196 96 Q198.16 105.84 208 108 Q198.16 110.16 196 120 Q193.84 110.16 184 108 Q193.84 105.84 196 96 Z" fill="#f1dcab"/>
+</g>
 </svg>

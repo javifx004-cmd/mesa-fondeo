@@ -21,6 +21,8 @@ function pintarMarca() {
   $('.marca-txt span').textContent = nombre ? 'con MarmoLab' : 'Planos y presupuestos';
   for (const id of ['#bvNombre', '#bloqueoNombre']) { const el = $(id); if (el) el.textContent = (nombre || 'MarmoLab').toUpperCase(); }
   for (const id of ['#bvLogo', '#bloqueoLogo', '#accesoLogo']) { const el = $(id); if (el) el.src = logo || 'logo.svg'; }
+  // el logo de serie es redondo: sin esquinas ni marco cuadrado
+  for (const id of ['#bvLogo', '#bloqueoLogo', '#accesoLogo', '#logoApp']) { const el = $(id); if (el) el.classList.toggle('logo-serie', !logo); }
   document.title = nombre ? `${nombre} · MarmoLab` : 'MarmoLab · Planos y presupuestos';
 }
 const cargarLogoSinMarca = cargarLogo;
