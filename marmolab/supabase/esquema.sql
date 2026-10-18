@@ -19,12 +19,12 @@ begin new.actualizado = now(); return new; end $$;
 drop trigger if exists datos_actualizado on public.datos;
 create trigger datos_actualizado before insert or update on public.datos for each row execute function public.tocar_actualizado();
 
--- 2) Licencias: la prueba gratis y la suscripción. El cliente solo puede LEER la suya;
+-- 2) Licencias: hasta cuándo tiene pagado cada cuenta. El cliente solo puede LEER la suya;
 --    la escriben PayPal (función paypal-webhook) y tú desde la app (función admin-licencias, para Bizum).
 create table if not exists public.licencias (
   user_id uuid primary key references auth.users on delete cascade,
   email text,
-  estado text not null default 'prueba',          -- prueba | activa | cancelada | suspendida | admin
+  estado text not null default 'pendiente',       -- pendiente | activa | cancelada | suspendida | admin
   activa_hasta timestamptz not null,
   metodo text,                                    -- paypal | bizum
   paypal_suscripcion text,
@@ -34,11 +34,11 @@ alter table public.licencias enable row level security;
 drop policy if exists "ver mi licencia" on public.licencias;
 create policy "ver mi licencia" on public.licencias for select using (auth.uid() = user_id);
 
--- 3) Al crear una cuenta, 14 días de prueba gratis
+-- 3) Al crear una cuenta queda pendiente de pago (sin días gratis): entra al pagar el primer mes
 create or replace function public.licencia_de_prueba() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.licencias (user_id, email, estado, activa_hasta)
-  values (new.id, new.email, 'prueba', now() + interval '14 days')
+  values (new.id, new.email, 'pendiente', now())
   on conflict (user_id) do nothing;
   return new;
 end $$;

@@ -18,7 +18,7 @@ const MARMOLAB = {
   precio: '49,99 € al mes',
   // false: sin facturas (el albarán es el documento de cobro). Activar solo con el software certificado Verifactu.
   facturas: false,
-  diasPrueba: 14,
+  diasPrueba: 0,   // días gratis al crear la cuenta (0 = hay que pagar el primer mes para entrar)
   // Titular de MarmoLab (salen en el aviso legal, la privacidad y las condiciones)
   titular: {
     nombre: '',        // nombre y apellidos o razón social

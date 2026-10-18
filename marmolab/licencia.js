@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// MarmoLab: cuenta obligatoria, prueba gratis y suscripción mensual.
+// MarmoLab: cuenta obligatoria y suscripción mensual (días gratis opcionales con MARMOLAB.diasPrueba).
 // La licencia vive en Supabase (tabla «licencias»): la actualiza PayPal (webhook) o el administrador (Bizum).
 // El cliente solo puede leer la suya. Sin conexión se respeta la última fecha comprobada (+3 días).
 // ---------------------------------------------------------------------------
@@ -63,7 +63,9 @@ function mostrarAcceso(modo, mensaje = '') {
   const s = confSync().sesion;
   $('#accesoCuenta').textContent = s && s.usuario ? s.usuario.email : '';
   $('#accesoMensaje').textContent = mensaje;
-  $('#accesoPrecio').textContent = `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`;
+  $('#accesoPrecio').textContent = MARMOLAB.diasPrueba > 0
+    ? `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`
+    : `${MARMOLAB.precio[0].toUpperCase()}${MARMOLAB.precio.slice(1)}. Sin permanencia.`;
   $('#accesoContacto').textContent = MARMOLAB.soporte ? `Contacto: ${MARMOLAB.soporte}` : '';
   $('#btnAccesoVolver').hidden = !(modo === 'pagar' && (licenciaVigente(licenciaGuardada()) || esAdmin()));
   if (modo !== 'pagar') { $('#paypalBotones').hidden = true; $('#bizumInfo').hidden = true; }
@@ -85,7 +87,8 @@ async function revisarAcceso() {
     const l = await comprobarLicencia();
     if (!l) { mostrarAcceso('entrar', 'La sesión ha caducado: vuelve a entrar.'); return; }
     if (licenciaVigente(l)) { ocultarAcceso(); return; }
-    mostrarAcceso('pagar', l.estado === 'prueba' ? 'Tu prueba gratis ha terminado.' : 'Tu suscripción no está activa.');
+    const motivo = { prueba: 'Tu prueba gratis ha terminado.', pendiente: 'Cuenta lista. Para empezar, paga el primer mes.' };
+    mostrarAcceso('pagar', motivo[l.estado] || 'Tu suscripción no está activa.');
   } catch {
     // sin conexión: vale la última comprobación unos días más
     if (guardada && guardada.hasta && new Date(guardada.hasta).getTime() + GRACIA_SIN_CONEXION > Date.now()) ocultarAcceso();
@@ -122,7 +125,7 @@ $('#formAcceso').addEventListener('submit', async (e) => {
     await sincronizar({ silencioso: true });   // se bajan los datos de esta cuenta
     await revisarAcceso();
     if (pantallaAcceso.hidden) {
-      aviso(crear ? `¡Bienvenido! Tienes ${MARMOLAB.diasPrueba} días gratis` : 'Sesión iniciada');
+      aviso(crear ? '¡Bienvenido a MarmoLab!' : 'Sesión iniciada');
       if (crear) setTimeout(() => { abrirGestion('empresa'); aviso('Pon los datos y el logo de tu empresa: saldrán en tus documentos'); }, 600);
     }
   } catch (err) {
@@ -279,7 +282,7 @@ function pintarSuscripcion() {
   $('#btnPortal').hidden = !(l && l.metodo === 'paypal');
   // con Bizum se paga cada mes: el botón aparece la última semana
   const quedaPoco = l && l.hasta && new Date(l.hasta).getTime() - Date.now() < 7 * 86400000;
-  $('#btnSuscribirse').hidden = !(l && (l.estado === 'prueba' || l.estado === 'suspendida' || (bizum && quedaPoco)));
+  $('#btnSuscribirse').hidden = !(l && (l.estado === 'prueba' || l.estado === 'pendiente' || l.estado === 'suspendida' || (bizum && quedaPoco)));
   $('#btnSuscribirse').textContent = bizum ? 'Pagar el mes siguiente' : 'Suscribirme ya';
   if (admin) $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
   $('#suscripcionSoporte').textContent = MARMOLAB.soporte ? `Soporte: ${MARMOLAB.soporte}` : '';
@@ -305,7 +308,7 @@ function pintarClientes(lista) {
   const caja = $('#adminLista');
   caja.innerHTML = '';
   if (!lista.length) { caja.textContent = 'Todavía no hay clientes.'; return; }
-  const nombres = { prueba: 'Prueba', activa: 'Activa', cancelada: 'Cancelada', suspendida: 'Sin cobrar', admin: 'Gratis' };
+  const nombres = { prueba: 'Prueba', pendiente: 'Sin pagar', activa: 'Activa', cancelada: 'Cancelada', suspendida: 'Sin cobrar', admin: 'Gratis' };
   for (const c of lista) {
     const fila = document.createElement('div');
     fila.className = 'admin-fila';

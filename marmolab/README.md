@@ -4,7 +4,7 @@ Programa web (PWA) para marmolistas: plano de la encimera, presupuesto con su ta
 albaranes (sin facturas), clientes, calendario, almacén, conformidades, impuestos y sincronización entre aparatos.
 Cada empresa lo personaliza con **su nombre y su logo**: en sus documentos no sale nada de MarmoLab.
 
-Suscripción: **49,99 € al mes** con 14 días de prueba. Se paga mes a mes por **Bizum** o **PayPal** (opcional: renovación automática con PayPal Business).
+Suscripción: **49,99 € al mes** sin días gratis: al crear la cuenta se paga el primer mes para entrar. Se paga mes a mes por **Bizum** o **PayPal** (opcional: renovación automática con PayPal Business).
 
 ## Puesta en marcha (una sola vez)
 

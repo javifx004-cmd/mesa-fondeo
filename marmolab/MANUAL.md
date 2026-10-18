@@ -189,7 +189,7 @@ Con tu cuenta de MarmoLab (correo y contraseña) entras en el PC, el móvil y la
 sincronizan solos. Sin internet se sigue trabajando y se sube todo al volver. Arriba, el punto verde indica que está
 sincronizado.
 
-- **Prueba gratis** de 14 días al crear la cuenta. Después, la suscripción mensual (sin permanencia).
+- Al crear la cuenta pagas el **primer mes** y ya entras. Suscripción mensual, sin permanencia.
 - Se paga de dos formas:
   - **Bizum**: envías 49,99 € al teléfono que sale en pantalla.
   - **PayPal**: el botón «Abrir PayPal y pagar» abre PayPal con los 49,99 € ya puestos.

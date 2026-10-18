@@ -21,7 +21,7 @@ compilación; cuentas, licencias y datos en Supabase; cobro a mano por Bizum o P
 
 ## Mapa
 - `licencia.js`: pantalla de acceso, prueba, pago y «Mi suscripción»; marca del cliente en la app.
-- `supabase/esquema.sql`: tablas `datos` y `licencias` (+ prueba de 14 días). funciones `paypal-webhook` y `admin-licencias`.
+- `supabase/esquema.sql`: tablas `datos` y `licencias` (la cuenta nueva queda pendiente de pago). funciones `paypal-webhook` y `admin-licencias`.
 - El resto como en el programa original: `app.js` (plano, PDF), `presupuesto.js`, `gestion.js`, `contabilidad.js`,
   `despiece.js`, `plantillas.js`, `conformidad.js`, `almacen.js`, `inicio.js`, `bloqueo.js`, `sync.js`.
 
