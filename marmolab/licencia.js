@@ -153,10 +153,11 @@ async function esperarActivacion() {
   if (!pantallaAcceso.hidden) $('#accesoMensaje').textContent = 'Pago recibido. Si en un par de minutos no entra, pulsa «Ya he pagado».';
   else aviso('¡Gracias! Suscripción activada');
 }
+const paypalAutomatico = () => !!(MARMOLAB.paypalClienteId && MARMOLAB.paypalPlanId);
 $('#btnPayPal').addEventListener('click', async () => {
   $('#bizumInfo').hidden = true;
   const s = confSync().sesion;
-  if (!MARMOLAB.paypalClienteId || !MARMOLAB.paypalPlanId) { $('#accesoMensaje').textContent = sinActivar('PayPal'); return; }
+  if (!paypalAutomatico()) { instruccionesPago('paypal'); return; }
   if (!s || !s.usuario) { mostrarAcceso('entrar', 'Entra con tu cuenta para pagar.'); return; }
   const caja = $('#paypalBotones');
   caja.hidden = false;
@@ -180,28 +181,39 @@ $('#btnPayPal').addEventListener('click', async () => {
     $('#accesoMensaje').textContent = 'No se pudo cargar PayPal. Revisa la conexión o paga por Bizum.';
   }
 });
-$('#btnBizum').addEventListener('click', () => {
+// Pago a mano (Bizum o PayPal.me): instrucciones con el correo como concepto; lo activa el administrador
+function instruccionesPago(via) {
   $('#paypalBotones').hidden = true;
-  if (!MARMOLAB.bizum) { $('#accesoMensaje').textContent = sinActivar('Bizum'); return; }
+  const destino = via === 'bizum' ? MARMOLAB.bizum : MARMOLAB.paypalMe;
+  if (!destino) { $('#accesoMensaje').textContent = sinActivar(via === 'bizum' ? 'Bizum' : 'PayPal'); return; }
   const s = confSync().sesion;
   const correo = s && s.usuario ? s.usuario.email : 'tu correo';
+  const importe = MARMOLAB.precio.replace(/ al mes$/, '');
+  const nombreVia = via === 'bizum' ? 'Bizum' : 'PayPal';
   const caja = $('#bizumInfo');
   caja.innerHTML = '';
-  const p = (html) => { const el = document.createElement('p'); el.innerHTML = html; caja.appendChild(el); };
   const t = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  p(`Envía <b>${t(MARMOLAB.precio.replace(/ al mes$/, ''))}</b> por Bizum al <b>${t(MARMOLAB.bizum)}</b>.`);
+  const p = (html) => { const el = document.createElement('p'); el.innerHTML = html; caja.appendChild(el); };
+  const enlace = (href, texto, clase = 'enlace') => {
+    const a = document.createElement('a'); a.className = clase; a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = texto; caja.appendChild(a);
+  };
+  if (via === 'bizum') {
+    p(`Envía <b>${t(importe)}</b> por Bizum al <b>${t(destino)}</b>.`);
+  } else {
+    p(`Envía <b>${t(importe)}</b> por PayPal a <b>paypal.me/${t(destino)}</b>.`);
+    const cantidad = importe.replace(/[^\d,]/g, '').replace(',', '.');
+    enlace(`https://www.paypal.com/paypalme/${encodeURIComponent(destino)}/${cantidad}EUR`, 'Abrir PayPal y pagar', 'boton-pago');
+  }
   p(`En el concepto pon tu correo: <b>${t(correo)}</b>`);
-  p('Lo activamos en cuanto lo veamos (normalmente el mismo día). Bizum no se renueva solo: cada mes, repite el Bizum.');
+  p('Lo activamos en cuanto lo veamos (normalmente el mismo día). No se renueva solo: cada mes, repite el pago.');
   if (MARMOLAB.soporte) {
-    const a = document.createElement('a');
-    a.className = 'enlace';
-    a.href = `mailto:${MARMOLAB.soporte}?subject=${encodeURIComponent('Bizum MarmoLab')}&body=${encodeURIComponent(`Hola, he enviado el Bizum de MarmoLab desde la cuenta ${correo}.`)}`;
-    a.textContent = `Avisar a ${MARMOLAB.soporte} de que ya lo he enviado`;
-    caja.appendChild(a);
+    enlace(`mailto:${MARMOLAB.soporte}?subject=${encodeURIComponent(`Pago MarmoLab (${nombreVia})`)}&body=${encodeURIComponent(`Hola, he enviado el pago de MarmoLab por ${nombreVia} desde la cuenta ${correo}.`)}`,
+      `Avisar a ${MARMOLAB.soporte} de que ya lo he enviado`);
   }
   caja.hidden = false;
   $('#accesoMensaje').textContent = '';
-});
+}
+$('#btnBizum').addEventListener('click', () => instruccionesPago('bizum'));
 $('#btnAccesoVolver').addEventListener('click', ocultarAcceso);
 $('#btnYaPague').addEventListener('click', async () => {
   $('#accesoMensaje').textContent = 'Comprobando…';
@@ -255,10 +267,10 @@ function pintarSuscripcion() {
   }
   const l = licenciaGuardada();
   const hasta = l && l.hasta ? new Date(l.hasta).toLocaleDateString('es-ES') : '—';
-  const bizum = l && l.metodo === 'bizum';
+  const bizum = l && (l.metodo === 'bizum' || l.metodo === 'manual');
   const textos = {
     prueba: `Prueba gratis hasta el ${hasta}`,
-    activa: bizum ? `Pagado por Bizum hasta el ${hasta}` : `Suscripción activa con PayPal (se renueva el ${hasta})`,
+    activa: bizum ? `Pagado hasta el ${hasta}` : `Suscripción activa con PayPal (se renueva el ${hasta})`,
     cancelada: `Cancelada: puedes usarla hasta el ${hasta}`,
     suspendida: `PayPal no ha podido cobrar: puedes usarla hasta el ${hasta}`,
     admin: 'Administrador: acceso gratis',
@@ -302,13 +314,14 @@ function pintarClientes(lista) {
     const info = document.createElement('div');
     info.innerHTML = '<b></b><span></span>';
     info.querySelector('b').textContent = c.email || '(sin correo)';
-    info.querySelector('span').textContent = `${nombres[c.estado] || c.estado}${c.metodo ? ` · ${c.metodo === 'paypal' ? 'PayPal' : 'Bizum'}` : ''} · ${caducada ? 'caducó' : 'hasta'} el ${vence.toLocaleDateString('es-ES')}`;
+    const metodos = { paypal: 'PayPal automático', bizum: 'Bizum', manual: 'Pago a mano' };
+    info.querySelector('span').textContent = `${nombres[c.estado] || c.estado}${c.metodo ? ` · ${metodos[c.metodo] || c.metodo}` : ''} · ${caducada ? 'caducó' : 'hasta'} el ${vence.toLocaleDateString('es-ES')}`;
     if (caducada) info.classList.add('caducada');
     fila.appendChild(info);
     for (const meses of [1, 12]) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = meses === 1 ? '+1 mes (Bizum)' : '+1 año';
+      b.textContent = meses === 1 ? '+1 mes' : '+1 año';
       b.addEventListener('click', async () => {
         b.disabled = true;
         try {
@@ -329,7 +342,7 @@ $('#formPanelAdmin').addEventListener('submit', async (e) => {
   $('#adminMensaje').textContent = 'Cargando…';
   try {
     pintarClientes((await panelAdmin('listar')).clientes);
-    $('#adminMensaje').textContent = 'Cuando te llegue un Bizum, busca el correo del concepto y pulsa «+1 mes».';
+    $('#adminMensaje').textContent = 'Cuando te llegue un Bizum o un PayPal, busca el correo del concepto y pulsa «+1 mes».';
   } catch (err) { $('#adminMensaje').textContent = err.message; }
 });
 $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarSuscripcion));

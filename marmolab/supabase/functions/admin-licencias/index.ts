@@ -1,4 +1,4 @@
-// Panel del administrador: ver los clientes y sumar meses pagados por Bizum.
+// Panel del administrador: ver los clientes y sumar meses pagados a mano (Bizum o PayPal.me).
 // Secreto (Supabase → Edge Functions → Secrets): ADMIN_CLAVE = la clave que escribes en «Clientes de MarmoLab».
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const desde = new Date(Math.max(Date.now(), new Date(fila.activa_hasta).getTime()));
     desde.setMonth(desde.getMonth() + meses);
     const { error: e2 } = await db.from('licencias')
-      .update({ estado: 'activa', metodo: 'bizum', activa_hasta: desde.toISOString(), actualizado: new Date().toISOString() })
+      .update({ estado: 'activa', metodo: 'manual', activa_hasta: desde.toISOString(), actualizado: new Date().toISOString() })
       .eq('user_id', fila.user_id);
     if (e2) return respuesta({ error: e2.message }, 500);
     return respuesta({ ok: true, activa_hasta: desde.toISOString() });

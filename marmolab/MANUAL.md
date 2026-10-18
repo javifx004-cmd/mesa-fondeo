@@ -191,9 +191,10 @@ sincronizado.
 
 - **Prueba gratis** de 14 días al crear la cuenta. Después, la suscripción mensual (sin permanencia).
 - Se paga de dos formas:
-  - **PayPal**: se renueva sola cada mes. Para darte de baja, en **Mi suscripción → Gestionar o dar de baja en PayPal**.
-  - **Bizum**: envías 49,99 € al teléfono que sale en pantalla, con tu correo en el concepto. Se activa al recibirlo
-    (normalmente el mismo día). No se renueva sola: la última semana aparece **Pagar el mes siguiente**.
+  - **Bizum**: envías 49,99 € al teléfono que sale en pantalla.
+  - **PayPal**: el botón «Abrir PayPal y pagar» abre PayPal con los 49,99 € ya puestos.
+  - En los dos, pon tu correo en el concepto. Se activa al recibirlo (normalmente el mismo día). No se renueva solo:
+    la última semana aparece **Pagar el mes siguiente**.
 - En **Gestión → Mi empresa → Mi suscripción** ves hasta cuándo está pagada y cómo.
 - Pon lo primero tu nombre de empresa, NIF, datos y **logo** en Mi empresa: saldrán en todos tus documentos.
 - Carga tu **tarifa** en el presupuesto con «Cambiar tarifas» (o añade tus colores en «Colores y grupos»): la que viene es

@@ -7,11 +7,14 @@ const MARMOLAB = {
   // Proyecto de Supabase de MarmoLab (Project Settings → API): dirección y clave «anon public»
   supabaseUrl: '',
   supabaseClave: '',
-  // PayPal: suscripción mensual que se renueva sola (Client ID de la app de PayPal y el ID del plan, «P-…»)
+  // PayPal.me: usuario de paypal.me al que te mandan el pago del mes (se activa a mano, como Bizum)
+  paypalMe: 'jcfx1',
+  // PayPal con renovación automática (opcional, necesita PayPal Business): Client ID de la app y el ID del plan «P-…».
+  // Si están rellenos, se usa esto en lugar de PayPal.me.
   paypalClienteId: '',
   paypalPlanId: '',
   // Bizum: teléfono al que te mandan el pago. No se renueva solo: el mes lo activas tú en «Clientes de MarmoLab».
-  bizum: '',
+  bizum: '685 426 211',
   precio: '49,99 € al mes',
   // false: sin facturas (el albarán es el documento de cobro). Activar solo con el software certificado Verifactu.
   facturas: false,

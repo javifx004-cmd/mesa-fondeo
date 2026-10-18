@@ -1,7 +1,7 @@
 # MarmoLab
 
 Versión comercial (marca blanca) del programa de planos y presupuestos para marmolistas. PWA estática sin
-compilación; cuentas, licencias y datos en Supabase; cobro con PayPal (suscripción, webhook) o Bizum (manual, panel de administrador; ver README).
+compilación; cuentas, licencias y datos en Supabase; cobro a mano por Bizum o PayPal.me (el administrador activa los meses en su panel) y, opcional, suscripción de PayPal con webhook (ver README).
 
 ## Reglas
 - Textos en español de España, sencillos (los clientes son marmolistas).
