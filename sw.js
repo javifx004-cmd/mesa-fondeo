@@ -1,5 +1,5 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'planos-cocina-v47';
+const CACHE = 'planos-cocina-v48';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js', 'contabilidad.js', 'almacen.js', 'despiece.js', 'plantillas.js', 'conformidad.js', 'sync.js', 'inicio.js', 'bloqueo.js',
   'vendor/anthropic-sdk.js', 'vendor/qrcode.js', 'fuentes/cormorant-garamond-latin-600-normal.woff2',
   'fuentes/cormorant-garamond-latin-700-normal.woff2', 'fuentes/manrope-latin-wght-normal.woff2', 'manifest.webmanifest', 'icon.svg', 'logo.svg',
@@ -19,8 +19,8 @@ self.addEventListener('activate', (e) => {
 // 'no-cache' obliga a preguntar al servidor y evita la versión vieja de la caché del navegador.
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // MarmoPro (carpeta marmopro/) tiene su propio service worker
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/marmopro/')) return;
+  // MarmoLab (carpeta marmolab/) tiene su propio service worker
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/marmolab/')) return;
   e.respondWith(
     fetch(e.request, { cache: 'no-cache' })
       .then((r) => {

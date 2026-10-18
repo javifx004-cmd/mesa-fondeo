@@ -1,5 +1,5 @@
 :root {
-  /* MarmoPro: negro, marfil y acento oro */
+  /* MarmoLab: negro, marfil y acento oro */
   --bg: #f3f2ef;
   --panel: #ffffff;
   --campo: #ffffff;
@@ -461,8 +461,8 @@ dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 
 /* =========================================================================
    ESTILO DE LUJO · mármol, negro y oro
    ========================================================================= */
-@font-face { font-family: 'MarmoPro Serif'; src: url('fuentes/cormorant-garamond-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
-@font-face { font-family: 'MarmoPro Serif'; src: url('fuentes/cormorant-garamond-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'MarmoLab Serif'; src: url('fuentes/cormorant-garamond-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'MarmoLab Serif'; src: url('fuentes/cormorant-garamond-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 @font-face { font-family: 'Manrope'; src: url('fuentes/manrope-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; font-display: swap; }
 
 :root {
@@ -480,7 +480,7 @@ dialog.grande { width: min(980px, calc(100vw - 16px)); max-height: calc(100vh - 
   --oro-claro: #e2c992;
   --oro-osc: #8c6a34;
   --barra: #0d0c0b;
-  --serif: 'MarmoPro Serif', 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --serif: 'MarmoLab Serif', 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --sombra: 0 1px 1px rgba(60, 45, 20, .04), 0 10px 30px -12px rgba(60, 45, 20, .16);
   --veta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 600' preserveAspectRatio='none'%3E%3Cfilter id='b'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cg fill='none' stroke='%239c8a6c' stroke-linecap='round'%3E%3Cpath d='M-50 420 C 200 360, 380 470, 600 380 S 980 250, 1250 300 S 1550 180, 1700 120' stroke-width='5.280000000000001' stroke-opacity='0.06875' filter='url(%23b)'/%3E%3Cpath d='M-50 420 C 200 360, 380 470, 600 380 S 980 250, 1250 300 S 1550 180, 1700 120' stroke-width='1.7600000000000002' stroke-opacity='0.275'/%3E%3Cpath d='M-50 440 C 220 390, 400 500, 640 410 S 1000 290, 1260 330' stroke-width='1.9200000000000004' stroke-opacity='0.05625' filter='url(%23b)'/%3E%3Cpath d='M-50 440 C 220 390, 400 500, 640 410 S 1000 290, 1260 330' stroke-width='0.6400000000000001' stroke-opacity='0.225'/%3E%3Cpath d='M300 650 C 420 520, 560 520, 700 430 S 900 300, 1100 120 S 1300 -20, 1400 -40' stroke-width='3.12' stroke-opacity='0.05' filter='url(%23b)'/%3E%3Cpath d='M300 650 C 420 520, 560 520, 700 430 S 900 300, 1100 120 S 1300 -20, 1400 -40' stroke-width='1.04' stroke-opacity='0.2'/%3E%3Cpath d='M760 650 C 860 560, 1000 560, 1150 470 S 1450 380, 1700 400' stroke-width='2.16' stroke-opacity='0.04375' filter='url(%23b)'/%3E%3Cpath d='M760 650 C 860 560, 1000 560, 1150 470 S 1450 380, 1700 400' stroke-width='0.7200000000000001' stroke-opacity='0.175'/%3E%3Cpath d='M-50 120 C 150 160, 260 90, 420 140 S 700 230, 900 170' stroke-width='1.6799999999999997' stroke-opacity='0.0375' filter='url(%23b)'/%3E%3Cpath d='M-50 120 C 150 160, 260 90, 420 140 S 700 230, 900 170' stroke-width='0.5599999999999999' stroke-opacity='0.15'/%3E%3Cpath d='M1000 650 C 1080 600, 1150 520, 1240 500 S 1420 430, 1520 330' stroke-width='1.44' stroke-opacity='0.0375' filter='url(%23b)'/%3E%3Cpath d='M1000 650 C 1080 600, 1150 520, 1240 500 S 1420 430, 1520 330' stroke-width='0.48' stroke-opacity='0.15'/%3E%3Cpath d='M120 650 C 180 600, 240 560, 330 540' stroke-width='1.44' stroke-opacity='0.0375' filter='url(%23b)'/%3E%3Cpath d='M120 650 C 180 600, 240 560, 330 540' stroke-width='0.48' stroke-opacity='0.15'/%3E%3C/g%3E%3C/svg%3E");
   --veta-osc: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 600' preserveAspectRatio='none'%3E%3Cfilter id='b'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23e2c992' stroke-linecap='round'%3E%3Cpath d='M-50 420 C 200 360, 380 470, 600 380 S 980 250, 1250 300 S 1550 180, 1700 120' stroke-width='6.6000000000000005' stroke-opacity='0.1375' filter='url(%23b)'/%3E%3Cpath d='M-50 420 C 200 360, 380 470, 600 380 S 980 250, 1250 300 S 1550 180, 1700 120' stroke-width='2.2' stroke-opacity='0.55'/%3E%3Cpath d='M-50 440 C 220 390, 400 500, 640 410 S 1000 290, 1260 330' stroke-width='2.4000000000000004' stroke-opacity='0.1125' filter='url(%23b)'/%3E%3Cpath d='M-50 440 C 220 390, 400 500, 640 410 S 1000 290, 1260 330' stroke-width='0.8' stroke-opacity='0.45'/%3E%3Cpath d='M300 650 C 420 520, 560 520, 700 430 S 900 300, 1100 120 S 1300 -20, 1400 -40' stroke-width='3.9000000000000004' stroke-opacity='0.1' filter='url(%23b)'/%3E%3Cpath d='M300 650 C 420 520, 560 520, 700 430 S 900 300, 1100 120 S 1300 -20, 1400 -40' stroke-width='1.3' stroke-opacity='0.4'/%3E%3Cpath d='M760 650 C 860 560, 1000 560, 1150 470 S 1450 380, 1700 400' stroke-width='2.7' stroke-opacity='0.0875' filter='url(%23b)'/%3E%3Cpath d='M760 650 C 860 560, 1000 560, 1150 470 S 1450 380, 1700 400' stroke-width='0.9' stroke-opacity='0.35'/%3E%3Cpath d='M-50 120 C 150 160, 260 90, 420 140 S 700 230, 900 170' stroke-width='2.0999999999999996' stroke-opacity='0.075' filter='url(%23b)'/%3E%3Cpath d='M-50 120 C 150 160, 260 90, 420 140 S 700 230, 900 170' stroke-width='0.7' stroke-opacity='0.3'/%3E%3Cpath d='M1000 650 C 1080 600, 1150 520, 1240 500 S 1420 430, 1520 330' stroke-width='1.7999999999999998' stroke-opacity='0.075' filter='url(%23b)'/%3E%3Cpath d='M1000 650 C 1080 600, 1150 520, 1240 500 S 1420 430, 1520 330' stroke-width='0.6' stroke-opacity='0.3'/%3E%3Cpath d='M120 650 C 180 600, 240 560, 330 540' stroke-width='1.7999999999999998' stroke-opacity='0.075' filter='url(%23b)'/%3E%3Cpath d='M120 650 C 180 600, 240 560, 330 540' stroke-width='0.6' stroke-opacity='0.3'/%3E%3C/g%3E%3C/svg%3E");
@@ -1103,7 +1103,7 @@ button.peligro { background: transparent; }
 :root[data-theme="dark"] button:not(.primary):not(.oro) { box-shadow: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button:not(.primary):not(.oro):not(.peligro) { box-shadow: none; } }
 
-/* --- Acceso y suscripción (MarmoPro) --- */
+/* --- Acceso y suscripción (MarmoLab) --- */
 #acceso {
   position: fixed; inset: 0; z-index: 98; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   padding: 24px 16px; overflow: auto; color: #f1dcab;

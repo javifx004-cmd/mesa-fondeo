@@ -4,8 +4,8 @@
 // Presupuesto: piezas, cálculo con las tarifas y asistente con IA.
 // Usa el estado y las utilidades de app.js (trabajo, cambio, aviso, $…).
 // ---------------------------------------------------------------------------
-const CLAVE_TARIFAS = 'marmopro.tarifas';
-const CLAVE_IA = 'marmopro.claveIA';
+const CLAVE_TARIFAS = 'marmolab.tarifas';
+const CLAVE_IA = 'marmolab.claveIA';
 const IVA = 0.21;
 const FONDO_M2 = 750;   // a partir de este fondo (mm) la pieza se cobra por m²
 const MODELO_IA = 'claude-opus-5-5';
@@ -46,7 +46,7 @@ function parsearTarifas(texto) {
 }
 
 // Colores añadidos a mano a un grupo (toman los precios del grupo)
-const CLAVE_COLORES = 'marmopro.coloresExtra';
+const CLAVE_COLORES = 'marmolab.coloresExtra';
 const CUALQUIER_COLOR = 'CUALQUIER COLOR';
 function leerColoresExtra() {
   try { return JSON.parse(localStorage.getItem(CLAVE_COLORES)) || []; } catch { return []; }
@@ -645,11 +645,11 @@ Reglas:
 - No calcules precios.`;
 
 // Dos proveedores: Gemini (Google, con nivel gratuito) y Claude (Anthropic, de pago).
-const CLAVE_PROVEEDOR = 'marmopro.proveedorIA';
+const CLAVE_PROVEEDOR = 'marmolab.proveedorIA';
 const PROVEEDORES = {
   gemini: {
     nombre: 'Gemini',
-    almacen: 'marmopro.claveGemini',
+    almacen: 'marmolab.claveGemini',
     prefijos: ['AIza', 'AQ.'],   // formato clásico y formato nuevo de Google
     pedir: 'Clave de Gemini (empieza por AIza o por AQ.). Se saca gratis en aistudio.google.com y se guarda solo en este dispositivo.',
     ayuda: 'Para usar la IA gratis hace falta una clave de Gemini: entra en aistudio.google.com con tu cuenta de Google, '

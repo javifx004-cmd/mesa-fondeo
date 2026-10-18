@@ -6,7 +6,7 @@
 // la liquidación real la confirma el gestor.
 // Usa gestion.js (leerDocs, totales, leerJSON…) y app.js ($, aviso, hoy…).
 // ---------------------------------------------------------------------------
-const CLAVE_GASTOS = 'marmopro.gastos';
+const CLAVE_GASTOS = 'marmolab.gastos';
 const CATEGORIAS_GASTO = [
   'Material (tablas, encimeras)', 'Fregaderos y accesorios', 'Transporte y portes', 'Herramienta y maquinaria',
   'Vehículo y gasoil', 'Cuota de autónomos', 'Seguros', 'Alquiler / nave', 'Suministros (luz, agua, teléfono)',

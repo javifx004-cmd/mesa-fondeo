@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// MarmoPro: cuenta obligatoria, prueba gratis y suscripción mensual.
+// MarmoLab: cuenta obligatoria, prueba gratis y suscripción mensual.
 // La licencia vive en Supabase (tabla «licencias», la actualiza Stripe con el webhook).
 // El cliente solo puede leer la suya. Sin conexión se respeta la última fecha comprobada (+3 días).
 // ---------------------------------------------------------------------------
-const CLAVE_LICENCIA = 'marmopro.licencia';
-const CLAVE_ADMIN = 'marmopro.admin';
+const CLAVE_LICENCIA = 'marmolab.licencia';
+const CLAVE_ADMIN = 'marmolab.admin';
 const GRACIA_SIN_CONEXION = 3 * 86400000;
-const configurado = !!(MARMOPRO.supabaseUrl && MARMOPRO.supabaseClave);
+const configurado = !!(MARMOLAB.supabaseUrl && MARMOLAB.supabaseClave);
 const pantallaAcceso = $('#acceso');
 
 // --- la marca de cada cliente: su nombre y su logo en toda la app ---
@@ -17,11 +17,11 @@ function pintarMarca() {
   let logo = null;
   try { logo = localStorage.getItem(CLAVE_LOGO); } catch { /* nada */ }
   const nombre = (emp.nombre || '').trim();
-  $('#marcaNombre').textContent = nombre || 'MarmoPro';
-  $('.marca-txt span').textContent = nombre ? 'con MarmoPro' : 'Planos y presupuestos';
-  for (const id of ['#bvNombre', '#bloqueoNombre']) { const el = $(id); if (el) el.textContent = (nombre || 'MarmoPro').toUpperCase(); }
+  $('#marcaNombre').textContent = nombre || 'MarmoLab';
+  $('.marca-txt span').textContent = nombre ? 'con MarmoLab' : 'Planos y presupuestos';
+  for (const id of ['#bvNombre', '#bloqueoNombre']) { const el = $(id); if (el) el.textContent = (nombre || 'MarmoLab').toUpperCase(); }
   for (const id of ['#bvLogo', '#bloqueoLogo', '#accesoLogo']) { const el = $(id); if (el) el.src = logo || 'logo.svg'; }
-  document.title = nombre ? `${nombre} · MarmoPro` : 'MarmoPro · Planos y presupuestos';
+  document.title = nombre ? `${nombre} · MarmoLab` : 'MarmoLab · Planos y presupuestos';
 }
 const cargarLogoSinMarca = cargarLogo;
 // eslint-disable-next-line no-global-assign
@@ -29,9 +29,9 @@ cargarLogo = function cargarLogoConMarca() { cargarLogoSinMarca(); pintarMarca()
 $('#formEmpresa').addEventListener('input', () => setTimeout(pintarMarca, 50));
 
 // --- administrador: entra gratis con su contraseña (en config.js solo está la huella) ---
-const esAdmin = () => !!(MARMOPRO.admin && MARMOPRO.admin.huella && leerJSON(CLAVE_ADMIN, null) === MARMOPRO.admin.huella);
+const esAdmin = () => !!(MARMOLAB.admin && MARMOLAB.admin.huella && leerJSON(CLAVE_ADMIN, null) === MARMOLAB.admin.huella);
 async function huellaAdmin(pass) {
-  const a = MARMOPRO.admin;
+  const a = MARMOLAB.admin;
   const clave = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
   const sal = new Uint8Array(a.sal.match(/../g).map((h) => parseInt(h, 16)));
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: a.vueltas }, clave, 256);
@@ -61,7 +61,7 @@ function mostrarAcceso(modo, mensaje = '') {
   const s = confSync().sesion;
   $('#accesoCuenta').textContent = s && s.usuario ? s.usuario.email : '';
   $('#accesoMensaje').textContent = mensaje;
-  $('#accesoPrecio').textContent = `${MARMOPRO.diasPrueba} días gratis. Después, ${MARMOPRO.precio}. Sin permanencia.`;
+  $('#accesoPrecio').textContent = `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`;
 }
 function ocultarAcceso() {
   pantallaAcceso.hidden = true;
@@ -100,7 +100,7 @@ $('#formAcceso').addEventListener('submit', async (e) => {
   const email = f.email.value.trim();
   const pass = f.pass.value;
   if (!email || pass.length < 6) { $('#accesoMensaje').textContent = 'Pon tu correo y una contraseña de al menos 6 caracteres.'; return; }
-  if (!configurado) { $('#accesoMensaje').textContent = `Las altas abren muy pronto.${MARMOPRO.soporte ? ` Escríbenos: ${MARMOPRO.soporte}` : ''}`; return; }
+  if (!configurado) { $('#accesoMensaje').textContent = `Las altas abren muy pronto.${MARMOLAB.soporte ? ` Escríbenos: ${MARMOLAB.soporte}` : ''}`; return; }
   if (crear && !f.empresa.value.trim()) { $('#accesoMensaje').textContent = 'Pon el nombre de tu empresa.'; return; }
   if (crear && !f.acepto.checked) { $('#accesoMensaje').textContent = 'Para crear la cuenta tienes que aceptar las condiciones y la privacidad.'; return; }
   $('#accesoMensaje').textContent = crear ? 'Creando tu cuenta…' : 'Entrando…';
@@ -117,7 +117,7 @@ $('#formAcceso').addEventListener('submit', async (e) => {
     await sincronizar({ silencioso: true });   // se bajan los datos de esta cuenta
     await revisarAcceso();
     if (pantallaAcceso.hidden) {
-      aviso(crear ? `¡Bienvenido! Tienes ${MARMOPRO.diasPrueba} días gratis` : 'Sesión iniciada');
+      aviso(crear ? `¡Bienvenido! Tienes ${MARMOLAB.diasPrueba} días gratis` : 'Sesión iniciada');
       if (crear) setTimeout(() => { abrirGestion('empresa'); aviso('Pon los datos y el logo de tu empresa: saldrán en tus documentos'); }, 600);
     }
   } catch (err) {
@@ -126,8 +126,8 @@ $('#formAcceso').addEventListener('submit', async (e) => {
 });
 $('#btnPagar').addEventListener('click', () => {
   const s = confSync().sesion;
-  if (!MARMOPRO.pagoUrl) { $('#accesoMensaje').textContent = 'El pago todavía no está activado. Escríbenos.'; return; }
-  const url = new URL(MARMOPRO.pagoUrl);
+  if (!MARMOLAB.pagoUrl) { $('#accesoMensaje').textContent = 'El pago todavía no está activado. Escríbenos.'; return; }
+  const url = new URL(MARMOLAB.pagoUrl);
   if (s && s.usuario) { url.searchParams.set('client_reference_id', s.usuario.id); url.searchParams.set('prefilled_email', s.usuario.email); }
   window.open(url.toString(), '_blank', 'noopener');
   $('#accesoMensaje').textContent = 'Cuando termines el pago, vuelve aquí y pulsa «Ya he pagado».';
@@ -148,10 +148,10 @@ $('#formAdmin').addEventListener('submit', async (e) => {
   if (!campo.value) return;
   $('#accesoMensaje').textContent = 'Comprobando…';
   let ok = false;
-  try { ok = (await huellaAdmin(campo.value)) === MARMOPRO.admin.huella; } catch { /* navegador sin cifrado */ }
+  try { ok = (await huellaAdmin(campo.value)) === MARMOLAB.admin.huella; } catch { /* navegador sin cifrado */ }
   campo.value = '';
   if (!ok) { $('#accesoMensaje').textContent = 'Contraseña de administrador incorrecta.'; return; }
-  escribirJSON(CLAVE_ADMIN, MARMOPRO.admin.huella);
+  escribirJSON(CLAVE_ADMIN, MARMOLAB.admin.huella);
   $('#formAdmin').hidden = true;
   $('#accesoMensaje').textContent = '';
   await revisarAcceso();
@@ -185,12 +185,12 @@ function pintarSuscripcion() {
   const hasta = l && l.hasta ? new Date(l.hasta).toLocaleDateString('es-ES') : '—';
   const textos = { prueba: `Prueba gratis hasta el ${hasta}`, activa: `Suscripción activa (renueva el ${hasta})`, cancelada: `Cancelada: puedes usarla hasta el ${hasta}`, admin: 'Administrador: acceso gratis' };
   $('#suscripcionEstado').textContent = l ? (textos[l.estado] || `Estado: ${l.estado} · hasta ${hasta}`) : 'Sin comprobar';
-  $('#btnPortal').hidden = !MARMOPRO.portalUrl;
+  $('#btnPortal').hidden = !MARMOLAB.portalUrl;
   $('#btnSuscribirse').hidden = !(l && l.estado === 'prueba');
   if (admin) $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
-  $('#suscripcionSoporte').textContent = MARMOPRO.soporte ? `Soporte: ${MARMOPRO.soporte}` : '';
+  $('#suscripcionSoporte').textContent = MARMOLAB.soporte ? `Soporte: ${MARMOLAB.soporte}` : '';
 }
-$('#btnPortal').addEventListener('click', () => window.open(MARMOPRO.portalUrl, '_blank', 'noopener'));
+$('#btnPortal').addEventListener('click', () => window.open(MARMOLAB.portalUrl, '_blank', 'noopener'));
 $('#btnSuscribirse').addEventListener('click', () => $('#btnPagar').click());
 $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarSuscripcion));
 
@@ -198,7 +198,7 @@ $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('clic
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarAcceso(); });
 setInterval(revisarAcceso, 6 * 3600000);
 if (!configurado) document.body.classList.add('modo-local');
-// con MarmoPro configurado la cuenta es la de la suscripción: se entra desde la pantalla de acceso
+// con MarmoLab configurado la cuenta es la de la suscripción: se entra desde la pantalla de acceso
 if (configurado) {
   $('#syncFuera').hidden = true;
   $('#btnSyncSalir').addEventListener('click', () => setTimeout(revisarAcceso, 50));

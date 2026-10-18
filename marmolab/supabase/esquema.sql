@@ -1,4 +1,4 @@
--- MarmoPro · tablas de Supabase (pegar en SQL Editor → New query → Run)
+-- MarmoLab · tablas de Supabase (pegar en SQL Editor → New query → Run)
 
 -- 1) Datos de cada empresa (trabajos, documentos, clientes…). Cada cuenta solo ve los suyos.
 create table if not exists public.datos (

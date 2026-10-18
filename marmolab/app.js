@@ -9,9 +9,9 @@ const REJILLA = 50;        // separación de la rejilla
 const PASO_IMAN = 25;      // los puntos se ajustan a este paso con el imán
 const TOL_TOQUE = 22;      // distancia para seleccionar un elemento
 const TAM_LUZ = 56;        // lado del símbolo de caja de luz
-const CLAVE = 'marmopro.trabajos';
-const CLAVE_ACTUAL = 'marmopro.actual';
-const VERSION = '1.4';   // cambiar junto con CACHE en sw.js
+const CLAVE = 'marmolab.trabajos';
+const CLAVE_ACTUAL = 'marmolab.actual';
+const VERSION = '1.5';   // cambiar junto con CACHE en sw.js
 const CAMPOS = ['cliente', 'telefono', 'direccion', 'referencia', 'fecha', 'material',
   'canto', 'vitro', 'vitroMedida', 'fregadero', 'fregaMedida', 'fregaRadio', 'grifo', 'jabonera',
   'osmosis', 'observaciones', 'estado', 'colocacion', 'ubicacion'];
@@ -1256,13 +1256,13 @@ const HOJA_H = Math.round(W * 297 / 210);
 // Cabecera común de las hojas (ficha y presupuesto): logo y nombre de la empresa.
 // Devuelve la altura que ocupa.
 const EMPRESA = 'TU EMPRESA';   // hasta que el cliente pone el suyo en Mi empresa
-const CLAVE_LOGO = 'marmopro.logo';
+const CLAVE_LOGO = 'marmolab.logo';
 const logoImg = new Image();
 
 function cargarLogo() {
   let datos = null;
   try { datos = localStorage.getItem(CLAVE_LOGO); } catch { /* sin almacenamiento */ }
-  // en los documentos solo sale el logo del cliente; en la app, el suyo o el de MarmoPro
+  // en los documentos solo sale el logo del cliente; en la app, el suyo o el de MarmoLab
   logoImg.src = datos || 'data:,';
   $('#logoApp').src = datos || 'logo.svg';
   $('#logoEmpresa').src = datos || 'logo.svg';
@@ -1283,7 +1283,7 @@ function logoListo() {
 // Nombre de la empresa: el de «Mi empresa» en Gestión, o el de serie.
 function nombreEmpresa() {
   try {
-    const e = JSON.parse(localStorage.getItem('marmopro.empresa'));
+    const e = JSON.parse(localStorage.getItem('marmolab.empresa'));
     if (e && e.nombre) return e.nombre.toUpperCase();
   } catch { /* sin datos */ }
   return EMPRESA;
@@ -1698,18 +1698,18 @@ $('#btnNuevo').addEventListener('click', () => {
 });
 $('#btnGuardar').addEventListener('click', () => guardar(true));
 
-const CLAVE_ULTIMA_COPIA = 'marmopro.ultimaCopia';
+const CLAVE_ULTIMA_COPIA = 'marmolab.ultimaCopia';
 
 function hacerCopia() {
   guardar();
   // copia completa: trabajos y, si existe, la gestión (clientes, documentos, empresa)
   const ajustes = {};
-  for (const k of ['marmopro.tarifas', 'marmopro.logo', 'marmopro.coloresExtra', 'marmopro.stock', 'marmopro.recordatorios']) {
+  for (const k of ['marmolab.tarifas', 'marmolab.logo', 'marmolab.coloresExtra', 'marmolab.stock', 'marmolab.recordatorios']) {
     try { const v = localStorage.getItem(k); if (v !== null) ajustes[k] = v; } catch { /* sin almacenamiento */ }
   }
   const copia = { version: 2, trabajos: leerTrabajos(), gestion: typeof exportarGestion === 'function' ? exportarGestion() : null, ajustes };
   const blob = new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' });
-  descargar(blob, `marmopro-copia-${hoy()}.json`);
+  descargar(blob, `marmolab-copia-${hoy()}.json`);
   try { localStorage.setItem(CLAVE_ULTIMA_COPIA, String(Date.now())); } catch { /* sin almacenamiento */ }
   $('#avisoCopia').hidden = true;
 }
@@ -1740,11 +1740,11 @@ $('#fileImportar').addEventListener('change', async (e) => {
     escribirTrabajos(lista);
     // tarifas y logo propios
     if (datos.ajustes && typeof datos.ajustes === 'object') {
-      for (const k of ['marmopro.tarifas', 'marmopro.logo', 'marmopro.coloresExtra']) {
+      for (const k of ['marmolab.tarifas', 'marmolab.logo', 'marmolab.coloresExtra']) {
         if (typeof datos.ajustes[k] === 'string') try { localStorage.setItem(k, datos.ajustes[k]); } catch { /* lleno */ }
       }
       // almacén y recordatorios se unen con lo que hay (no se pierde lo apuntado después de la copia)
-      for (const k of ['marmopro.stock', 'marmopro.recordatorios']) {
+      for (const k of ['marmolab.stock', 'marmolab.recordatorios']) {
         if (typeof datos.ajustes[k] !== 'string') continue;
         try {
           const actuales = JSON.parse(localStorage.getItem(k) || '[]');
@@ -1853,7 +1853,7 @@ function aviso(texto) {
   });
 
   protegerDatos();
-  $('#version').textContent = `MarmoPro · versión ${VERSION}`;
+  $('#version').textContent = `MarmoLab · versión ${VERSION}`;
   cargarLogo();
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

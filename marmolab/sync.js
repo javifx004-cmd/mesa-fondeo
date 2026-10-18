@@ -7,26 +7,26 @@
 // Conflictos: gana la versión modificada más tarde. Se usa la API REST de Supabase
 // directamente (sin librerías).
 // ---------------------------------------------------------------------------
-const CLAVE_SYNC_CONF = 'marmopro.sync.conf';     // url, clave pública, sesión
-const CLAVE_SYNC_ESTADO = 'marmopro.sync.estado'; // lo último subido/bajado de cada elemento
-const CLAVE_SYNC_ULTIMO = 'marmopro.sync.ultimo'; // marca de tiempo del servidor de la última bajada
-const CLAVE_SYNC_AJUSTES = 'marmopro.sync.ajustes'; // cuándo cambió aquí cada ajuste (empresa, logo, tarifas)
+const CLAVE_SYNC_CONF = 'marmolab.sync.conf';     // url, clave pública, sesión
+const CLAVE_SYNC_ESTADO = 'marmolab.sync.estado'; // lo último subido/bajado de cada elemento
+const CLAVE_SYNC_ULTIMO = 'marmolab.sync.ultimo'; // marca de tiempo del servidor de la última bajada
+const CLAVE_SYNC_AJUSTES = 'marmolab.sync.ajustes'; // cuándo cambió aquí cada ajuste (empresa, logo, tarifas)
 
 // Si la empresa tiene ya su proyecto, se puede dejar puesto aquí para no escribirlo en cada aparato.
-const SUPABASE_URL_SERIE = MARMOPRO.supabaseUrl;
-const SUPABASE_CLAVE_SERIE = MARMOPRO.supabaseClave;
+const SUPABASE_URL_SERIE = MARMOLAB.supabaseUrl;
+const SUPABASE_CLAVE_SERIE = MARMOLAB.supabaseClave;
 
 // Listas de elementos con id
 const COLECCIONES = {
-  trabajos: 'marmopro.trabajos',
-  clientes: 'marmopro.clientes',
-  documentos: 'marmopro.documentos',
-  gastos: 'marmopro.gastos',
-  stock: 'marmopro.stock',
-  recordatorios: 'marmopro.recordatorios',
+  trabajos: 'marmolab.trabajos',
+  clientes: 'marmolab.clientes',
+  documentos: 'marmolab.documentos',
+  gastos: 'marmolab.gastos',
+  stock: 'marmolab.stock',
+  recordatorios: 'marmolab.recordatorios',
 };
 // Ajustes que se comparten tal cual (texto guardado en el dispositivo)
-const AJUSTES = { empresa: 'marmopro.empresa', logo: 'marmopro.logo', tarifas: 'marmopro.tarifas', colores: 'marmopro.coloresExtra' };
+const AJUSTES = { empresa: 'marmolab.empresa', logo: 'marmolab.logo', tarifas: 'marmolab.tarifas', colores: 'marmolab.coloresExtra' };
 
 let sincronizando = false;
 let pendiente = false;

@@ -1,4 +1,4 @@
-// MarmoPro · Webhook de Stripe → tabla licencias
+// MarmoLab · Webhook de Stripe → tabla licencias
 // Despliegue: supabase functions deploy stripe-webhook --no-verify-jwt
 // Secretos:   supabase secrets set STRIPE_SECRET_KEY=sk_live_... STRIPE_WEBHOOK_SECRET=whsec_...
 // (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY ya los pone Supabase)
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
   try {
     switch (evento.type) {
       case 'checkout.session.completed': {
-        // el enlace de pago lleva client_reference_id = id de la cuenta de MarmoPro
+        // el enlace de pago lleva client_reference_id = id de la cuenta de MarmoLab
         const sesion = evento.data.object as Stripe.Checkout.Session;
         if (sesion.subscription && sesion.client_reference_id) {
           const s = await stripe.subscriptions.retrieve(String(sesion.subscription));

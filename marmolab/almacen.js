@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Almacén: brocas, discos, lijas, disolventes, siliconas… con aviso de stock bajo
 // ---------------------------------------------------------------------------
-const CLAVE_STOCK = 'marmopro.stock';
+const CLAVE_STOCK = 'marmolab.stock';
 const CATEGORIAS_STOCK = ['Brocas', 'Discos', 'Lijas y pulido', 'Disolventes y químicos', 'Siliconas y colas',
   'Herramienta', 'Fregaderos y accesorios', 'Embalaje y protección', 'Otros'];
 const leerStock = () => leerJSON(CLAVE_STOCK, []);
@@ -108,8 +108,8 @@ $('#btnListaCompra').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 // Calendario con recordatorios
 // ---------------------------------------------------------------------------
-const CLAVE_RECORDATORIOS = 'marmopro.recordatorios';
-const CLAVE_AVISADOS = 'marmopro.avisados';
+const CLAVE_RECORDATORIOS = 'marmolab.recordatorios';
+const CLAVE_AVISADOS = 'marmolab.avisados';
 const leerRecordatorios = () => leerJSON(CLAVE_RECORDATORIOS, []);
 const isoDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 let mesVisto = new Date();
@@ -294,8 +294,8 @@ $('#btnIcsRecordatorio').addEventListener('click', () => {
   const hora = (f.hora.value || '09:00').replace(':', '') + '00';
   const rrule = { semanal: 'WEEKLY', mensual: 'MONTHLY', anual: 'YEARLY' }[f.repetir.value];
   const esc = (t) => t.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\n/g, '\\n');
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MarmoPro//Agenda//ES', 'BEGIN:VEVENT',
-    `UID:${recordatorioEditado.id}@marmopro`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MarmoLab//Agenda//ES', 'BEGIN:VEVENT',
+    `UID:${recordatorioEditado.id}@marmolab`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
     `DTSTART:${fecha}T${hora}`, `DURATION:PT1H`, `SUMMARY:${esc(f.titulo.value.trim())}`,
     f.notas.value ? `DESCRIPTION:${esc(f.notas.value)}` : '', rrule ? `RRULE:FREQ=${rrule}` : '',
     'BEGIN:VALARM', `TRIGGER:-PT${Number(f.antes.value) || 0}M`, 'ACTION:DISPLAY', `DESCRIPTION:${esc(f.titulo.value.trim())}`, 'END:VALARM',
@@ -337,9 +337,9 @@ function revisarRecordatorios() {
         const opciones = { body: texto, icon: 'iconos/icono-192.png', tag: clave };
         // en Android solo valen las notificaciones del service worker
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.ready.then((r) => r.showNotification(nombreEmpresa() === EMPRESA ? 'MarmoPro' : nombreEmpresa(), opciones)).catch(() => {});
+          navigator.serviceWorker.ready.then((r) => r.showNotification(nombreEmpresa() === EMPRESA ? 'MarmoLab' : nombreEmpresa(), opciones)).catch(() => {});
         } else {
-          try { new Notification(nombreEmpresa() === EMPRESA ? 'MarmoPro' : nombreEmpresa(), opciones); } catch { /* sin soporte */ }
+          try { new Notification(nombreEmpresa() === EMPRESA ? 'MarmoLab' : nombreEmpresa(), opciones); } catch { /* sin soporte */ }
         }
       }
     }

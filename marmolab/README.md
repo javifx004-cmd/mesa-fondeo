@@ -1,19 +1,19 @@
-# MarmoPro
+# MarmoLab
 
 Programa web (PWA) para marmolistas: plano de la encimera, presupuesto con su tarifa, despiece de tablas,
 albaranes (sin facturas), clientes, calendario, almacén, conformidades, impuestos y sincronización entre aparatos.
-Cada empresa lo personaliza con **su nombre y su logo**: en sus documentos no sale nada de MarmoPro.
+Cada empresa lo personaliza con **su nombre y su logo**: en sus documentos no sale nada de MarmoLab.
 
 Suscripción: **49,99 € al mes** con 14 días de prueba (Stripe + Supabase).
 
 ## Puesta en marcha (una sola vez)
 
-1. **Supabase** (base de datos y cuentas): crea un proyecto nuevo «marmopro» en supabase.com (región Europa).
+1. **Supabase** (base de datos y cuentas): crea un proyecto nuevo «marmolab» en supabase.com (región Europa).
    - SQL Editor → pega `supabase/esquema.sql` → Run.
    - Authentication → Sign In / Providers → Email: deja «Confirm email» activado (recomendado para clientes).
    - Project Settings → API: copia la **Project URL** y la clave **anon public** en `config.js`.
 2. **Stripe** (cobros): crea la cuenta en stripe.com y actívala con los datos de tu empresa.
-   - Productos → nuevo producto «MarmoPro» con precio **recurrente mensual de 49,99 €** (IVA según tu gestor).
+   - Productos → nuevo producto «MarmoLab» con precio **recurrente mensual de 49,99 €** (IVA según tu gestor).
    - Payment Links → crea el enlace de pago de ese precio → copia la URL en `config.js` (`pagoUrl`).
    - Settings → Billing → Customer portal → actívalo y copia el enlace en `config.js` (`portalUrl`).
 3. **Webhook** (para que la suscripción se active y se corte sola):
@@ -24,7 +24,7 @@ Suscripción: **49,99 € al mes** con 14 días de prueba (Stripe + Supabase).
      `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
      `customer.subscription.updated` y `customer.subscription.deleted`. Copia su «Signing secret» (whsec_…).
 4. **Publicar la web**: ya está publicada con GitHub Pages, igual que la app de planos de Carbonell, en la carpeta
-   `marmopro/` del repositorio `mesa-fondeo`: https://javifx004-cmd.github.io/mesa-fondeo/marmopro/
+   `marmolab/` del repositorio `mesa-fondeo`: https://javifx004-cmd.github.io/mesa-fondeo/marmolab/
    (si más adelante se compra un dominio propio, se puede apuntar a esta carpeta).
 
 Mientras falten los datos de Supabase en `config.js`, se ve la pantalla de acceso pero las altas salen como

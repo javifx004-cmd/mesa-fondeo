@@ -13,5 +13,5 @@
   <!-- M de dos tablas de piedra -->
   <path d="M128 352 V160 l64 0 64 104 64 -104 64 0 V352 h-58 V250 l-70 112 -70 -112 V352 z" fill="url(#oro)"/>
   <path d="M128 160 l64 0 64 104 -22 34 -48 -78 V352 h-58 z" fill="#000" fill-opacity=".12"/>
-  <text x="256" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" letter-spacing="10" fill="#e2c992">MARMOPRO</text>
+  <text x="256" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" letter-spacing="10" fill="#e2c992">MARMOLAB</text>
 </svg>

@@ -1,7 +1,7 @@
-# Manual de uso · MarmoPro
+# Manual de uso · MarmoLab
 
 **Planos y presupuestos** — la aplicación para tomar medidas en obra, dibujar el plano de la encimera,
-calcular el presupuesto con la tarifa y hacer albaranes (MarmoPro no emite facturas: para eso usa tu programa de facturación).
+calcular el presupuesto con la tarifa y hacer albaranes (MarmoLab no emite facturas: para eso usa tu programa de facturación).
 
 ## 1. Instalar la aplicación
 
@@ -141,7 +141,7 @@ Cuando la encimera ya está instalada y todo está correcto, en el paso 4 del pl
 
 ## 4. Presupuestos y albaranes (pestaña Gestión)
 
-MarmoPro **no emite facturas** (las facturas deben hacerse con un programa certificado Verifactu). Aquí llevas los
+MarmoLab **no emite facturas** (las facturas deben hacerse con un programa certificado Verifactu). Aquí llevas los
 presupuestos y los **albaranes, que son tu documento de entrega y de cobro**.
 
 - El presupuesto de cada plano **pasa solo** a Gestión en cuanto tiene cliente y piezas.
@@ -185,7 +185,7 @@ En **Gestión → Mi empresa → Bloqueo de la app**:
 
 ## 5. Tu cuenta y tus aparatos
 
-Con tu cuenta de MarmoPro (correo y contraseña) entras en el PC, el móvil y la tablet y ves los mismos datos: se
+Con tu cuenta de MarmoLab (correo y contraseña) entras en el PC, el móvil y la tablet y ves los mismos datos: se
 sincronizan solos. Sin internet se sigue trabajando y se sube todo al volver. Arriba, el punto verde indica que está
 sincronizado.
 
@@ -206,7 +206,7 @@ Aunque se use la sincronización, conviene hacer copias de vez en cuando.
 
 ## 7. Avisos importantes
 
-- **Verifactu:** MarmoPro no emite facturas. Para facturar usa un programa certificado Verifactu cuando te sea
+- **Verifactu:** MarmoLab no emite facturas. Para facturar usa un programa certificado Verifactu cuando te sea
   obligatorio (1 de enero de 2027 sociedades, 1 de julio de 2027 autónomos).
 - **Tarifas:** se cambian en el presupuesto, con **Cambiar tarifas**, cargando el CSV con el mismo formato.
 - **Clave de la IA:** es personal; no la compartáis. Se guarda solo en el aparato.

@@ -25,8 +25,8 @@ Publicada con GitHub Pages desde la rama `claude/sharp-tesla-woj8m2`: https://ja
 - `despiece.js`: tablas necesarias (MaxRects). `plantillas.js`: cocinas tipo y piezas desde el plano.
 - `inicio.js`: panel de Inicio. `sync.js`: Supabase (tabla `datos`, ver README).
 
-## MarmoPro (carpeta `marmopro/`)
-- Versión de marca blanca para vender (49,99 €/mes), publicada en https://javifx004-cmd.github.io/mesa-fondeo/marmopro/.
-  Sin datos de Carbonell. Tiene su propio `CLAUDE.md`, `sw.js` (caché `marmopro-vX`) y `VERSION` en `marmopro/app.js`.
-- Sus claves de `localStorage` empiezan por `marmopro.` para no mezclarse con las de Carbonell (mismo dominio).
-- Cada service worker solo borra sus propias cachés (`planos-cocina-*` / `marmopro-*`).
+## MarmoLab (carpeta `marmolab/`)
+- Versión de marca blanca para vender (49,99 €/mes), publicada en https://javifx004-cmd.github.io/mesa-fondeo/marmolab/.
+  Sin datos de Carbonell. Tiene su propio `CLAUDE.md`, `sw.js` (caché `marmolab-vX`) y `VERSION` en `marmolab/app.js`.
+- Sus claves de `localStorage` empiezan por `marmolab.` para no mezclarse con las de Carbonell (mismo dominio).
+- Cada service worker solo borra sus propias cachés (`planos-cocina-*` / `marmolab-*`).

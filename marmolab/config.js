@@ -1,10 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Configuración de MarmoPro (la rellena el dueño del programa, no los clientes)
+// Configuración de MarmoLab (la rellena el dueño del programa, no los clientes)
 // ---------------------------------------------------------------------------
-const MARMOPRO = {
-  // Proyecto de Supabase de MarmoPro (Project Settings → API): dirección y clave «anon public»
+const MARMOLAB = {
+  // Proyecto de Supabase de MarmoLab (Project Settings → API): dirección y clave «anon public»
   supabaseUrl: '',
   supabaseClave: '',
   // Enlace de pago de Stripe de la suscripción (Payment Link) y portal del cliente para darse de baja
@@ -14,7 +14,7 @@ const MARMOPRO = {
   // false: sin facturas (el albarán es el documento de cobro). Activar solo con el software certificado Verifactu.
   facturas: false,
   diasPrueba: 14,
-  // Titular de MarmoPro (salen en el aviso legal, la privacidad y las condiciones)
+  // Titular de MarmoLab (salen en el aviso legal, la privacidad y las condiciones)
   titular: {
     nombre: '',        // nombre y apellidos o razón social
     nif: '',

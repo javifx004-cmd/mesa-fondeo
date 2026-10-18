@@ -5,9 +5,9 @@
 // Usa utilidades de app.js ($, aviso, descargar, pintarCabecera…) y de
 // presupuesto.js (calcular, fmtEuro, fmtCant, escapar, IVA).
 // ---------------------------------------------------------------------------
-const CLAVE_CLIENTES = 'marmopro.clientes';
-const CLAVE_DOCS = 'marmopro.documentos';
-const CLAVE_EMPRESA = 'marmopro.empresa';
+const CLAVE_CLIENTES = 'marmolab.clientes';
+const CLAVE_DOCS = 'marmolab.documentos';
+const CLAVE_EMPRESA = 'marmolab.empresa';
 
 const TIPOS_DOC = {
   presupuesto: { nombre: 'Presupuesto', plural: 'Presupuestos', prefijo: 'P', titulo: 'PRESUPUESTO',
@@ -18,7 +18,7 @@ const TIPOS_DOC = {
     estados: ['Pendiente de cobro', 'Cobrada', 'Anulada'] },
 };
 // Versión sin facturas (Verifactu): el albarán es el documento de entrega y de cobro
-const SIN_FACTURAS = typeof MARMOPRO !== 'undefined' && MARMOPRO.facturas === false;
+const SIN_FACTURAS = typeof MARMOLAB !== 'undefined' && MARMOLAB.facturas === false;
 if (SIN_FACTURAS) TIPOS_DOC.albaran.estados = ['Pendiente de cobro', 'Cobrado'];
 const ESTADO_COBRADO = { factura: 'Cobrada', albaran: 'Cobrado' };
 const docDeCobro = (d) => (SIN_FACTURAS ? d.tipo === 'albaran' : d.tipo === 'factura');

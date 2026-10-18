@@ -4,7 +4,7 @@
 // Bloqueo de la app con PIN y, si el aparato lo tiene, Face ID / huella (WebAuthn).
 // Se guarda solo en este aparato (no se sincroniza). El PIN se guarda cifrado (SHA-256 con sal).
 // ---------------------------------------------------------------------------
-const CLAVE_BLOQUEO = 'marmopro.bloqueo';   // { sal, hash, largo, bio: id de credencial, minutos }
+const CLAVE_BLOQUEO = 'marmolab.bloqueo';   // { sal, hash, largo, bio: id de credencial, minutos }
 const pantallaBloqueo = $('#bloqueo');
 let pinEscrito = '';
 let fallos = 0;
@@ -158,8 +158,8 @@ $('#btnPonerBio').addEventListener('click', async () => {
   try {
     const cred = await navigator.credentials.create({ publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: 'MarmoPro' },
-      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'marmopro', displayName: 'MarmoPro' },
+      rp: { name: 'MarmoLab' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'marmolab', displayName: 'MarmoLab' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
       timeout: 60000,
