@@ -24,8 +24,9 @@ Suscripción: **49,99 € al mes** con 14 días de prueba. Se paga mes a mes por
    - `admin-licencias` (pega `supabase/functions/admin-licencias/index.ts`): hace falta siempre.
    - `paypal-webhook` (pega `supabase/functions/paypal-webhook/index.ts`) con **Enforce JWT verification desactivado**:
      solo si usas la renovación automática de PayPal.
-   - Edge Functions → Secrets: `PAYPAL_CLIENTE_ID`, `PAYPAL_SECRETO`, `PAYPAL_WEBHOOK_ID` y `ADMIN_CLAVE` (la clave
-     del panel «Clientes de MarmoLab»). Mientras pruebes con el sandbox de PayPal, añade `PAYPAL_MODO=pruebas`.
+   - La clave del panel «Clientes de MarmoLab» es la contraseña de administrador de la app (la función lleva su huella).
+   - Solo con PayPal automático: Edge Functions → Secrets `PAYPAL_CLIENTE_ID`, `PAYPAL_SECRETO`, `PAYPAL_WEBHOOK_ID`
+     (y `PAYPAL_MODO=pruebas` mientras uses el sandbox).
    - En developer.paypal.com → tu app → **Webhooks** → Add webhook con la dirección
      `https://TU-PROYECTO.supabase.co/functions/v1/paypal-webhook` y los eventos `BILLING.SUBSCRIPTION.ACTIVATED`,
      `BILLING.SUBSCRIPTION.RE-ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`,

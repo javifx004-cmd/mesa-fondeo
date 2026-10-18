@@ -1,5 +1,5 @@
 // Panel del administrador: ver los clientes y sumar meses pagados a mano (Bizum o PayPal.me).
-// Secreto (Supabase → Edge Functions → Secrets): ADMIN_CLAVE = la clave que escribes en «Clientes de MarmoLab».
+// La clave es la misma contraseña de administrador de la app: se comprueba con su huella (PBKDF2, la de config.js).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -11,20 +11,23 @@ const CORS = {
 const respuesta = (datos: unknown, status = 200) =>
   new Response(JSON.stringify(datos), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-// comparación que tarda lo mismo acierte o no
-function iguales(a: string, b: string) {
-  const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
-  let d = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] || 0) ^ (y[i] || 0);
-  return d === 0;
+// Huella de la contraseña de administrador (la misma que `admin` en config.js; no es la contraseña)
+const ADMIN = { sal: 'f9487cfb5c9dc8366572385dde1eaf67', huella: '4e3109362eb33862958e3ac45d0bc176d2386ac7ebcb5accbafba4fd3056d12d', vueltas: 200000 };
+async function claveBuena(clave: string) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(clave), 'PBKDF2', false, ['deriveBits']);
+  const sal = new Uint8Array(ADMIN.sal.match(/../g)!.map((h) => parseInt(h, 16)));
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: ADMIN.vueltas }, k, 256);
+  const hex = [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  let d = 0;   // comparación que tarda lo mismo acierte o no
+  for (let i = 0; i < hex.length; i++) d |= hex.charCodeAt(i) ^ ADMIN.huella.charCodeAt(i);
+  return d === 0 && hex.length === ADMIN.huella.length;
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   let p;
   try { p = await req.json(); } catch { return respuesta({ error: 'Petición no válida' }, 400); }
-  const clave = Deno.env.get('ADMIN_CLAVE') || '';
-  if (!clave || !iguales(String(p.clave || ''), clave)) {
+  if (!p.clave || !(await claveBuena(String(p.clave)))) {
     await new Promise((r) => setTimeout(r, 800));
     return respuesta({ error: 'Clave de administrador incorrecta' }, 401);
   }
