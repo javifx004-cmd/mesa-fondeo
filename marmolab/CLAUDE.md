@@ -1,14 +1,14 @@
 # MarmoLab
 
 Versión comercial (marca blanca) del programa de planos y presupuestos para marmolistas. PWA estática sin
-compilación; cuentas, licencias y datos en Supabase; cobro con Stripe (ver README).
+compilación; cuentas, licencias y datos en Supabase; cobro con PayPal (suscripción, webhook) o Bizum (manual, panel de administrador; ver README).
 
 ## Reglas
 - Textos en español de España, sencillos (los clientes son marmolistas).
 - **Nada de datos de ninguna empresa concreta**: la marca de cada cliente sale de «Mi empresa» (nombre y logo);
   en los documentos nunca sale MarmoLab si el cliente ha puesto los suyos.
-- Configuración del dueño en `config.js` (Supabase, enlaces de Stripe, precio, días de prueba). Sin claves secretas
-  en el repositorio (la clave secreta de Stripe va en los secretos de Supabase).
+- Configuración del dueño en `config.js` (Supabase, PayPal, teléfono de Bizum, precio, días de prueba). Sin claves secretas
+  en el repositorio (el secreto de PayPal y la clave del panel van en los secretos de Supabase).
 - En cada versión publicada, subir a la vez `const VERSION` en `app.js` y `CACHE='marmolab-vN'` en `sw.js`;
   archivos nuevos también en `ARCHIVOS` de `sw.js` y en `index.html`.
 - Orden de scripts: config, tarifas, app, presupuesto, vendor/qrcode, gestion, contabilidad, almacen, despiece,
@@ -21,6 +21,6 @@ compilación; cuentas, licencias y datos en Supabase; cobro con Stripe (ver READ
 
 ## Mapa
 - `licencia.js`: pantalla de acceso, prueba, pago y «Mi suscripción»; marca del cliente en la app.
-- `supabase/esquema.sql`: tablas `datos` y `licencias` (+ prueba de 14 días). `supabase/functions/stripe-webhook`.
+- `supabase/esquema.sql`: tablas `datos` y `licencias` (+ prueba de 14 días). funciones `paypal-webhook` y `admin-licencias`.
 - El resto como en el programa original: `app.js` (plano, PDF), `presupuesto.js`, `gestion.js`, `contabilidad.js`,
   `despiece.js`, `plantillas.js`, `conformidad.js`, `almacen.js`, `inicio.js`, `bloqueo.js`, `sync.js`.

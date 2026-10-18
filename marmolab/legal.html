@@ -48,7 +48,7 @@
         Contacto: <span class="dato" data-t="email"></span>.</p>
       <h3>Qué datos tratamos y para qué</h3>
       <p>De los usuarios que contratan MarmoLab: nombre de la empresa, correo, datos de facturación y de pago (el pago lo
-        gestiona Stripe; no guardamos los datos de la tarjeta). Los usamos para crear y mantener la cuenta, prestar el servicio,
+        gestionan PayPal o tu banco con Bizum; no guardamos datos de tarjetas ni de cuentas). Los usamos para crear y mantener la cuenta, prestar el servicio,
         cobrar la suscripción, dar soporte y cumplir obligaciones legales y fiscales.</p>
       <h3>Base legal</h3>
       <p>La ejecución del contrato de suscripción (art. 6.1.b RGPD) y el cumplimiento de obligaciones legales (art. 6.1.c).</p>
@@ -57,7 +57,8 @@
         fiscales). Los datos de trabajo del usuario se borran en los 30 días siguientes a la baja.</p>
       <h3>Destinatarios y proveedores</h3>
       <p>No cedemos datos a terceros salvo obligación legal. Usamos proveedores que tratan datos por nuestra cuenta: Supabase
-        (base de datos y cuentas, servidores en la Unión Europea), Stripe (cobros) y el servicio de alojamiento de la web.
+        (base de datos y cuentas, servidores en la Unión Europea), PayPal (cobros) y el servicio de alojamiento de la web. Los pagos por Bizum
+        los gestiona tu banco.
         Si alguno trata datos fuera del Espacio Económico Europeo, lo hace con las garantías del RGPD (cláusulas contractuales tipo).</p>
       <h3>Tus derechos</h3>
       <p>Puedes pedir acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo a
@@ -76,10 +77,12 @@
         desistimiento de los consumidores.</p>
       <h3>3. Prueba, precio y pago</h3>
       <p>Al crear la cuenta hay <span class="dato" data-c="diasPrueba"></span> días de prueba gratis, sin tarjeta. Después,
-        la suscripción cuesta <span class="dato" data-c="precio"></span>, se cobra por adelantado cada mes con tarjeta a
-        través de Stripe y se renueva sola. Los precios podrán cambiar avisando con 30 días de antelación.</p>
+        la suscripción cuesta <span class="dato" data-c="precio"></span> y se paga por adelantado, de dos formas:
+        con PayPal, que la renueva sola cada mes, o por Bizum, mes a mes (el acceso se activa al recibir el pago y, si no
+        se repite, termina al acabar el mes pagado). Los precios podrán cambiar avisando con 30 días de antelación.</p>
       <h3>4. Baja</h3>
-      <p>Puedes darte de baja cuando quieras desde «Mi suscripción», sin permanencia ni penalización. Seguirás teniendo acceso
+      <p>Puedes darte de baja cuando quieras, sin permanencia ni penalización: con PayPal, cancelando el pago automático
+        desde «Mi suscripción» o desde tu cuenta de PayPal; con Bizum, basta con no enviar el mes siguiente. Seguirás teniendo acceso
         hasta el final del mes pagado; no se devuelven partes de meses. Si un cobro falla y no se paga, el acceso se suspende.</p>
       <h3>5. Tus datos</h3>
       <p>Los datos que introduces (trabajos, clientes, documentos…) son tuyos. Puedes descargarlos en cualquier momento con
@@ -106,7 +109,7 @@
         <li>Mantener la confidencialidad y que solo accedan a ellos personas autorizadas y obligadas a guardar secreto.</li>
         <li>Aplicar medidas de seguridad adecuadas: acceso con contraseña, datos de cada cuenta separados (cada usuario solo
           ve los suyos), conexiones cifradas y copias en la nube.</li>
-        <li>Usar como subencargados a Supabase (base de datos, Unión Europea), Stripe (cobros) y el proveedor de alojamiento,
+        <li>Usar como subencargados a Supabase (base de datos, Unión Europea), PayPal (cobros) y el proveedor de alojamiento,
           con sus propias garantías del RGPD, y avisar antes de cambiar de proveedor.</li>
         <li>Ayudar al usuario a atender los derechos de sus clientes y avisarle sin demora de cualquier brecha de seguridad.</li>
         <li>Al terminar el servicio, permitir descargar los datos y borrarlos en 30 días.</li>

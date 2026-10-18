@@ -4,7 +4,7 @@ Programa web (PWA) para marmolistas: plano de la encimera, presupuesto con su ta
 albaranes (sin facturas), clientes, calendario, almacén, conformidades, impuestos y sincronización entre aparatos.
 Cada empresa lo personaliza con **su nombre y su logo**: en sus documentos no sale nada de MarmoLab.
 
-Suscripción: **49,99 € al mes** con 14 días de prueba (Stripe + Supabase).
+Suscripción: **49,99 € al mes** con 14 días de prueba. Se paga con **PayPal** (se renueva solo) o **Bizum** (mes a mes).
 
 ## Puesta en marcha (una sola vez)
 
@@ -12,18 +12,25 @@ Suscripción: **49,99 € al mes** con 14 días de prueba (Stripe + Supabase).
    - SQL Editor → pega `supabase/esquema.sql` → Run.
    - Authentication → Sign In / Providers → Email: deja «Confirm email» activado (recomendado para clientes).
    - Project Settings → API: copia la **Project URL** y la clave **anon public** en `config.js`.
-2. **Stripe** (cobros): crea la cuenta en stripe.com y actívala con los datos de tu empresa.
-   - Productos → nuevo producto «MarmoLab» con precio **recurrente mensual de 49,99 €** (IVA según tu gestor).
-   - Payment Links → crea el enlace de pago de ese precio → copia la URL en `config.js` (`pagoUrl`).
-   - Settings → Billing → Customer portal → actívalo y copia el enlace en `config.js` (`portalUrl`).
-3. **Webhook** (para que la suscripción se active y se corte sola):
-   - Instala la CLI de Supabase y en esta carpeta: `supabase functions deploy stripe-webhook --no-verify-jwt`
-   - `supabase secrets set STRIPE_SECRET_KEY=sk_live_... STRIPE_WEBHOOK_SECRET=whsec_...`
-   - En Stripe → Developers → Webhooks → añade el endpoint
-     `https://TU-PROYECTO.supabase.co/functions/v1/stripe-webhook` con los eventos
-     `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
-     `customer.subscription.updated` y `customer.subscription.deleted`. Copia su «Signing secret» (whsec_…).
-4. **Publicar la web**: ya está publicada con GitHub Pages, igual que la app de planos de Carbonell, en la carpeta
+2. **PayPal** (pago que se renueva solo): cuenta **PayPal Business** a nombre de tu empresa.
+   - developer.paypal.com → Apps & Credentials → **Live** → Create App «MarmoLab» → copia el **Client ID** en
+     `config.js` (`paypalClienteId`) y guarda el **Secret** (no va en el repositorio).
+   - En tu cuenta de PayPal: Pagar y cobrar → **Suscripciones** → crea el producto «MarmoLab» y un plan de
+     **49,99 € al mes** → copia el **ID del plan** (`P-…`) en `config.js` (`paypalPlanId`).
+3. **Bizum**: pon en `config.js` (`bizum`) el teléfono al que te envían el pago. Bizum no se renueva solo: cuando
+   llegue uno, en la app (modo administrador) → Mi empresa → **Clientes de MarmoLab** → «+1 mes (Bizum)».
+4. **Funciones de Supabase** (Edge Functions → Deploy a new function → Via Editor; o con la CLI
+   `supabase functions deploy`):
+   - `paypal-webhook` (pega `supabase/functions/paypal-webhook/index.ts`) con **Enforce JWT verification desactivado**.
+   - `admin-licencias` (pega `supabase/functions/admin-licencias/index.ts`).
+   - Edge Functions → Secrets: `PAYPAL_CLIENTE_ID`, `PAYPAL_SECRETO`, `PAYPAL_WEBHOOK_ID` y `ADMIN_CLAVE` (la clave
+     del panel «Clientes de MarmoLab»). Mientras pruebes con el sandbox de PayPal, añade `PAYPAL_MODO=pruebas`.
+   - En developer.paypal.com → tu app → **Webhooks** → Add webhook con la dirección
+     `https://TU-PROYECTO.supabase.co/functions/v1/paypal-webhook` y los eventos `BILLING.SUBSCRIPTION.ACTIVATED`,
+     `BILLING.SUBSCRIPTION.RE-ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`,
+     `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED` y
+     `PAYMENT.SALE.COMPLETED`. Copia su **Webhook ID** en el secreto `PAYPAL_WEBHOOK_ID`.
+5. **Publicar la web**: ya está publicada con GitHub Pages, igual que la app de planos de Carbonell, en la carpeta
    `marmolab/` del repositorio `mesa-fondeo`: https://javifx004-cmd.github.io/mesa-fondeo/marmolab/
    (si más adelante se compra un dominio propio, se puede apuntar a esta carpeta).
 
@@ -44,6 +51,5 @@ Mientras falten los datos de Supabase en `config.js`, se ve la pantalla de acces
   de productor (RD 1007/2023 y Orden HAC/1177/2024).
 - **RGPD y condiciones**: ya vienen en `legal.html` (aviso legal, privacidad, condiciones de la suscripción y contrato
   de encargado del tratamiento). Rellena `titular` en `config.js` (nombre, NIF, domicilio, correo) y se completan solos.
-  Al crear la cuenta el cliente tiene que marcar que los acepta (se guarda la fecha). En Stripe pon la dirección de
-  `legal.html#condiciones` en los términos del enlace de pago y `legal.html#privacidad` en la política de privacidad.
+  Al crear la cuenta el cliente tiene que marcar que los acepta (se guarda la fecha). En PayPal (perfil de empresa) pon la dirección de `legal.html#condiciones` y `legal.html#privacidad`.
 - La comprobación de la licencia se hace en la app; los datos en la nube solo los ve cada cuenta (RLS).

@@ -20,14 +20,14 @@ drop trigger if exists datos_actualizado on public.datos;
 create trigger datos_actualizado before insert or update on public.datos for each row execute function public.tocar_actualizado();
 
 -- 2) Licencias: la prueba gratis y la suscripción. El cliente solo puede LEER la suya;
---    la escribe Stripe (función stripe-webhook) con la clave de servicio.
+--    la escriben PayPal (función paypal-webhook) y tú desde la app (función admin-licencias, para Bizum).
 create table if not exists public.licencias (
   user_id uuid primary key references auth.users on delete cascade,
   email text,
-  estado text not null default 'prueba',          -- prueba | activa | cancelada | impagada
+  estado text not null default 'prueba',          -- prueba | activa | cancelada | suspendida | admin
   activa_hasta timestamptz not null,
-  stripe_cliente text,
-  stripe_suscripcion text,
+  metodo text,                                    -- paypal | bizum
+  paypal_suscripcion text,
   actualizado timestamptz not null default now()
 );
 alter table public.licencias enable row level security;

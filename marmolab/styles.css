@@ -1142,3 +1142,16 @@ body.sin-facturas .ini-cols:has(#iniPlazo) { grid-template-columns: 1fr; }
 #formAdmin { margin-top: 10px; }
 .acceso-tarjetas { margin: 4px 0 0; font-size: 12px; text-align: center; color: rgba(241, 220, 171, .6); }
 img.logo-serie { border-radius: 50% !important; box-shadow: none !important; }
+.metodos-pago { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.paypal-botones { margin-top: 10px; background: #fff; border-radius: 14px; padding: 12px 12px 4px; min-height: 60px; }
+.bizum-info { margin-top: 10px; border: 1px solid rgba(226, 201, 146, .4); border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.45; color: rgba(247, 242, 234, .9); text-align: left; }
+.bizum-info p { margin: 0 0 6px; }
+.bizum-info b { color: #ecd29b; }
+.bizum-info a { color: #e2c992; font-size: 13px; }
+.admin-clave { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.admin-clave label { flex: 1; min-width: 180px; }
+.admin-lista { display: grid; gap: 8px; margin-top: 8px; }
+.admin-fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--borde, #e3d8c4); border-radius: 12px; }
+.admin-fila > div { flex: 1; min-width: 180px; display: grid; }
+.admin-fila > div span { font-size: 13px; opacity: .75; }
+.admin-fila > div.caducada span { color: #b3412c; opacity: 1; }

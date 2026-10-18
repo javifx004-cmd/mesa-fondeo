@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // MarmoLab: cuenta obligatoria, prueba gratis y suscripción mensual.
-// La licencia vive en Supabase (tabla «licencias», la actualiza Stripe con el webhook).
+// La licencia vive en Supabase (tabla «licencias»): la actualiza PayPal (webhook) o el administrador (Bizum).
 // El cliente solo puede leer la suya. Sin conexión se respeta la última fecha comprobada (+3 días).
 // ---------------------------------------------------------------------------
 const CLAVE_LICENCIA = 'marmolab.licencia';
@@ -48,9 +48,9 @@ function licenciaVigente(l) {
 async function comprobarLicencia() {
   const sesion = await tokenValido();
   if (!sesion) return null;
-  const filas = await pedir('/rest/v1/licencias?select=estado,activa_hasta&limit=1', { token: sesion.token });
+  const filas = await pedir('/rest/v1/licencias?select=estado,activa_hasta,metodo&limit=1', { token: sesion.token });
   const f = filas && filas[0];
-  const l = { estado: f ? f.estado : 'sin licencia', hasta: f ? f.activa_hasta : null, comprobado: Date.now() };
+  const l = { estado: f ? f.estado : 'sin licencia', hasta: f ? f.activa_hasta : null, metodo: f ? f.metodo : null, comprobado: Date.now() };
   escribirJSON(CLAVE_LICENCIA, l);
   pintarSuscripcion();
   return l;
@@ -65,6 +65,8 @@ function mostrarAcceso(modo, mensaje = '') {
   $('#accesoMensaje').textContent = mensaje;
   $('#accesoPrecio').textContent = `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`;
   $('#accesoContacto').textContent = MARMOLAB.soporte ? `Contacto: ${MARMOLAB.soporte}` : '';
+  $('#btnAccesoVolver').hidden = !(modo === 'pagar' && (licenciaVigente(licenciaGuardada()) || esAdmin()));
+  if (modo !== 'pagar') { $('#paypalBotones').hidden = true; $('#bizumInfo').hidden = true; }
 }
 function ocultarAcceso() {
   pantallaAcceso.hidden = true;
@@ -127,14 +129,80 @@ $('#formAcceso').addEventListener('submit', async (e) => {
     $('#accesoMensaje').textContent = mensajeErrorSync(err);
   }
 });
-$('#btnPagar').addEventListener('click', () => {
+// --- pago: PayPal (suscripción que se renueva sola) o Bizum (mes a mes, lo activa el administrador) ---
+const sinActivar = (que) => `El pago con ${que} todavía no está activado.${MARMOLAB.soporte ? ` Escríbenos: ${MARMOLAB.soporte}` : ''}`;
+let sdkPayPal = null;
+function cargarPayPal() {
+  if (!sdkPayPal) {
+    sdkPayPal = new Promise((ok, mal) => {
+      const s = document.createElement('script');
+      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(MARMOLAB.paypalClienteId)}&vault=true&intent=subscription&currency=EUR&locale=es_ES`;
+      s.onload = () => ok(window.paypal);
+      s.onerror = () => { sdkPayPal = null; mal(new Error('sin PayPal')); };
+      document.head.appendChild(s);
+    });
+  }
+  return sdkPayPal;
+}
+async function esperarActivacion() {
+  // PayPal avisa al servidor en unos segundos: se comprueba varias veces
+  for (let i = 0; i < 8 && !pantallaAcceso.hidden; i++) {
+    await new Promise((r) => setTimeout(r, 4000));
+    await revisarAcceso();
+  }
+  if (!pantallaAcceso.hidden) $('#accesoMensaje').textContent = 'Pago recibido. Si en un par de minutos no entra, pulsa «Ya he pagado».';
+  else aviso('¡Gracias! Suscripción activada');
+}
+$('#btnPayPal').addEventListener('click', async () => {
+  $('#bizumInfo').hidden = true;
   const s = confSync().sesion;
-  if (!MARMOLAB.pagoUrl) { $('#accesoMensaje').textContent = 'El pago todavía no está activado. Escríbenos.'; return; }
-  const url = new URL(MARMOLAB.pagoUrl);
-  if (s && s.usuario) { url.searchParams.set('client_reference_id', s.usuario.id); url.searchParams.set('prefilled_email', s.usuario.email); }
-  window.open(url.toString(), '_blank', 'noopener');
-  $('#accesoMensaje').textContent = 'Cuando termines el pago, vuelve aquí y pulsa «Ya he pagado».';
+  if (!MARMOLAB.paypalClienteId || !MARMOLAB.paypalPlanId) { $('#accesoMensaje').textContent = sinActivar('PayPal'); return; }
+  if (!s || !s.usuario) { mostrarAcceso('entrar', 'Entra con tu cuenta para pagar.'); return; }
+  const caja = $('#paypalBotones');
+  caja.hidden = false;
+  if (caja.dataset.listo) return;
+  $('#accesoMensaje').textContent = 'Cargando PayPal…';
+  try {
+    const paypal = await cargarPayPal();
+    caja.innerHTML = '';
+    await paypal.Buttons({
+      style: { shape: 'pill', color: 'gold', label: 'subscribe', height: 45 },
+      // custom_id lleva el id de la cuenta: así el aviso de PayPal sabe a quién activar
+      createSubscription: (datos, acciones) => acciones.subscription.create({ plan_id: MARMOLAB.paypalPlanId, custom_id: s.usuario.id }),
+      onApprove: () => { $('#accesoMensaje').textContent = 'Pago hecho. Activando tu suscripción…'; esperarActivacion(); },
+      onCancel: () => { $('#accesoMensaje').textContent = 'Pago cancelado. Puedes volver a intentarlo cuando quieras.'; },
+      onError: () => { $('#accesoMensaje').textContent = 'PayPal ha dado un error. Prueba otra vez o paga por Bizum.'; },
+    }).render('#paypalBotones');
+    caja.dataset.listo = '1';
+    $('#accesoMensaje').textContent = '';
+  } catch {
+    caja.hidden = true;
+    $('#accesoMensaje').textContent = 'No se pudo cargar PayPal. Revisa la conexión o paga por Bizum.';
+  }
 });
+$('#btnBizum').addEventListener('click', () => {
+  $('#paypalBotones').hidden = true;
+  if (!MARMOLAB.bizum) { $('#accesoMensaje').textContent = sinActivar('Bizum'); return; }
+  const s = confSync().sesion;
+  const correo = s && s.usuario ? s.usuario.email : 'tu correo';
+  const caja = $('#bizumInfo');
+  caja.innerHTML = '';
+  const p = (html) => { const el = document.createElement('p'); el.innerHTML = html; caja.appendChild(el); };
+  const t = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  p(`Envía <b>${t(MARMOLAB.precio.replace(/ al mes$/, ''))}</b> por Bizum al <b>${t(MARMOLAB.bizum)}</b>.`);
+  p(`En el concepto pon tu correo: <b>${t(correo)}</b>`);
+  p('Lo activamos en cuanto lo veamos (normalmente el mismo día). Bizum no se renueva solo: cada mes, repite el Bizum.');
+  if (MARMOLAB.soporte) {
+    const a = document.createElement('a');
+    a.className = 'enlace';
+    a.href = `mailto:${MARMOLAB.soporte}?subject=${encodeURIComponent('Bizum MarmoLab')}&body=${encodeURIComponent(`Hola, he enviado el Bizum de MarmoLab desde la cuenta ${correo}.`)}`;
+    a.textContent = `Avisar a ${MARMOLAB.soporte} de que ya lo he enviado`;
+    caja.appendChild(a);
+  }
+  caja.hidden = false;
+  $('#accesoMensaje').textContent = '';
+});
+$('#btnAccesoVolver').addEventListener('click', ocultarAcceso);
 $('#btnYaPague').addEventListener('click', async () => {
   $('#accesoMensaje').textContent = 'Comprobando…';
   await revisarAcceso();
@@ -178,6 +246,7 @@ function pintarSuscripcion() {
   const admin = esAdmin();
   caja.hidden = !configurado && !admin;
   $('#btnAdminSalir').hidden = !admin;
+  $('#panelAdmin').hidden = !admin;
   if (admin && !configurado) {
     $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
     $('#btnPortal').hidden = true;
@@ -186,15 +255,83 @@ function pintarSuscripcion() {
   }
   const l = licenciaGuardada();
   const hasta = l && l.hasta ? new Date(l.hasta).toLocaleDateString('es-ES') : '—';
-  const textos = { prueba: `Prueba gratis hasta el ${hasta}`, activa: `Suscripción activa (renueva el ${hasta})`, cancelada: `Cancelada: puedes usarla hasta el ${hasta}`, admin: 'Administrador: acceso gratis' };
+  const bizum = l && l.metodo === 'bizum';
+  const textos = {
+    prueba: `Prueba gratis hasta el ${hasta}`,
+    activa: bizum ? `Pagado por Bizum hasta el ${hasta}` : `Suscripción activa con PayPal (se renueva el ${hasta})`,
+    cancelada: `Cancelada: puedes usarla hasta el ${hasta}`,
+    suspendida: `PayPal no ha podido cobrar: puedes usarla hasta el ${hasta}`,
+    admin: 'Administrador: acceso gratis',
+  };
   $('#suscripcionEstado').textContent = l ? (textos[l.estado] || `Estado: ${l.estado} · hasta ${hasta}`) : 'Sin comprobar';
-  $('#btnPortal').hidden = !MARMOLAB.portalUrl;
-  $('#btnSuscribirse').hidden = !(l && l.estado === 'prueba');
+  $('#btnPortal').hidden = !(l && l.metodo === 'paypal');
+  // con Bizum se paga cada mes: el botón aparece la última semana
+  const quedaPoco = l && l.hasta && new Date(l.hasta).getTime() - Date.now() < 7 * 86400000;
+  $('#btnSuscribirse').hidden = !(l && (l.estado === 'prueba' || l.estado === 'suspendida' || (bizum && quedaPoco)));
+  $('#btnSuscribirse').textContent = bizum ? 'Pagar el mes siguiente' : 'Suscribirme ya';
   if (admin) $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
   $('#suscripcionSoporte').textContent = MARMOLAB.soporte ? `Soporte: ${MARMOLAB.soporte}` : '';
 }
-$('#btnPortal').addEventListener('click', () => window.open(MARMOLAB.portalUrl, '_blank', 'noopener'));
-$('#btnSuscribirse').addEventListener('click', () => $('#btnPagar').click());
+// los pagos automáticos de PayPal se cancelan desde la cuenta de PayPal del cliente
+$('#btnPortal').addEventListener('click', () => window.open('https://www.paypal.com/myaccount/autopay/', '_blank', 'noopener'));
+$('#btnSuscribirse').addEventListener('click', () => mostrarAcceso('pagar'));
+
+// --- «Clientes de MarmoLab»: solo el administrador (la clave se comprueba en el servidor) ---
+let claveAdmin = '';
+async function panelAdmin(accion, extra = {}) {
+  const c = confSync();
+  const r = await fetch(`${c.url}/functions/v1/admin-licencias`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: c.clave, Authorization: `Bearer ${c.clave}` },
+    body: JSON.stringify({ clave: claveAdmin, accion, ...extra }),
+  });
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(datos.error || `Error ${r.status}`);
+  return datos;
+}
+function pintarClientes(lista) {
+  const caja = $('#adminLista');
+  caja.innerHTML = '';
+  if (!lista.length) { caja.textContent = 'Todavía no hay clientes.'; return; }
+  const nombres = { prueba: 'Prueba', activa: 'Activa', cancelada: 'Cancelada', suspendida: 'Sin cobrar', admin: 'Gratis' };
+  for (const c of lista) {
+    const fila = document.createElement('div');
+    fila.className = 'admin-fila';
+    const vence = new Date(c.activa_hasta);
+    const caducada = vence.getTime() < Date.now();
+    const info = document.createElement('div');
+    info.innerHTML = '<b></b><span></span>';
+    info.querySelector('b').textContent = c.email || '(sin correo)';
+    info.querySelector('span').textContent = `${nombres[c.estado] || c.estado}${c.metodo ? ` · ${c.metodo === 'paypal' ? 'PayPal' : 'Bizum'}` : ''} · ${caducada ? 'caducó' : 'hasta'} el ${vence.toLocaleDateString('es-ES')}`;
+    if (caducada) info.classList.add('caducada');
+    fila.appendChild(info);
+    for (const meses of [1, 12]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = meses === 1 ? '+1 mes (Bizum)' : '+1 año';
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          const r = await panelAdmin('sumar', { email: c.email, meses });
+          aviso(`${c.email}: pagado hasta el ${new Date(r.activa_hasta).toLocaleDateString('es-ES')}`);
+          pintarClientes((await panelAdmin('listar')).clientes);
+        } catch (err) { $('#adminMensaje').textContent = err.message; b.disabled = false; }
+      });
+      fila.appendChild(b);
+    }
+    caja.appendChild(fila);
+  }
+}
+$('#formPanelAdmin').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!configurado) { $('#adminMensaje').textContent = 'Estará disponible cuando Supabase esté activado.'; return; }
+  claveAdmin = $('#adminClave').value;
+  $('#adminMensaje').textContent = 'Cargando…';
+  try {
+    pintarClientes((await panelAdmin('listar')).clientes);
+    $('#adminMensaje').textContent = 'Cuando te llegue un Bizum, busca el correo del concepto y pulsa «+1 mes».';
+  } catch (err) { $('#adminMensaje').textContent = err.message; }
+});
 $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarSuscripcion));
 
 // La licencia se revisa al abrir, al volver a la app y cada 6 horas

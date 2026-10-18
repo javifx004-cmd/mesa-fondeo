@@ -38,10 +38,16 @@
       </form>
       <div class="acceso-pagar">
         <p>Cuenta: <b id="accesoCuenta"></b></p>
-        <button type="button" id="btnPagar" class="oro">Suscribirme</button>
+        <div class="metodos-pago">
+          <button type="button" id="btnPayPal" class="oro">Pagar con PayPal</button>
+          <button type="button" id="btnBizum">Pagar con Bizum</button>
+        </div>
+        <div id="paypalBotones" class="paypal-botones" hidden></div>
+        <div id="bizumInfo" class="bizum-info" hidden></div>
         <button type="button" id="btnYaPague">Ya he pagado: comprobar</button>
+        <button type="button" id="btnAccesoVolver" class="enlace" hidden>Volver a la app</button>
         <button type="button" id="btnAccesoSalir" class="enlace">Entrar con otra cuenta</button>
-        <p class="acceso-tarjetas">Pago seguro con tarjeta a través de Stripe · Sin permanencia: te das de baja cuando quieras</p>
+        <p class="acceso-tarjetas">PayPal se renueva solo cada mes · Bizum, mes a mes · Sin permanencia</p>
       </div>
       <p id="accesoMensaje" class="acceso-mensaje" role="status"></p>
       <p id="accesoPrecio" class="acceso-precio"></p>
@@ -603,10 +609,21 @@
         <p id="suscripcionEstado" class="resumen"></p>
         <div class="botones-sync">
           <button type="button" id="btnSuscribirse" class="primary">Suscribirme ya</button>
-          <button type="button" id="btnPortal">Gestionar suscripción (facturas y baja)</button>
+          <button type="button" id="btnPortal">Gestionar o dar de baja en PayPal</button>
           <button type="button" id="btnAdminSalir" hidden>Salir de administrador</button>
         </div>
         <p id="suscripcionSoporte" class="ayuda"></p>
+      </div>
+
+      <div id="panelAdmin" class="panel-sync" hidden>
+        <h3>Clientes de MarmoLab</h3>
+        <p class="ayuda">Solo lo ves tú. Aquí ves quién paga y activas los meses pagados por Bizum.</p>
+        <form id="formPanelAdmin" class="admin-clave">
+          <label>Clave del panel <input name="clave" type="password" autocomplete="current-password" id="adminClave"></label>
+          <button type="submit" class="primary">Ver clientes</button>
+        </form>
+        <p id="adminMensaje" class="ayuda" role="status"></p>
+        <div id="adminLista" class="admin-lista"></div>
       </div>
 
       <div id="panelBloqueo" class="panel-sync">
