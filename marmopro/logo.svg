@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1dcab"/><stop offset=".55" stop-color="#c9a66b"/><stop offset="1" stop-color="#8c6a34"/>
+    </linearGradient>
+    <radialGradient id="fondo" cx=".5" cy=".3" r=".8">
+      <stop offset="0" stop-color="#2a2620"/><stop offset="1" stop-color="#0d0c0b"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="url(#fondo)"/>
+  <rect x="14" y="14" width="484" height="484" rx="92" fill="none" stroke="#e2c992" stroke-opacity=".35" stroke-width="3"/>
+  <path d="M60 330 C 160 290, 220 360, 300 318 S 430 260, 470 282" fill="none" stroke="#e2c992" stroke-opacity=".25" stroke-width="3"/>
+  <!-- M de dos tablas de piedra -->
+  <path d="M128 352 V160 l64 0 64 104 64 -104 64 0 V352 h-58 V250 l-70 112 -70 -112 V352 z" fill="url(#oro)"/>
+  <path d="M128 160 l64 0 64 104 -22 34 -48 -78 V352 h-58 z" fill="#000" fill-opacity=".12"/>
+  <text x="256" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" letter-spacing="10" fill="#e2c992">MARMOPRO</text>
+</svg>

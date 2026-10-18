@@ -1,0 +1,1118 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Presupuesto: piezas, cálculo con las tarifas y asistente con IA.
+// Usa el estado y las utilidades de app.js (trabajo, cambio, aviso, $…).
+// ---------------------------------------------------------------------------
+const CLAVE_TARIFAS = 'marmopro.tarifas';
+const CLAVE_IA = 'marmopro.claveIA';
+const IVA = 0.21;
+const FONDO_M2 = 750;   // a partir de este fondo (mm) la pieza se cobra por m²
+const MODELO_IA = 'claude-opus-5-5';
+const TIPOS_PIEZA = { bancada: 'Bancada', frontal: 'Frontal', zocalo: 'Zócalo' };
+
+// ---------------------------------------------------------------------------
+// Tarifas
+// ---------------------------------------------------------------------------
+function numero(texto) {
+  const n = parseFloat(String(texto || '').trim().replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+// Formato: tabla de materiales (Marca;Grupo;Material;Espesor;€ m/l;€ m2;Zócalo € m/l),
+// una línea vacía y tabla de conceptos (Categoría;Concepto;€).
+function parsearTarifas(texto) {
+  const materiales = [];
+  const conceptos = [];
+  let seccion = null;
+  for (const bruta of texto.replace(/^﻿/, '').split(/\r?\n/)) {
+    const linea = bruta.trim();
+    if (!linea) continue;
+    const c = linea.split(';').map((x) => x.trim());
+    const cabecera = c[0].toLowerCase();
+    if (cabecera === 'marca') { seccion = 'materiales'; continue; }
+    if (cabecera === 'categoría' || cabecera === 'categoria') { seccion = 'conceptos'; continue; }
+    if (seccion === 'materiales' && c.length >= 6) {
+      materiales.push({
+        marca: c[0], grupo: c[1], material: c[2], espesor: c[3],
+        ml: numero(c[4]), m2: numero(c[5]), zocalo: numero(c[6]),
+      });
+    } else if (seccion === 'conceptos' && c.length >= 3) {
+      conceptos.push({ categoria: c[0], concepto: c[1], precio: numero(c[2]) });
+    }
+  }
+  if (!materiales.length || !conceptos.length) throw new Error('Formato de tarifas no reconocido');
+  return { materiales, conceptos };
+}
+
+// Colores añadidos a mano a un grupo (toman los precios del grupo)
+const CLAVE_COLORES = 'marmopro.coloresExtra';
+const CUALQUIER_COLOR = 'CUALQUIER COLOR';
+function leerColoresExtra() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_COLORES)) || []; } catch { return []; }
+}
+
+// Completa la tarifa: colores añadidos y, en cada grupo, «cualquier color» por si el color no está en la lista
+function completarTarifas(t) {
+  const base = t.materiales.filter((m) => !m.extra && m.material !== CUALQUIER_COLOR);
+  const grupos = new Map();
+  for (const m of base) {
+    const k = `${m.marca}|${m.grupo}|${m.espesor}`;
+    if (!grupos.has(k)) grupos.set(k, m);
+  }
+  const extra = [];
+  for (const c of leerColoresExtra()) {
+    const g = [...grupos.values()].find((m) => m.marca === c.marca && m.grupo === c.grupo);
+    if (g && !base.some((m) => m.marca === c.marca && normalizar(m.material) === normalizar(c.material))) {
+      extra.push({ ...g, material: c.material.toUpperCase(), extra: true });
+    }
+  }
+  const genericos = [...grupos.values()].map((g) => ({ ...g, material: CUALQUIER_COLOR, generico: true }));
+  return { ...t, materiales: [...base, ...extra, ...genericos] };
+}
+
+function leerTarifasGuardadas() {
+  try {
+    const t = JSON.parse(localStorage.getItem(CLAVE_TARIFAS));
+    if (t && t.csv) return completarTarifas({ nombre: t.nombre, ...parsearTarifas(t.csv) });
+  } catch { /* se usan las de serie */ }
+  return completarTarifas({ nombre: 'tarifa de ejemplo', ...parsearTarifas(TARIFAS_CSV) });
+}
+
+
+function etiquetaMaterial(m) {
+  return [`${m.marca || ''} ${m.material}`.trim(), m.grupo, m.espesor].filter(Boolean).join(' · ');
+}
+
+// Material que no está en la tarifa: nombre escrito a mano y precios puestos por el usuario
+function materialManual(t) {
+  const nombre = String(t.datos.material || '').trim();
+  const mm = t.extras && t.extras.matManual;
+  if (!nombre || !mm || normalizar(mm.nombre) !== normalizar(nombre)) return null;
+  const n = (v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.')) || 0);
+  if (n(mm.ml) == null && n(mm.m2) == null) return null;
+  return { marca: '', material: nombre, grupo: '', espesor: mm.espesor || '', ml: n(mm.ml) ?? 0, m2: n(mm.m2) ?? 0, zocalo: n(mm.zocalo), manual: true };
+}
+function pintarMaterialManual() {
+  const caja = $('#materialManual');
+  const nombre = String(trabajo.datos.material || '').trim();
+  const enTarifa = buscarMaterial(nombre);
+  caja.hidden = !nombre || !!enTarifa;
+  if (caja.hidden) return;
+  const mm = (trabajo.extras.matManual && normalizar(trabajo.extras.matManual.nombre) === normalizar(nombre)) ? trabajo.extras.matManual : {};
+  $('#mmNombre').textContent = nombre;
+  for (const k of ['ml', 'm2', 'zocalo', 'espesor']) {
+    const el = $(`#mm_${k}`);
+    if (document.activeElement !== el) el.value = mm[k] ?? '';
+  }
+}
+
+const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD')
+  .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+let tarifas = leerTarifasGuardadas();
+
+function buscarMaterial(texto) {
+  const t = normalizar(texto);
+  if (!t) return null;
+  const exacto = tarifas.materiales.find((m) => normalizar(etiquetaMaterial(m)) === t);
+  if (exacto) return exacto;
+  // "Silestone Blanco Zeus" o solo "Blanco Zeus": vale si solo hay uno que encaje
+  const candidatos = tarifas.materiales.filter((m) => {
+    const nombre = normalizar(m.material);
+    return t === nombre || t === normalizar(`${m.marca} ${m.material}`) || t.includes(normalizar(`${m.marca} ${m.material}`));
+  });
+  if (candidatos.length === 1) return candidatos[0];
+  // escrito a mano («silestone blanco zeus grupo 4», «zeus»…): vale si todas las palabras del color están
+  const palabras = (m) => normalizar(m.material).split(/[\s/()+.,-]+/).filter((p) => p.length > 1);
+  const marcaEscrita = [...new Set(tarifas.materiales.map((m) => m.marca))].find((mc) => t.includes(normalizar(mc)));
+  const sueltos = tarifas.materiales.filter((m) => m.material !== CUALQUIER_COLOR && palabras(m).length
+    && palabras(m).every((p) => t.includes(p)) && (!marcaEscrita || m.marca === marcaEscrita));
+  return sueltos.length === 1 ? sueltos[0] : null;
+}
+
+function buscarConcepto(nombre) {
+  const t = normalizar(nombre);
+  return tarifas.conceptos.find((c) => normalizar(c.concepto) === t) || null;
+}
+
+function cantos() {
+  return tarifas.conceptos.filter((c) => normalizar(c.categoria) === 'cantos');
+}
+
+// Opciones del desplegable de canto: sencillos, ingletados y el resto de la tarifa.
+function opcionesCanto() {
+  return [...$('select[name="canto"]').options].map((o) => o.value).filter(Boolean);
+}
+
+// Precio del canto elegido. Sencillo = «Canto recto»; ingletado de cualquier altura = el
+// canto ingletado de la tarifa; los demás, por su nombre.
+function conceptoCanto(nombre) {
+  if (/^sencillo/i.test(nombre || '')) {
+    const c = buscarConcepto('Canto recto');
+    return c && { concepto: `Canto ${nombre.toLowerCase()}`, precio: c.precio };
+  }
+  if (/^ingletado/i.test(nombre || '')) {
+    const c = cantos().find((x) => /inglet/i.test(x.concepto));
+    return c && { concepto: `Canto ${nombre.toLowerCase()}`, precio: c.precio };
+  }
+  return buscarConcepto(nombre);
+}
+
+// Tipos de fregadero = huecos de la tarifa ("Hueco bajo encimera" → "Bajo encimera")
+function tiposFregadero() {
+  return tarifas.conceptos
+    .filter((c) => /^hueco /i.test(c.concepto) && !/grifo/i.test(c.concepto))
+    .map((c) => {
+      const t = c.concepto.replace(/^hueco /i, '');
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    });
+}
+
+function llenarListas() {
+  const opciones = (lista) => lista.map((v) => {
+    const o = document.createElement('option');
+    o.value = v;
+    return o;
+  });
+  $('#listaMateriales').replaceChildren(...opciones(tarifas.materiales.map(etiquetaMaterial)));
+  // cantos de la tarifa que no son el recto ni el ingletado (esos ya están arriba)
+  const sel = $('select[name="canto"]');
+  const otros = cantos().map((c) => c.concepto).filter((n) => !/^canto recto$|inglet/i.test(n));
+  $('#cantosTarifa').replaceChildren(...otros.map((n) => new Option(n, n)));
+  // quita duplicados añadidos antes como valor antiguo y vuelve a poner el valor del trabajo
+  [...sel.options].forEach((o) => {
+    if (o.parentElement === sel && otros.includes(o.value)) o.remove();
+  });
+  if (typeof trabajo !== 'undefined' && trabajo) volcarFormulario();
+  $('#listaFregadero').replaceChildren(...opciones([...tiposFregadero(), 'Sin fregadero']));
+  $('#nombreTarifa').textContent = tarifas.nombre;
+}
+
+// ---------------------------------------------------------------------------
+// Cálculo
+// ---------------------------------------------------------------------------
+const fmtEuro = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const fmtCant = (n, u) => (u === 'ud' ? String(n) : n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + ' ' + u;
+
+const r2 = (n) => Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-7) / 100;
+
+function calcular(t) {
+  const d = t.datos;
+  const lineas = [];
+  const avisos = [];
+  const linea = (concepto, cantidad, unidad, precio) => {
+    if (!cantidad) return;
+    if (precio == null) {
+      avisos.push(`Sin precio en la tarifa para «${concepto}».`);
+      precio = 0;
+    }
+    // la cantidad que se ve (2 decimales) es la que se cobra
+    if (unidad !== 'ud') cantidad = r2(cantidad);
+    lineas.push({ concepto, cantidad, unidad, precio, importe: r2(cantidad * precio) });
+  };
+
+  const piezas = t.piezas || [];
+  // material de la tarifa o, si no está, el escrito a mano con sus precios
+  const material = buscarMaterial(d.material) || materialManual(t);
+  if (piezas.length && !material) {
+    avisos.push(d.material
+      ? `El material «${d.material}» no está en la tarifa: elígelo de la lista o pon su precio abajo.`
+      : 'Falta el material.');
+  }
+
+  let mlCanto = 0;
+  let m2Frontal = 0;
+  piezas.forEach((p, i) => {
+    const largo = Number(p.largo) || 0;
+    const fondo = Number(p.fondo) || 0;
+    const cm = (mm) => String(mm / 10).replace('.', ',');
+    const nombre = p.tipo === 'zocalo' ? `Zócalo ${cm(largo)} cm` : `${TIPOS_PIEZA[p.tipo] || 'Pieza'} ${cm(largo)} × ${cm(fondo)} cm`;
+    if (!largo || (p.tipo !== 'zocalo' && !fondo)) {
+      avisos.push(`Pieza ${i + 1}: faltan medidas.`);
+      return;
+    }
+    if (!material) {
+      // sin material reconocido la pieza pasa igual (a 0 €) para que no se pierda en albaranes y facturas
+      if (p.tipo === 'zocalo') linea(nombre, largo / 1000, 'ml', 0);
+      else if (fondo >= FONDO_M2) linea(`${nombre} (por m²)`, Math.round(largo * fondo / 1e4) / 100, 'm²', 0);
+      else linea(nombre, largo / 1000, 'ml', 0);
+    } else {
+      if (p.tipo === 'zocalo') {
+        if (material.zocalo == null) avisos.push(`${material.material} no tiene precio de zócalo en la tarifa: el zócalo no se ha sumado.`);
+        else linea(nombre, largo / 1000, 'ml', material.zocalo);
+      } else if (fondo >= FONDO_M2) {
+        linea(`${nombre} (por m²)`, Math.round(largo * fondo / 1e4) / 100, 'm²', material.m2);
+      } else {
+        linea(nombre, largo / 1000, 'ml', material.ml);
+      }
+    }
+    if (p.tipo === 'frontal') m2Frontal += largo * fondo / 1e6;
+    if (p.tipo !== 'zocalo') {
+      mlCanto += ((p.frente ? largo : 0) + (p.trasera ? largo : 0) + (p.izq ? fondo : 0) + (p.der ? fondo : 0)) / 1000;
+    }
+  });
+
+  if (mlCanto) {
+    const canto = conceptoCanto(d.canto);
+    if (!canto) avisos.push(d.canto ? `El canto «${d.canto}» no está en la tarifa.` : 'Hay cantos vistos pero falta el tipo de canto.');
+    const nombre = canto ? canto.concepto : d.canto ? `Canto ${d.canto} (sin precio)` : 'Canto (falta el tipo)';
+    linea(nombre, Math.round(mlCanto * 100) / 100, 'ml', canto ? canto.precio : 0);
+  }
+
+  // Huecos
+  const frega = (d.fregadero || '').trim();
+  if (frega && !/^sin\b/i.test(frega)) {
+    const hueco = buscarConcepto(`Hueco ${frega}`);
+    if (hueco) linea(`${hueco.concepto} (fregadero)`, 1, 'ud', hueco.precio);
+    else avisos.push(`El fregadero «${frega}» no corresponde a ningún hueco de la tarifa.`);
+  }
+  const vitro = (d.vitro || '').trim();
+  if (vitro && !/^sin\b/i.test(vitro)) {
+    const hueco = buscarConcepto('Hueco sobre encimera');
+    linea('Hueco vitrocerámica', 1, 'ud', hueco && hueco.precio);
+  }
+  const taladros = [d.grifo, d.jabonera, d.osmosis].filter(Boolean).length;
+  if (taladros) {
+    const g = buscarConcepto('Hueco de grifo');
+    const que = [d.grifo && 'grifo', d.jabonera && 'jabonera', d.osmosis && 'ósmosis'].filter(Boolean).join(', ');
+    linea(`Hueco de grifo (${que})`, taladros, 'ud', g && g.precio);
+  }
+  // cajas de enchufe y columnas dibujadas en el plano: cada una al precio de «Cajas»
+  const precioCaja = (buscarConcepto('Cajas') || {}).precio;
+  const cajas = t.objetos.filter((o) => o.tipo === 'luz').length;
+  if (cajas) linea('Cajas de enchufe', cajas, 'ud', precioCaja);
+  const columnas = t.objetos.filter((o) => o.tipo === 'columna').length;
+  if (columnas) linea('Columnas', columnas, 'ud', precioCaja);
+
+  // Colocación
+  const extras = t.extras || {};
+  if (extras.colocBancada) {
+    const c = buscarConcepto('Colocación de bancada');
+    linea('Colocación de bancada', 1, 'ud', c && c.precio);
+  }
+  if (extras.colocAplacado) {
+    const c = buscarConcepto('Colocación aplacado');
+    if (m2Frontal) linea('Colocación aplacado', Math.round(m2Frontal * 100) / 100, 'm²', c && c.precio);
+    else avisos.push('Colocación de aplacado marcada, pero no hay piezas frontales.');
+  }
+
+  const base = r2(lineas.reduce((s, l) => s + l.importe, 0));
+  const conIva = extras.iva !== false;
+  const iva = conIva ? r2(base * IVA) : 0;
+  return { lineas, avisos, base, iva, conIva, total: r2(base + iva), material };
+}
+
+// ---------------------------------------------------------------------------
+// Pantalla
+// ---------------------------------------------------------------------------
+const seccionPresu = $('#presupuesto');
+
+function asegurarDatos() {
+  if (!Array.isArray(trabajo.piezas)) trabajo.piezas = [];
+  if (!trabajo.extras) trabajo.extras = { colocBancada: false, colocAplacado: false, iva: true };
+}
+
+function pintarPresupuesto() {
+  asegurarDatos();
+  const cont = $('#listaPiezas');
+  cont.replaceChildren();
+  trabajo.piezas.forEach((p, i) => {
+    const fila = document.createElement('div');
+    fila.className = 'pieza';
+    fila.dataset.i = i;
+    const esZocalo = p.tipo === 'zocalo';
+    fila.innerHTML = `
+      <div class="pieza-medidas">
+        <select data-k="tipo" aria-label="Tipo de pieza">
+          ${Object.entries(TIPOS_PIEZA).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}
+        </select>
+        <label>Largo (cm)<input data-k="largo" type="number" inputmode="decimal" min="0" step="0.1"></label>
+        <label${esZocalo ? ' hidden' : ''}>${p.tipo === 'frontal' ? 'Alto' : 'Fondo'} (cm)<input data-k="fondo" type="number" inputmode="decimal" min="0" step="0.1"></label>
+        <button type="button" class="quitar" title="Quitar pieza" aria-label="Quitar pieza">✕</button>
+      </div>
+      <div class="pieza-cantos"${esZocalo ? ' hidden' : ''}>
+        <span>Canto visto:</span>
+        <label class="chk"><input type="checkbox" data-k="frente"> Frente</label>
+        <label class="chk"><input type="checkbox" data-k="trasera"> Trasera</label>
+        <label class="chk"><input type="checkbox" data-k="izq"> Lado izq.</label>
+        <label class="chk"><input type="checkbox" data-k="der"> Lado der.</label>
+      </div>`;
+    fila.querySelector('[data-k="tipo"]').value = p.tipo || 'bancada';
+    // se guardan en milímetros y se ven en centímetros
+    fila.querySelector('[data-k="largo"]').value = p.largo ? p.largo / 10 : '';
+    fila.querySelector('[data-k="fondo"]').value = p.fondo ? p.fondo / 10 : '';
+    for (const k of ['frente', 'trasera', 'izq', 'der']) fila.querySelector(`[data-k="${k}"]`).checked = !!p[k];
+    cont.appendChild(fila);
+  });
+  if (!trabajo.piezas.length) {
+    const vacio = document.createElement('p');
+    vacio.className = 'vacio';
+    vacio.textContent = 'Añade las piezas o usa el asistente con IA.';
+    cont.appendChild(vacio);
+  }
+  $('#colocBancada').checked = !!trabajo.extras.colocBancada;
+  $('#colocAplacado').checked = !!trabajo.extras.colocAplacado;
+  $('#conIva').checked = trabajo.extras.iva !== false;
+  pintarResultado();
+}
+
+function pintarResultado() {
+  asegurarDatos();
+  pintarMaterialManual();
+  const r = calcular(trabajo);
+  const tabla = $('#tablaPresupuesto');
+  if (!r.lineas.length) {
+    tabla.innerHTML = '<p class="vacio">El presupuesto aparecerá aquí.</p>';
+  } else {
+    const filas = r.lineas.map((l) => `<tr><td>${escapar(l.concepto)}</td><td class="num">${fmtCant(l.cantidad, l.unidad)}</td>`
+      + `<td class="num">${fmtEuro(l.precio)}</td><td class="num">${fmtEuro(l.importe)}</td></tr>`).join('');
+    tabla.innerHTML = `<table>
+      <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead>
+      <tbody>${filas}</tbody>
+      <tfoot>
+        <tr><td colspan="3">Base imponible</td><td class="num">${fmtEuro(r.base)}</td></tr>
+        ${r.conIva ? `<tr><td colspan="3">IVA 21 %</td><td class="num">${fmtEuro(r.iva)}</td></tr>` : ''}
+        <tr class="total"><td colspan="3">Total${r.conIva ? '' : ' (sin IVA)'}</td><td class="num">${fmtEuro(r.total)}</td></tr>
+      </tfoot></table>`;
+  }
+  const av = $('#avisosPresupuesto');
+  av.replaceChildren(...r.avisos.map((a) => {
+    const li = document.createElement('li');
+    li.textContent = a;
+    return li;
+  }));
+}
+
+function escapar(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+$('#listaPiezas').addEventListener('input', (e) => {
+  const el = e.target;
+  const fila = el.closest('.pieza');
+  if (!fila || !el.dataset.k) return;
+  const p = trabajo.piezas[Number(fila.dataset.i)];
+  const k = el.dataset.k;
+  p[k] = el.type === 'checkbox' ? el.checked
+    : el.type === 'number' ? (el.value === '' ? '' : Math.round(Number(String(el.value).replace(',', '.')) * 10)) : el.value;
+  if (k === 'tipo') {
+    if (p.tipo === 'frontal') { p.frente = p.trasera = p.izq = p.der = false; }
+    pintarPresupuesto();
+  } else {
+    pintarResultado();
+  }
+  cambio();
+});
+
+$('#listaPiezas').addEventListener('click', (e) => {
+  const b = e.target.closest('.quitar');
+  if (!b) return;
+  trabajo.piezas.splice(Number(b.closest('.pieza').dataset.i), 1);
+  pintarPresupuesto();
+  cambio();
+});
+
+$('#btnAnadirPieza').addEventListener('click', () => {
+  asegurarDatos();
+  trabajo.piezas.push({ tipo: 'bancada', largo: '', fondo: '', frente: true, trasera: false, izq: false, der: false });
+  pintarPresupuesto();
+  $('#listaPiezas .pieza:last-child [data-k="largo"]').focus();
+  cambio();
+});
+
+for (const [id, k] of [['colocBancada', 'colocBancada'], ['colocAplacado', 'colocAplacado'], ['conIva', 'iva']]) {
+  $('#' + id).addEventListener('change', (e) => {
+    asegurarDatos();
+    trabajo.extras[k] = e.target.checked;
+    pintarResultado();
+    cambio();
+  });
+}
+
+// Cargar otras tarifas (mismo formato CSV)
+$('#fileTarifas').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const csv = await f.text();
+    const nuevas = parsearTarifas(csv);
+    const nombre = f.name.replace(/\.csv$/i, '');
+    localStorage.setItem(CLAVE_TARIFAS, JSON.stringify({ nombre, csv }));
+    if (typeof programarSync === 'function') programarSync();
+    tarifas = completarTarifas({ nombre, ...nuevas });
+    llenarListas();
+    pintarResultado();
+    aviso(`Tarifas cargadas: ${nuevas.materiales.length} materiales`);
+  } catch {
+    aviso('No se pudieron leer las tarifas. Revisa el formato del CSV.');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Hoja de presupuesto (A4)
+// ---------------------------------------------------------------------------
+function componerPresupuesto() {
+  const r = calcular(trabajo);
+  const d = trabajo.datos;
+  const M = 110;
+  const hoja = document.createElement('canvas');
+  hoja.width = W;
+  hoja.height = HOJA_H;
+  const c = hoja.getContext('2d');
+  c.fillStyle = '#fff';
+  c.fillRect(0, 0, W, HOJA_H);
+  c.textBaseline = 'top';
+  c.textAlign = 'left';
+
+  const cabecera = pintarCabecera(c, M, ['PRESUPUESTO', d.referencia && `Ref. ${d.referencia}`, fechaLegible(d.fecha)]);
+
+  // datos del cliente
+  let y = M + cabecera + 10;
+  c.font = '600 34px system-ui, sans-serif';
+  c.fillStyle = '#111';
+  c.fillText(d.cliente || 'Cliente', M, y);
+  c.font = '400 30px system-ui, sans-serif';
+  c.fillStyle = '#4a5058';
+  for (const l of [d.direccion, d.telefono && `Tel. ${d.telefono}`].filter(Boolean)) {
+    y += 46;
+    c.fillText(l, M, y);
+  }
+  y += 70;
+  c.fillStyle = '#111';
+  c.font = '600 30px system-ui, sans-serif';
+  c.fillText('Material: ', M, y);
+  const anchoEt = c.measureText('Material: ').width;
+  c.font = '400 30px system-ui, sans-serif';
+  c.fillText(r.material ? etiquetaMaterial(r.material) : (d.material || '—'), M + anchoEt, y);
+  y += 90;
+
+  // tabla
+  const cols = [M, W - M - 760, W - M - 440, W - M];   // concepto | cantidad | precio | importe (borde derecho)
+  const filaH = 64;
+  c.fillStyle = '#2f3b45';
+  c.fillRect(M, y, W - M * 2, filaH);
+  c.fillStyle = '#fff';
+  c.font = '600 28px system-ui, sans-serif';
+  c.textBaseline = 'middle';
+  c.fillText('Concepto', M + 20, y + filaH / 2);
+  c.textAlign = 'right';
+  c.fillText('Cantidad', cols[1] + 220, y + filaH / 2);
+  c.fillText('Precio', cols[2] + 200, y + filaH / 2);
+  c.fillText('Importe', cols[3] - 20, y + filaH / 2);
+  y += filaH;
+  c.font = '400 28px system-ui, sans-serif';
+  r.lineas.forEach((l, i) => {
+    if (i % 2) {
+      c.fillStyle = '#f2f4f6';
+      c.fillRect(M, y, W - M * 2, filaH);
+    }
+    c.fillStyle = '#111';
+    c.textAlign = 'left';
+    c.fillText(l.concepto, M + 20, y + filaH / 2);
+    c.textAlign = 'right';
+    c.fillText(fmtCant(l.cantidad, l.unidad), cols[1] + 220, y + filaH / 2);
+    c.fillText(fmtEuro(l.precio), cols[2] + 200, y + filaH / 2);
+    c.fillText(fmtEuro(l.importe), cols[3] - 20, y + filaH / 2);
+    y += filaH;
+  });
+  c.strokeStyle = '#2f3b45';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(M, y);
+  c.lineTo(W - M, y);
+  c.stroke();
+
+  // totales
+  y += 30;
+  const total = (texto, valor, fuerte) => {
+    c.font = `${fuerte ? 700 : 400} ${fuerte ? 40 : 30}px system-ui, sans-serif`;
+    c.fillStyle = '#111';
+    c.textAlign = 'right';
+    c.fillText(texto, cols[2] + 200, y + 30);
+    c.fillText(valor, cols[3] - 20, y + 30);
+    y += fuerte ? 76 : 56;
+  };
+  total('Base imponible', fmtEuro(r.base));
+  if (r.conIva) total('IVA 21 %', fmtEuro(r.iva));
+  total(r.conIva ? 'TOTAL' : 'TOTAL (IVA no incluido)', fmtEuro(r.total), true);
+
+  c.textAlign = 'left';
+  c.textBaseline = 'top';
+  c.font = '400 26px system-ui, sans-serif';
+  c.fillStyle = '#5f6b75';
+  const nota = [
+    r.conIva ? 'IVA incluido en el total.' : 'Precios sin IVA.',
+    'Medidas en milímetros; precios según tarifa vigente.',
+  ];
+  nota.forEach((t, i) => c.fillText(t, M, HOJA_H - M - 80 + i * 40));
+  return hoja;
+}
+
+function nombrePresupuesto() {
+  return nombreArchivo().replace(/^plano_/, 'presupuesto_');
+}
+
+async function presupuestoComoBlob() {
+  await logoListo();
+  // si hay plano dibujado, va como segunda página para que el cliente vea lo que se presupuesta
+  return hojasAPdf(trabajo.objetos.length ? [componerPresupuesto(), componerHoja()] : [componerPresupuesto()]);
+}
+
+function comprobarPresupuesto() {
+  if (calcular(trabajo).lineas.length) return true;
+  aviso('El presupuesto está vacío: añade piezas primero');
+  return false;
+}
+
+$('#btnPresuImagen').addEventListener('click', async () => {
+  if (comprobarPresupuesto()) descargar(await presupuestoComoBlob(), nombrePresupuesto());
+});
+
+$('#btnPresuCompartir').addEventListener('click', async () => {
+  if (!comprobarPresupuesto()) return;
+  compartirArchivo(await presupuestoComoBlob(), nombrePresupuesto(), 'Presupuesto ' + (trabajo.datos.cliente || ''));
+});
+
+$('#btnPresuImprimir').addEventListener('click', () => {
+  if (!comprobarPresupuesto()) return;
+  imprimirHoja(componerPresupuesto);
+});
+
+// ---------------------------------------------------------------------------
+// Asistente con IA (Gemini gratis o Claude de pago)
+// ---------------------------------------------------------------------------
+// La IA solo propone las piezas y los datos del trabajo; los precios los calcula
+// siempre la app con la tarifa, para que nunca se inventen.
+const ESQUEMA_IA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['piezas', 'material', 'canto', 'fregadero', 'vitro', 'grifo', 'jabonera', 'osmosis',
+    'colocacion_bancada', 'colocacion_aplacado', 'notas'],
+  properties: {
+    piezas: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['tipo', 'largo_mm', 'fondo_mm', 'canto_frente', 'canto_trasera', 'canto_izq', 'canto_der'],
+        properties: {
+          tipo: { type: 'string', enum: ['bancada', 'frontal', 'zocalo'] },
+          largo_mm: { type: 'integer' },
+          fondo_mm: { type: 'integer', description: 'Fondo de la bancada o alto del frontal. 0 en zócalos.' },
+          canto_frente: { type: 'boolean' },
+          canto_trasera: { type: 'boolean' },
+          canto_izq: { type: 'boolean' },
+          canto_der: { type: 'boolean' },
+        },
+      },
+    },
+    material: { type: 'string', description: 'Texto exacto de la lista de materiales, o "" si no se sabe.' },
+    canto: { type: 'string', description: 'Nombre exacto de la lista de cantos, o "".' },
+    fregadero: { type: 'string', description: 'Tipo exacto de la lista de fregaderos, o "".' },
+    vitro: { type: 'boolean', description: 'true si lleva hueco de vitrocerámica.' },
+    grifo: { type: 'boolean' },
+    jabonera: { type: 'boolean' },
+    osmosis: { type: 'boolean' },
+    colocacion_bancada: { type: 'boolean' },
+    colocacion_aplacado: { type: 'boolean' },
+    notas: { type: 'string', description: 'Suposiciones y dudas, en español, en pocas frases.' },
+  },
+};
+
+const SISTEMA_IA = `Eres el ayudante de un taller de marmolería que prepara presupuestos de encimeras de cocina.
+A partir del plano (imagen), los datos de la ficha y la descripción del marmolista, devuelve las piezas a cortar y los datos del trabajo.
+
+Cómo leer el plano:
+- Las cotas están en milímetros. El dibujo no está a escala: fíate de las cotas, no de las proporciones.
+- Las bandas azules son cantos vistos. Las rayas rojas discontinuas son descuadres de pared (no cambian las medidas).
+- Junto al fregadero, los círculos G, J y Ó son los taladros de grifo, jabonera y ósmosis (la app los cobra sola).
+- Un triángulo negro sobre un canto es una bajada a inglete (con su altura en cm). Una línea verde con «Pulido detrás» indica la parte pulida por detrás.
+- Los rectángulos rayados son columnas o pilares y los cuadrados con un rayo son cajas de enchufe: la app los cuenta y cobra sola; no los incluyas como piezas.
+- Una encimera en L o en U se divide en piezas rectangulares (bancadas). Que la suma de largos coincida con las cotas sin contar dos veces la esquina.
+
+Piezas:
+- "bancada": encimera horizontal. largo_mm y fondo_mm.
+- "frontal": aplacado o frente vertical en la pared. largo_mm y fondo_mm = alto.
+- "zocalo": tira de remate en la pared. largo_mm; fondo_mm = 0.
+- Cantos: marca solo los lados vistos de cada pieza. Frente = el largo que da a la cocina; trasera = el largo contra la pared.
+
+Reglas:
+- Usa la descripción del marmolista por encima de todo, después el plano y después la ficha.
+- Si falta un dato (por ejemplo, el fondo), usa el valor habitual (bancada 620 mm) y dilo en "notas".
+- material, canto y fregadero deben copiarse literalmente de las listas que te paso; si no encaja ninguno, deja "".
+- No calcules precios.`;
+
+// Dos proveedores: Gemini (Google, con nivel gratuito) y Claude (Anthropic, de pago).
+const CLAVE_PROVEEDOR = 'marmopro.proveedorIA';
+const PROVEEDORES = {
+  gemini: {
+    nombre: 'Gemini',
+    almacen: 'marmopro.claveGemini',
+    prefijos: ['AIza', 'AQ.'],   // formato clásico y formato nuevo de Google
+    pedir: 'Clave de Gemini (empieza por AIza o por AQ.). Se saca gratis en aistudio.google.com y se guarda solo en este dispositivo.',
+    ayuda: 'Para usar la IA gratis hace falta una clave de Gemini: entra en aistudio.google.com con tu cuenta de Google, '
+      + 'pulsa «Get API key» y luego «Create API key», cópiala y pégala con el botón «Clave IA». '
+      + 'Es gratis y no pide tarjeta (tiene un límite de usos al día).',
+  },
+  claude: {
+    nombre: 'Claude',
+    almacen: CLAVE_IA,
+    prefijos: ['sk-ant-api'],
+    pedir: 'Clave de la API de Claude (empieza por sk-ant-api). Se saca en console.anthropic.com y se guarda solo en este dispositivo.',
+    ayuda: 'Para usar Claude hace falta una clave de la API de Claude (de pago): entra en console.anthropic.com, '
+      + 'crea una clave en «API Keys», añade saldo en «Billing» y pégala con el botón «Clave IA». '
+      + '(La suscripción de claude.ai no sirve: la API es una cuenta aparte.)',
+  },
+};
+
+function proveedorActual() {
+  try {
+    const p = localStorage.getItem(CLAVE_PROVEEDOR);
+    if (PROVEEDORES[p]) return p;
+  } catch { /* sin almacenamiento */ }
+  return 'gemini';
+}
+
+// Una clave guardada que no tiene la forma de la del proveedor (p. ej. de versiones antiguas) se descarta.
+function leerClaveIA(prov = proveedorActual()) {
+  const cfg = PROVEEDORES[prov];
+  let clave = '';
+  try { clave = limpiarClave(localStorage.getItem(cfg.almacen) || ''); } catch { return ''; }
+  if (clave && !formatoValido(cfg, clave)) {
+    borrarClaveIA(prov);
+    return '';
+  }
+  return clave;
+}
+
+function formatoValido(cfg, clave) {
+  return cfg.prefijos.some((p) => clave.startsWith(p));
+}
+
+function borrarClaveIA(prov = proveedorActual()) {
+  try { localStorage.removeItem(PROVEEDORES[prov].almacen); } catch { /* sin almacenamiento */ }
+}
+
+// Al copiar desde el móvil se cuelan espacios, saltos de línea, comillas o caracteres invisibles.
+function limpiarClave(clave) {
+  return clave.replace(/[\s"'«»“”‘’`\u200B-\u200D\u2060\uFEFF]/g, '');
+}
+
+// Muestra el principio y el final para poder compararla con la original.
+function claveOculta(clave) {
+  return clave.length > 20 ? `${clave.slice(0, 10)}…${clave.slice(-4)}` : clave;
+}
+
+async function pedirClaveIA(prov = proveedorActual()) {
+  const cfg = PROVEEDORES[prov];
+  const escrita = await pedirTexto(cfg.pedir, leerClaveIA(prov), true);
+  if (escrita === null) return null;
+  const clave = limpiarClave(escrita);
+  if (prov === 'claude' && clave.startsWith('sk-ant-oat')) {
+    $('#estadoIA').textContent = 'Esa clave es de la suscripción de Claude (Claude Code), no de la API, y aquí no sirve. ' + cfg.ayuda;
+    return null;
+  }
+  if (clave && !formatoValido(cfg, clave)) {
+    $('#estadoIA').textContent = `Esa no parece una clave de ${cfg.nombre}: tiene que empezar por ${cfg.prefijos.join(' o ')}. ` + cfg.ayuda;
+    return null;
+  }
+  try {
+    if (clave) localStorage.setItem(cfg.almacen, clave); else localStorage.removeItem(cfg.almacen);
+  } catch { /* sin almacenamiento */ }
+  return clave;
+}
+
+function imagenPlanoBase64() {
+  const lienzoIA = document.createElement('canvas');
+  const escalaIA = 1600 / W;
+  lienzoIA.width = 1600;
+  lienzoIA.height = Math.round(H * escalaIA);
+  pintarPlano(lienzoIA.getContext('2d'), escalaIA, false);
+  return lienzoIA.toDataURL('image/png').split(',')[1];
+}
+
+function textoParaIA(descripcion) {
+  const d = trabajo.datos;
+  const ficha = CAMPOS.filter((c) => d[c]).map((c) => `- ${ETIQUETAS[c] || c}: ${d[c]}`).join('\n') || '(vacía)';
+  return `Ficha del trabajo:
+${ficha}
+
+Descripción del marmolista:
+${descripcion || '(sin descripción)'}
+
+Lista de cantos:
+${opcionesCanto().join('\n')}
+
+Lista de fregaderos:
+${tiposFregadero().join('\n')}
+
+Lista de materiales:
+${tarifas.materiales.map(etiquetaMaterial).join('\n')}`;
+}
+
+// Error con el código HTTP para dar un mensaje claro.
+class ErrorIA extends Error {
+  constructor(status, message, motivo = '') {
+    super(message);
+    this.status = status;
+    this.motivo = motivo;
+  }
+}
+
+async function presupuestoConIA() {
+  const estado = $('#estadoIA');
+  const prov = proveedorActual();
+  const cfg = PROVEEDORES[prov];
+  if (location.protocol === 'file:') {
+    estado.textContent = 'El asistente con IA no funciona abriendo la app desde el ZIP. '
+      + 'Ábrela desde la dirección web (https://javifx004-cmd.github.io/mesa-fondeo/).';
+    return;
+  }
+  if (!navigator.onLine) {
+    estado.textContent = 'Sin conexión a internet: la IA necesita conexión.';
+    return;
+  }
+  estado.textContent = '';
+  let clave = leerClaveIA(prov);
+  if (!clave) clave = await pedirClaveIA(prov);
+  if (!clave) {
+    estado.textContent ||= cfg.ayuda;   // pedirClaveIA puede haber dejado ya un aviso más concreto
+    return;
+  }
+
+  const boton = $('#btnIA');
+  boton.disabled = true;
+  estado.textContent = `${cfg.nombre} está leyendo el plano…`;
+  try {
+    const imagen = imagenPlanoBase64();
+    const texto = textoParaIA($('#descripcionIA').value.trim());
+    const r = prov === 'gemini' ? await pedirAGemini(clave, imagen, texto) : await pedirAClaude(clave, imagen, texto);
+    if (!r || !Array.isArray(r.piezas)) throw new Error('La IA no ha devuelto piezas.');
+    aplicarIA(r);
+    estado.textContent = r.notas ? `Notas de la IA: ${r.notas}` : 'Presupuesto preparado. Revisa las piezas.';
+  } catch (err) {
+    estado.textContent = mensajeErrorIA(err, prov);
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// --- Gemini (Google) -------------------------------------------------------
+const URL_GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models';
+let modeloGemini = 'gemini-flash-latest';
+
+// Gemini usa su propio formato de esquema (tipos en mayúsculas, sin additionalProperties).
+function esquemaGemini(e) {
+  const r = { type: e.type.toUpperCase() };
+  if (e.description) r.description = e.description;
+  if (e.enum) r.enum = e.enum;
+  if (e.items) r.items = esquemaGemini(e.items);
+  if (e.properties) {
+    r.properties = Object.fromEntries(Object.entries(e.properties).map(([k, v]) => [k, esquemaGemini(v)]));
+    r.required = e.required;
+    r.propertyOrdering = Object.keys(e.properties);
+  }
+  return r;
+}
+
+async function llamarGemini(clave, cuerpo) {
+  const resp = await fetch(`${URL_GEMINI}/${modeloGemini}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': clave },
+    body: JSON.stringify(cuerpo),
+  });
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const er = datos.error || {};
+    const motivo = (er.details || []).map((x) => x.reason).filter(Boolean).join(',');
+    throw new ErrorIA(resp.status, er.message || resp.statusText, motivo);
+  }
+  return datos;
+}
+
+// En el plan gratuito Gemini a veces está saturado (503) o limita por minuto (429):
+// se espera y se reintenta, y después se prueba con otros modelos flash.
+const MODELOS_RESERVA = ['gemini-2.5-flash', 'gemini-flash-lite-latest'];
+const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+async function llamarGeminiConReintentos(clave, cuerpo) {
+  const principal = modeloGemini;
+  const intentos = [principal, principal, ...MODELOS_RESERVA.filter((m) => m !== principal)];
+  let ultimo;
+  for (let i = 0; i < intentos.length; i++) {
+    modeloGemini = intentos[i];
+    try {
+      const datos = await llamarGemini(clave, cuerpo);
+      modeloGemini = principal;
+      return datos;
+    } catch (err) {
+      ultimo = err;
+      const saturado = err.status === 503 || err.status === 500 || (err.status === 429 && !/per ?day|daily/i.test(err.message));
+      if (!saturado || i === intentos.length - 1) break;
+      $('#estadoIA').textContent = 'Gemini está muy ocupado ahora mismo; probando otra vez…';
+      await espera(2000 * (i + 1));
+    }
+  }
+  modeloGemini = principal;
+  throw ultimo;
+}
+
+// Si el nombre del modelo deja de existir, se elige otro "flash" de los disponibles.
+async function buscarModeloGemini(clave) {
+  const resp = await fetch(`${URL_GEMINI}?pageSize=200`, { headers: { 'x-goog-api-key': clave } });
+  if (!resp.ok) return null;
+  const { models = [] } = await resp.json();
+  const validos = models
+    .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map((m) => m.name.replace(/^models\//, ''))
+    .filter((n) => /^gemini-\d[\d.]*-flash$/.test(n));   // estables: gemini-X.Y-flash
+  validos.sort((a, b) => parseFloat(b.slice(7)) - parseFloat(a.slice(7)));
+  return validos[0] || null;
+}
+
+async function pedirAGemini(clave, imagen, texto) {
+  const cuerpo = {
+    systemInstruction: { parts: [{ text: SISTEMA_IA }] },
+    contents: [{
+      role: 'user',
+      parts: [{ inline_data: { mime_type: 'image/png', data: imagen } }, { text: texto }],
+    }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: esquemaGemini(ESQUEMA_IA) },
+  };
+  let datos;
+  try {
+    datos = await llamarGeminiConReintentos(clave, cuerpo);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    const otro = await buscarModeloGemini(clave);
+    if (!otro || otro === modeloGemini) throw err;
+    modeloGemini = otro;
+    datos = await llamarGeminiConReintentos(clave, cuerpo);
+  }
+  const cand = (datos.candidates || [])[0];
+  if (!cand) throw new Error('Gemini no ha podido procesar esta petición.');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('La respuesta de la IA se ha cortado. Prueba otra vez.');
+  const json = (cand.content && cand.content.parts || []).map((p) => p.text || '').join('');
+  try {
+    return JSON.parse(json);
+  } catch {
+    throw new Error('La respuesta de la IA no se ha podido leer. Prueba otra vez.');
+  }
+}
+
+// --- Claude (Anthropic) ----------------------------------------------------
+async function pedirAClaude(clave, imagen, texto) {
+  let modulo;
+  try {
+    modulo = await import('./vendor/anthropic-sdk.js');
+  } catch {
+    throw new Error('No se pudo cargar el asistente. Recarga la página y prueba otra vez.');
+  }
+  const { Anthropic, jsonSchemaOutputFormat } = modulo;
+  const client = new Anthropic({ apiKey: clave, dangerouslyAllowBrowser: true });
+  const respuesta = await client.beta.messages.parse({
+    model: MODELO_IA,
+    max_tokens: 16000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: 'medium', format: jsonSchemaOutputFormat(ESQUEMA_IA) },
+    system: SISTEMA_IA,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imagen } },
+        { type: 'text', text: texto },
+      ],
+    }],
+  });
+  if (respuesta.stop_reason === 'refusal') throw new Error('La IA no ha podido procesar esta petición.');
+  if (respuesta.stop_reason === 'max_tokens') throw new Error('La respuesta de la IA se ha cortado. Prueba otra vez.');
+  return respuesta.parsed_output;
+}
+
+function mensajeErrorIA(err, prov) {
+  const cfg = PROVEEDORES[prov];
+  const s = err && err.status;
+  const texto = (err && err.message) || '';
+  const claveMala = s === 401 || (prov === 'gemini' && (/API_KEY_INVALID/.test(err.motivo || '') || /API key not valid/i.test(texto)));
+  if (claveMala) {
+    // se borra para que al volver a pulsar se pida una clave nueva
+    const guardada = claveOculta(leerClaveIA(prov));
+    borrarClaveIA(prov);
+    return `${cfg.nombre} dice que la clave no es válida (era ${guardada}) y se ha borrado. `
+      + 'Pulsa otra vez «Hacer presupuesto con IA» y pega la clave copiándola con el botón de copiar. ' + cfg.ayuda;
+  }
+  if (/credit balance/i.test(texto)) return 'La cuenta de la API de Claude no tiene saldo. Añádelo en console.anthropic.com, en «Billing».';
+  if (s === 403) return `Esta clave no tiene permiso para usar ${cfg.nombre}.`;
+  if (s === 429) {
+    return prov === 'gemini'
+      ? 'Se ha llegado al límite gratuito de Gemini por ahora. Espera un minuto (o hasta mañana si es el límite diario) y prueba otra vez.'
+      : 'Demasiadas peticiones seguidas. Espera un momento y prueba otra vez.';
+  }
+  if (s >= 500) return `${cfg.nombre} está saturado ahora mismo (pasa a veces en el plan gratuito). Prueba otra vez en unos minutos.`;
+  if (!navigator.onLine) return 'Sin conexión a internet: la IA necesita conexión.';
+  if (!s) return texto ? `No se pudo hacer el presupuesto con IA: ${texto}` : 'No se pudo conectar con la IA. Revisa la conexión y prueba otra vez.';
+  return `No se pudo hacer el presupuesto con IA (error ${s}): ${texto || 'error desconocido'}`;
+}
+
+function aplicarIA(r) {
+  asegurarDatos();
+  trabajo.piezas = r.piezas.map((p) => ({
+    tipo: TIPOS_PIEZA[p.tipo] ? p.tipo : 'bancada',
+    largo: Math.max(0, Math.round(p.largo_mm)) || '',
+    fondo: p.tipo === 'zocalo' ? '' : (Math.max(0, Math.round(p.fondo_mm)) || ''),
+    frente: !!p.canto_frente, trasera: !!p.canto_trasera, izq: !!p.canto_izq, der: !!p.canto_der,
+  }));
+  const d = trabajo.datos;
+  // los datos que ya estaban en la ficha se respetan
+  if (r.material && !buscarMaterial(d.material) && buscarMaterial(r.material)) d.material = r.material;
+  if (r.canto && !d.canto && opcionesCanto().includes(r.canto)) d.canto = r.canto;
+  if (r.fregadero && !d.fregadero) d.fregadero = r.fregadero;
+  if (r.vitro && !d.vitro) d.vitro = 'Encastrada';
+  for (const k of ['grifo', 'jabonera', 'osmosis']) if (r[k]) d[k] = 'sí';
+  trabajo.extras.colocBancada = !!r.colocacion_bancada;
+  trabajo.extras.colocAplacado = !!r.colocacion_aplacado;
+  volcarFormulario();
+  dibujar();
+  pintarPresupuesto();
+  cambio();
+}
+
+$('#btnIA').addEventListener('click', presupuestoConIA);
+$('#btnClaveIA').addEventListener('click', async () => {
+  const clave = await pedirClaveIA();
+  if (clave !== null) aviso(clave ? 'Clave guardada en este dispositivo' : 'Clave borrada');
+});
+$('#proveedorIA').value = proveedorActual();
+$('#proveedorIA').addEventListener('change', (e) => {
+  try { localStorage.setItem(CLAVE_PROVEEDOR, e.target.value); } catch { /* sin almacenamiento */ }
+  $('#estadoIA').textContent = '';
+});
+
+// ---------------------------------------------------------------------------
+llenarListas();
+pintarPresupuesto();
+
+// ---------------------------------------------------------------------------
+// Colores y grupos: ver la tarifa por marca y grupo, elegir color y añadir colores nuevos
+// ---------------------------------------------------------------------------
+const dlgGrupos = $('#dlgGrupos');
+function pintarGrupos() {
+  const marcas = [...new Set(tarifas.materiales.map((m) => m.marca))];
+  const sel = $('#gruposMarca');
+  const elegida = sel.value || (buscarMaterial(trabajo.datos.material) || {}).marca || marcas[0];
+  sel.replaceChildren(...marcas.map((m) => new Option(m, m)));
+  sel.value = marcas.includes(elegida) ? elegida : marcas[0];
+  const q = normalizar($('#gruposBuscar').value);
+  const deMarca = tarifas.materiales.filter((m) => (q ? true : m.marca === sel.value));
+  const grupos = new Map();
+  for (const m of deMarca) {
+    if (q && !normalizar(`${m.marca} ${m.material} ${m.grupo}`).includes(q)) continue;
+    const k = `${m.marca}|${m.grupo}|${m.espesor}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(m);
+  }
+  $('#listaGrupos').innerHTML = [...grupos.entries()].map(([k, lista]) => {
+    const g = lista[0];
+    const colores = lista.filter((m) => !m.generico);
+    return `<section class="grupo-tarifa">
+      <header><b>${escapar(g.marca)} · ${escapar(g.grupo)}</b>${g.espesor ? ` <span>${escapar(g.espesor)}</span>` : ''}
+        <span class="precios">${fmtEuro(g.ml)} ml · ${fmtEuro(g.m2)} m²${g.zocalo != null ? ` · zócalo ${fmtEuro(g.zocalo)}` : ''}</span>
+        <button type="button" class="mini" data-nuevo="${escapar(k)}">+ Color</button></header>
+      <div class="colores">${colores.map((m) => `<button type="button" class="color${m.extra ? ' extra' : ''}" data-mat="${escapar(etiquetaMaterial(m))}">${escapar(m.material)}${m.extra ? ' <i data-quitar="' + escapar(m.marca + '|' + m.material) + '" title="Quitar">×</i>' : ''}</button>`).join('')}
+        <button type="button" class="color generico" data-mat="${escapar(etiquetaMaterial({ ...g, material: CUALQUIER_COLOR }))}">Otro color de este grupo</button></div>
+    </section>`;
+  }).join('') || '<p class="vacio">No hay colores con ese nombre.</p>';
+}
+$('#btnGrupos').addEventListener('click', () => { $('#gruposBuscar').value = ''; $('#gruposMarca').value = ''; pintarGrupos(); dlgGrupos.showModal(); });
+$('#gruposMarca').addEventListener('change', pintarGrupos);
+$('#gruposBuscar').addEventListener('input', pintarGrupos);
+$('#listaGrupos').addEventListener('click', (e) => {
+  const quitar = e.target.closest('[data-quitar]');
+  if (quitar) {
+    e.stopPropagation();
+    const [marca, material] = quitar.dataset.quitar.split('|');
+    localStorage.setItem(CLAVE_COLORES, JSON.stringify(leerColoresExtra().filter((c) => !(c.marca === marca && normalizar(c.material) === normalizar(material)))));
+    tarifas = completarTarifas(tarifas);
+    llenarListas();
+    pintarGrupos();
+    if (typeof programarSync === 'function') programarSync();
+    return;
+  }
+  const nuevo = e.target.closest('[data-nuevo]');
+  if (nuevo) {
+    const [marca, grupo] = nuevo.dataset.nuevo.split('|');
+    const nombre = (prompt(`Nombre del color nuevo para ${marca} · ${grupo}:`) || '').trim();
+    if (!nombre) return;
+    try {
+      localStorage.setItem(CLAVE_COLORES, JSON.stringify([...leerColoresExtra(), { marca, grupo, material: nombre }]));
+    } catch { aviso('No se pudo guardar'); return; }
+    tarifas = completarTarifas(tarifas);
+    llenarListas();
+    pintarGrupos();
+    if (typeof programarSync === 'function') programarSync();
+    aviso(`${nombre.toUpperCase()} añadido a ${marca} · ${grupo}`);
+    return;
+  }
+  const mat = e.target.closest('[data-mat]');
+  if (mat && dlgGrupos.dataset.modo === 'consulta') {
+    // solo consultar precios: el color va a la calculadora, no al trabajo
+    $('#prMaterial').value = mat.dataset.mat;
+    pintarPrecioRapido();
+    dlgGrupos.querySelector('.precio-rapido').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  if (mat) {
+    const campo = form.querySelector('[name="material"]');
+    campo.value = mat.dataset.mat;
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    dlgGrupos.close();
+    aviso(`Material: ${mat.dataset.mat}`);
+  }
+});
+
+// Precio rápido: material + medidas → precio al momento (con la misma regla de ml / m² que el presupuesto)
+function pintarPrecioRapido() {
+  const m = buscarMaterial($('#prMaterial').value);
+  const largo = Math.round((Number(String($('#prLargo').value).replace(',', '.')) || 0) * 10);
+  const fondo = Math.round((Number(String($('#prFondo').value).replace(',', '.')) || 0) * 10);
+  const out = $('#prResultado');
+  if (!m) { out.innerHTML = $('#prMaterial').value ? '<span class="mal-txt">Ese material no está en la tarifa: elígelo de la lista.</span>' : ''; return; }
+  // la lista de colores salta a la marca del material
+  if ($('#gruposMarca').value !== m.marca && !$('#gruposBuscar').value) { $('#gruposMarca').value = m.marca; pintarGrupos(); }
+  const precios = `<span>${escapar(etiquetaMaterial(m))}</span><span><b>${fmtEuro(m.ml)}</b> ml · <b>${fmtEuro(m.m2)}</b> m²${m.zocalo != null ? ` · zócalo ${fmtEuro(m.zocalo)} ml` : ''}</span>`;
+  if (!largo || !fondo) { out.innerHTML = precios; return; }
+  const porM2 = fondo >= FONDO_M2;
+  let base = porM2 ? r2(Math.round(largo * fondo / 1e4) / 100 * m.m2) : r2(largo / 1000 * m.ml);
+  const canto = $('#prCanto').checked ? conceptoCanto(trabajo.datos.canto) || conceptoCanto('Sencillo 2 cm') : null;
+  if (canto) base = r2(base + largo / 1000 * canto.precio);
+  out.innerHTML = `${precios}<span class="pr-total">${cm10(largo)} × ${cm10(fondo)} cm ${porM2 ? '(por m²)' : '(por ml)'}${canto ? ` + ${escapar(canto.concepto)}` : ''}:
+    <b>${fmtEuro(base)}</b> + IVA = <b>${fmtEuro(r2(base * (1 + IVA)))}</b></span>`;
+}
+const cm10 = (mm) => String(mm / 10).replace('.', ',');
+['#prMaterial', '#prLargo', '#prFondo', '#prCanto'].forEach((s) => $(s).addEventListener('input', pintarPrecioRapido));
+
+function pintarConceptos() {
+  const porCat = {};
+  for (const c of tarifas.conceptos) (porCat[c.categoria] ||= []).push(c);
+  $('#listaConceptos').innerHTML = Object.entries(porCat).map(([cat, l]) => `<section><h4>${escapar(cat)}</h4>
+    <ul>${l.map((c) => `<li><span>${escapar(c.concepto)}</span><b>${c.precio == null ? '—' : fmtEuro(c.precio)}</b></li>`).join('')}</ul></section>`).join('');
+}
+$('#btnGrupos').addEventListener('click', () => {
+  if (!$('#prMaterial').value && trabajo.datos.material) $('#prMaterial').value = trabajo.datos.material;
+  pintarPrecioRapido();
+  pintarConceptos();
+});
+dlgGrupos.addEventListener('close', () => { delete dlgGrupos.dataset.modo; });
+
+// precios del material escrito a mano
+['ml', 'm2', 'zocalo', 'espesor'].forEach((k) => $(`#mm_${k}`).addEventListener('input', (e) => {
+  asegurarDatos();
+  const nombre = String(trabajo.datos.material || '').trim();
+  const previo = trabajo.extras.matManual && normalizar(trabajo.extras.matManual.nombre) === normalizar(nombre) ? trabajo.extras.matManual : {};
+  trabajo.extras.matManual = { ...previo, nombre, [k]: e.target.value.trim() };
+  pintarResultado();
+  cambio();
+}));

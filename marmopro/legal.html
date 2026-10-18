@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aviso legal y condiciones · MarmoPro</title>
+  <style>
+    :root { --oro: #8c6a34; --texto: #1c1915; --suave: #6f665b; --fondo: #f6f2ea; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fondo); color: var(--texto); font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    header { background: #0d0c0b; color: #f1dcab; padding: 22px 16px; text-align: center; }
+    header h1 { margin: 0; font: 700 26px Georgia, serif; letter-spacing: .1em; }
+    nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin-top: 10px; }
+    nav a { color: #e2c992; }
+    main { max-width: 820px; margin: 0 auto; padding: 16px; }
+    section { background: #fff; border: 1px solid #e6ddcd; border-radius: 14px; padding: 18px 20px; margin: 16px 0; }
+    h2 { font: 700 22px Georgia, serif; margin: 0 0 8px; color: var(--oro); }
+    h3 { font-size: 16px; margin: 16px 0 4px; }
+    .dato { font-weight: 700; }
+    .vacio { background: #fde7e7; color: #a51d1d; padding: 0 4px; border-radius: 4px; }
+    small { color: var(--suave); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MARMOPRO</h1>
+    <nav><a href="#aviso">Aviso legal</a><a href="#privacidad">Privacidad</a><a href="#condiciones">Condiciones</a><a href="#encargado">Tratamiento de datos</a><a href="./">Volver a la app</a></nav>
+  </header>
+  <main>
+    <section id="aviso">
+      <h2>Aviso legal</h2>
+      <p>En cumplimiento de la Ley 34/2002, de servicios de la sociedad de la información y de comercio electrónico (LSSI),
+        se informa de que este sitio y la aplicación MarmoPro son titularidad de <span class="dato" data-t="nombre"></span>,
+        con NIF <span class="dato" data-t="nif"></span>, domicilio en <span class="dato" data-t="domicilio"></span> y correo de
+        contacto <span class="dato" data-t="email"></span>.</p>
+      <p>El uso de la aplicación atribuye la condición de usuario e implica la aceptación de estas condiciones. Los
+        contenidos, el diseño y el código de MarmoPro están protegidos por la propiedad intelectual e industrial; no se
+        permite copiarlos, distribuirlos ni modificarlos sin autorización del titular. Los datos, logos y documentos que
+        introduce cada usuario son de su propiedad.</p>
+      <p>Este sitio no usa cookies de publicidad ni de análisis: solo el almacenamiento técnico del navegador necesario para
+        que la aplicación funcione (datos de trabajo, sesión y preferencias), que no requiere consentimiento.</p>
+    </section>
+
+    <section id="privacidad">
+      <h2>Política de privacidad</h2>
+      <h3>Responsable</h3>
+      <p><span class="dato" data-t="nombre"></span> (NIF <span class="dato" data-t="nif"></span>), <span data-t="domicilio"></span>.
+        Contacto: <span class="dato" data-t="email"></span>.</p>
+      <h3>Qué datos tratamos y para qué</h3>
+      <p>De los usuarios que contratan MarmoPro: nombre de la empresa, correo, datos de facturación y de pago (el pago lo
+        gestiona Stripe; no guardamos los datos de la tarjeta). Los usamos para crear y mantener la cuenta, prestar el servicio,
+        cobrar la suscripción, dar soporte y cumplir obligaciones legales y fiscales.</p>
+      <h3>Base legal</h3>
+      <p>La ejecución del contrato de suscripción (art. 6.1.b RGPD) y el cumplimiento de obligaciones legales (art. 6.1.c).</p>
+      <h3>Conservación</h3>
+      <p>Mientras la cuenta esté activa y, después, el tiempo necesario para atender obligaciones legales (por ejemplo, las
+        fiscales). Los datos de trabajo del usuario se borran en los 30 días siguientes a la baja.</p>
+      <h3>Destinatarios y proveedores</h3>
+      <p>No cedemos datos a terceros salvo obligación legal. Usamos proveedores que tratan datos por nuestra cuenta: Supabase
+        (base de datos y cuentas, servidores en la Unión Europea), Stripe (cobros) y el servicio de alojamiento de la web.
+        Si alguno trata datos fuera del Espacio Económico Europeo, lo hace con las garantías del RGPD (cláusulas contractuales tipo).</p>
+      <h3>Tus derechos</h3>
+      <p>Puedes pedir acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo a
+        <span class="dato" data-t="email"></span>. Si no quedas conforme, puedes reclamar ante la Agencia Española de
+        Protección de Datos (www.aepd.es).</p>
+    </section>
+
+    <section id="condiciones">
+      <h2>Condiciones de la suscripción</h2>
+      <h3>1. Objeto</h3>
+      <p>MarmoPro es una aplicación web para profesionales del mármol y la piedra: planos de encimeras, presupuestos,
+        despiece de tablas, albaranes, clientes, calendario, almacén y partes de conformidad. MarmoPro <b>no emite facturas</b>:
+        el usuario debe facturar con un programa de facturación que cumpla la normativa (Verifactu).</p>
+      <h3>2. A quién va dirigida</h3>
+      <p>Solo a empresas y autónomos que la usan para su actividad profesional. Por ello no aplica el derecho de
+        desistimiento de los consumidores.</p>
+      <h3>3. Prueba, precio y pago</h3>
+      <p>Al crear la cuenta hay <span class="dato" data-c="diasPrueba"></span> días de prueba gratis, sin tarjeta. Después,
+        la suscripción cuesta <span class="dato" data-c="precio"></span>, se cobra por adelantado cada mes con tarjeta a
+        través de Stripe y se renueva sola. Los precios podrán cambiar avisando con 30 días de antelación.</p>
+      <h3>4. Baja</h3>
+      <p>Puedes darte de baja cuando quieras desde «Mi suscripción», sin permanencia ni penalización. Seguirás teniendo acceso
+        hasta el final del mes pagado; no se devuelven partes de meses. Si un cobro falla y no se paga, el acceso se suspende.</p>
+      <h3>5. Tus datos</h3>
+      <p>Los datos que introduces (trabajos, clientes, documentos…) son tuyos. Puedes descargarlos en cualquier momento con
+        «Copia de seguridad». Tras la baja se conservan 30 días para que puedas recuperarlos y después se borran.</p>
+      <h3>6. Uso correcto</h3>
+      <p>La cuenta es para tu empresa: no puedes revender el acceso ni usar MarmoPro para fines ilícitos. Eres responsable de
+        la información que introduces y de los datos de tus clientes que guardas.</p>
+      <h3>7. Responsabilidad</h3>
+      <p>MarmoPro es una herramienta de ayuda: los cálculos de precios, medidas, aprovechamiento de tablas e impuestos son
+        orientativos y debes revisarlos antes de usarlos. El titular pone los medios razonables para que el servicio funcione
+        sin interrupciones, pero no responde de daños indirectos, lucro cesante ni de pérdidas de datos que puedan evitarse con
+        las copias de seguridad. En todo caso, la responsabilidad máxima se limita a lo pagado en los últimos 12 meses.</p>
+      <h3>8. Cambios y ley aplicable</h3>
+      <p>Estas condiciones podrán actualizarse avisando por correo o en la aplicación. Se rigen por la ley española y, para
+        cualquier conflicto, las partes se someten a los juzgados del domicilio del titular.</p>
+    </section>
+
+    <section id="encargado">
+      <h2>Contrato de encargado del tratamiento (art. 28 RGPD)</h2>
+      <p>Al usar MarmoPro, el usuario (<b>responsable</b>) guarda datos personales de sus clientes (nombre, teléfono,
+        dirección, DNI, firma…). El titular de MarmoPro actúa como <b>encargado del tratamiento</b> y se compromete a:</p>
+      <ul>
+        <li>Tratar esos datos solo para prestar el servicio y siguiendo las instrucciones del usuario.</li>
+        <li>Mantener la confidencialidad y que solo accedan a ellos personas autorizadas y obligadas a guardar secreto.</li>
+        <li>Aplicar medidas de seguridad adecuadas: acceso con contraseña, datos de cada cuenta separados (cada usuario solo
+          ve los suyos), conexiones cifradas y copias en la nube.</li>
+        <li>Usar como subencargados a Supabase (base de datos, Unión Europea), Stripe (cobros) y el proveedor de alojamiento,
+          con sus propias garantías del RGPD, y avisar antes de cambiar de proveedor.</li>
+        <li>Ayudar al usuario a atender los derechos de sus clientes y avisarle sin demora de cualquier brecha de seguridad.</li>
+        <li>Al terminar el servicio, permitir descargar los datos y borrarlos en 30 días.</li>
+      </ul>
+      <p>El usuario se compromete a tener una base legal para guardar los datos de sus clientes e informarles.</p>
+    </section>
+    <p><small>Última actualización: <span id="fechaLegal"></span>.</small></p>
+  </main>
+  <script src="config.js"></script>
+  <script>
+    // los datos del titular y del precio salen de config.js
+    const t = (typeof MARMOPRO !== 'undefined' && MARMOPRO.titular) || {};
+    document.querySelectorAll('[data-t]').forEach((el) => {
+      const v = t[el.dataset.t];
+      el.textContent = v || '[falta en config.js]';
+      if (!v) el.classList.add('vacio');
+    });
+    document.querySelectorAll('[data-c]').forEach((el) => { el.textContent = (typeof MARMOPRO !== 'undefined' && MARMOPRO[el.dataset.c]) || ''; });
+    document.getElementById('fechaLegal').textContent = '18 de octubre de 2026';
+  </script>
+</body>
+</html>

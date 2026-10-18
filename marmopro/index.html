@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MarmoPro · Planos y presupuestos</title>
+  <meta name="description" content="Fichas y planos de encimeras para marmolistas">
+  <meta name="theme-color" content="#0d0c0b">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="iconos/icono-180.png">
+  <meta name="apple-mobile-web-app-title" content="MarmoPro">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preload" href="fuentes/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fuentes/cormorant-garamond-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="acceso" hidden role="dialog" aria-modal="true" aria-label="Acceso a MarmoPro" data-modo="entrar">
+    <img id="accesoLogo" src="logo.svg" alt="">
+    <b class="acceso-marca">MarmoPro</b>
+    <p class="acceso-lema">Planos, presupuestos, despiece y gestión para marmolistas</p>
+    <div class="acceso-caja">
+      <div class="acceso-tabs" id="accesoTabs">
+        <button type="button" data-modo="entrar">Entrar</button>
+        <button type="button" data-modo="crear">Crear cuenta</button>
+      </div>
+      <form id="formAcceso" class="acceso-form" novalidate>
+        <label class="solo-crear">Nombre de tu empresa <input name="empresa" autocomplete="organization" placeholder="Mármoles García"></label>
+        <label>Correo <input name="email" type="email" autocomplete="username" required></label>
+        <label>Contraseña <input name="pass" type="password" autocomplete="current-password" minlength="6" required></label>
+        <label class="chk acepto solo-crear"><input type="checkbox" name="acepto"> Acepto las <a href="legal.html#condiciones" target="_blank" rel="noopener">condiciones</a>, la
+          <a href="legal.html#privacidad" target="_blank" rel="noopener">política de privacidad</a> y el
+          <a href="legal.html#encargado" target="_blank" rel="noopener">contrato de tratamiento de datos</a></label>
+        <button type="submit" class="oro solo-entrar">Entrar</button>
+        <button type="submit" class="oro solo-crear">Empezar gratis</button>
+      </form>
+      <div class="acceso-pagar">
+        <p>Cuenta: <b id="accesoCuenta"></b></p>
+        <button type="button" id="btnPagar" class="oro">Suscribirme</button>
+        <button type="button" id="btnYaPague">Ya he pagado: comprobar</button>
+        <button type="button" id="btnAccesoSalir" class="enlace">Entrar con otra cuenta</button>
+      </div>
+      <p id="accesoMensaje" class="acceso-mensaje" role="status"></p>
+      <p id="accesoPrecio" class="acceso-precio"></p>
+      <p class="acceso-legal"><a href="legal.html" target="_blank" rel="noopener">Aviso legal y privacidad</a></p>
+    </div>
+  </div>
+
+  <div id="bloqueo" hidden role="dialog" aria-modal="true" aria-label="App bloqueada">
+    <img id="bloqueoLogo" src="logo.svg" alt="">
+    <b id="bloqueoNombre">MARMOPRO</b>
+    <p id="bloqueoTexto">Introduce tu PIN</p>
+    <div class="pin-puntos" id="pinPuntos"></div>
+    <div class="teclado" id="tecladoPin">
+      <button type="button">1</button><button type="button">2</button><button type="button">3</button>
+      <button type="button">4</button><button type="button">5</button><button type="button">6</button>
+      <button type="button">7</button><button type="button">8</button><button type="button">9</button>
+      <button type="button" data-tecla="bio" id="btnBio" aria-label="Face ID o huella">◉</button><button type="button">0</button><button type="button" data-tecla="borrar" aria-label="Borrar">⌫</button>
+    </div>
+    <button type="button" class="enlace" id="btnOlvidePin">¿Has olvidado el PIN?</button>
+  </div>
+
+  <div id="bienvenida" aria-hidden="true">
+    <span class="bv-hola">Bienvenido a</span>
+    <b id="bvNombre">MARMOPRO</b>
+    <img id="bvLogo" src="logo.svg" alt="">
+    <small class="bv-firma">Planos · Presupuestos · Gestión</small>
+  </div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-linea" viewBox="0 0 24 24"><path d="M4 20 20 4"/></symbol>
+    <symbol id="i-lapiz" viewBox="0 0 24 24"><path d="M3 17c3-6 5 2 8-4s5 2 10-6"/></symbol>
+    <symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></symbol>
+    <symbol id="i-cota" viewBox="0 0 24 24"><path d="M4 8v8M20 8v8M4 12h16M7 9.5 4 12l3 2.5M17 9.5l3 2.5-3 2.5"/></symbol>
+    <symbol id="i-texto" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></symbol>
+    <symbol id="i-vitro" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="2.5"/><circle cx="15.5" cy="9" r="1.8"/><circle cx="8.5" cy="15" r="1.8"/><circle cx="15.5" cy="15" r="2.5"/></symbol>
+    <symbol id="i-frega" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><rect x="6" y="8.5" width="12" height="7" rx="2"/><circle cx="12" cy="12" r=".8"/></symbol>
+    <symbol id="i-luz" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m13 7-4 6h3l-1 4 4-6h-3z"/></symbol>
+    <symbol id="i-columna" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16"/><path d="M6 10l6-6M6 16 18 4M9 20l9-9M15 20l3-3"/></symbol>
+    <symbol id="i-canto" viewBox="0 0 24 24"><path d="M4 7h16v8H4z"/><path d="M3 18h18" stroke-width="3"/></symbol>
+    <symbol id="i-arista" viewBox="0 0 24 24"><path d="M4 20V11a7 7 0 0 1 7-7h9"/></symbol>
+    <symbol id="i-inglete" viewBox="0 0 24 24"><path d="M3 18h18"/><path d="M12 9l-4.5 7h9z" fill="currentColor"/></symbol>
+    <symbol id="i-pulido" viewBox="0 0 24 24"><path d="M4 6h16v8H4z"/><path d="M3 18h18" stroke-dasharray="4 2 1 2"/></symbol>
+    <symbol id="i-descuadre" viewBox="0 0 24 24"><path d="M8 3v18" stroke-dasharray="3 2"/><path d="M8 3l5 18"/></symbol>
+    <symbol id="i-editar" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+    <symbol id="i-girar" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-mover" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-euro" viewBox="0 0 24 24"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5M4 10h9M4 14h9"/></symbol>
+    <symbol id="i-casa" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10"/></symbol>
+    <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
+    <symbol id="i-borrar" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></symbol>
+  </svg>
+  <header class="topbar">
+    <div class="marca">
+      <img id="logoApp" src="logo.svg" alt="Logo">
+      <div class="marca-txt">
+        <h1 id="marcaNombre">MarmoPro</h1>
+        <span>Planos y presupuestos</span>
+      </div>
+    </div>
+    <nav class="vistas" aria-label="Secciones">
+      <button id="btnInicio" type="button">Inicio</button>
+      <button id="btnVistaPlanos" type="button" class="active">Planos</button>
+      <button id="btnGestion" type="button">Gestión</button>
+    </nav>
+    <div class="topbar-actions">
+      <button id="btnNuevo" type="button">Nuevo</button>
+      <button id="btnTrabajos" type="button">Trabajos</button>
+      <button id="estadoSync" type="button" class="estado-sync" hidden title="Sincronizar ahora">Nube</button>
+      <button id="btnGuardar" type="button" class="primary">Guardar</button>
+    </div>
+  </header>
+
+  <div id="inicio" class="contenido inicio" hidden>
+    <section class="hero">
+      <div class="hero-txt">
+        <p class="hero-fecha" id="iniFecha"></p>
+        <h2 id="iniSaludo">Buenos días</h2>
+        <p class="hero-sub" id="iniResumen"></p>
+        <div class="buscador">
+          <input type="search" id="iniBuscar" placeholder="Buscar cliente, plano, factura, teléfono…" autocomplete="off" aria-label="Buscar en toda la app">
+          <ul id="iniResultados" class="resultados" hidden></ul>
+        </div>
+      </div>
+      <div class="hero-acciones">
+        <button type="button" class="oro" data-ir="plano"><svg class="ico"><use href="#i-rect"/></svg>Nuevo plano</button>
+        <button type="button" data-ir="factura"><svg class="ico"><use href="#i-doc"/></svg>Nueva factura</button>
+        <button type="button" data-ir="presupuesto"><svg class="ico"><use href="#i-doc"/></svg>Nuevo presupuesto</button>
+        <button type="button" data-ir="gasto"><svg class="ico"><use href="#i-euro"/></svg>Apuntar gasto</button>
+        <button type="button" data-ir="trabajos"><svg class="ico"><use href="#i-carpeta"/></svg>Trabajos</button>
+        <button type="button" data-ir="tarifas"><svg class="ico"><use href="#i-euro"/></svg>Tarifas</button>
+        <div class="redes" id="iniRedes"></div>
+      </div>
+    </section>
+
+    <section class="tarjeta ini-hoy" id="iniHoy" hidden>
+      <div class="tarjeta-cab"><h3>Para hoy</h3><button type="button" class="enlace" data-ir="agenda">Calendario</button></div>
+      <ul class="ini-lista" id="iniHoyLista"></ul>
+    </section>
+
+    <section class="kpis" id="iniKpis" aria-label="Cifras del negocio"></section>
+
+    <div class="ini-cols">
+      <section class="tarjeta ini-grafico">
+        <div class="tarjeta-cab">
+          <h3>Facturación del año</h3>
+          <span class="leyenda"><i class="l-fact"></i>Facturado <i class="l-gasto"></i>Gastos</span>
+        </div>
+        <div id="iniGrafico"></div>
+      </section>
+      <section class="tarjeta ini-plazo" id="iniPlazo"></section>
+    </div>
+
+    <div class="ini-cols">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Cocinas en marcha</h3><button type="button" class="enlace" data-ir="trabajos">Ver todas</button></div>
+        <div class="embudo" id="iniEmbudo"></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Próximas colocaciones</h3></div>
+        <ul class="ini-lista agenda" id="iniAgenda"></ul>
+      </section>
+    </div>
+
+    <div class="ini-cols tres">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Pendiente de cobro</h3><button type="button" class="enlace" data-ir="cobros">Ver todo</button></div>
+        <ul class="ini-lista" id="iniCobros"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Presupuestos por aceptar</h3><button type="button" class="enlace" data-ir="presupuestos">Ver todo</button></div>
+        <ul class="ini-lista" id="iniPresus"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Últimos planos</h3><button type="button" class="enlace" data-ir="trabajos">Ver todo</button></div>
+        <ul class="ini-lista" id="iniTrabajos"></ul>
+      </section>
+    </div>
+
+    <div class="ini-cols">
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>Mejores clientes del año</h3></div>
+        <ul class="ini-lista ranking" id="iniClientes"></ul>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta-cab"><h3>En qué se va el dinero</h3></div>
+        <ul class="ini-lista barras" id="iniGastos"></ul>
+      </section>
+    </div>
+  </div>
+
+  <main id="planos" hidden>
+    <section class="ficha" aria-label="Datos del trabajo">
+      <h2 class="seccion"><span class="paso">1</span>Datos del trabajo</h2>
+      <div class="grid">
+        <label>Cliente
+          <input name="cliente" autocomplete="off">
+        </label>
+        <label>Teléfono
+          <input name="telefono" type="tel" inputmode="tel" autocomplete="off">
+        </label>
+        <div class="wide campo-dir">
+          <label>Dirección
+            <input name="direccion" autocomplete="off" placeholder="Calle, número y población">
+          </label>
+          <input name="ubicacion" type="hidden">
+          <button type="button" id="btnUbicacion" title="Guardar mi ubicación exacta (estando en la obra)">📍</button>
+          <button type="button" id="btnIr" class="oro" title="Ir con Google Maps">Ir</button>
+        </div>
+        <label>Referencia
+          <input name="referencia" autocomplete="off">
+        </label>
+        <label>Fecha
+          <input name="fecha" type="date">
+        </label>
+        <label>Material
+          <input name="material" list="listaMateriales" autocomplete="off" placeholder="Escribe y elige de la tarifa">
+        </label>
+        <label>Tipo de canto
+          <select name="canto">
+            <option value="">— Elegir —</option>
+            <optgroup label="Sencillo">
+              <option>Sencillo 1,2 cm</option>
+              <option>Sencillo 2 cm</option>
+            </optgroup>
+            <optgroup label="Ingletado">
+              <option>Ingletado 2 cm</option><option>Ingletado 3 cm</option><option>Ingletado 4 cm</option>
+              <option>Ingletado 5 cm</option><option>Ingletado 6 cm</option><option>Ingletado 7 cm</option>
+              <option>Ingletado 8 cm</option><option>Ingletado 9 cm</option>
+            </optgroup>
+            <optgroup label="Otros de la tarifa" id="cantosTarifa"></optgroup>
+          </select>
+        </label>
+        <label>Estado del trabajo
+          <select name="estado">
+            <option>Medido</option><option>Presupuestado</option><option>Aceptado</option>
+            <option>En taller</option><option>Colocado</option><option>Cobrado</option>
+          </select>
+        </label>
+        <label>Fecha de colocación
+          <input name="colocacion" type="date">
+        </label>
+        <fieldset class="wide grupo">
+          <legend>Vitrocerámica</legend>
+          <label>Tipo / modelo
+            <input name="vitro" list="listaVitro" autocomplete="off" placeholder="Encastrada, enrasada…">
+          </label>
+          <label>Medida (ancho × fondo)
+            <input name="vitroMedida" autocomplete="off" placeholder="Ej. 56 × 49">
+          </label>
+        </fieldset>
+        <fieldset class="wide grupo">
+          <legend>Fregadero</legend>
+          <label>Tipo / modelo
+            <input name="fregadero" list="listaFregadero" autocomplete="off" placeholder="Bajo encimera…">
+          </label>
+          <label>Medida (ancho × fondo)
+            <input name="fregaMedida" autocomplete="off" placeholder="Ej. 76 × 43">
+          </label>
+          <label>Radio de esquinas
+            <input name="fregaRadio" autocomplete="off" placeholder="Ej. R15">
+          </label>
+          <div class="casillas">
+            <label class="chk"><input type="checkbox" name="grifo"> Grifo</label>
+            <label class="chk"><input type="checkbox" name="jabonera"> Jabonera</label>
+            <label class="chk"><input type="checkbox" name="osmosis"> Ósmosis</label>
+          </div>
+        </fieldset>
+        <label class="wide">Observaciones
+          <textarea name="observaciones" rows="2"></textarea>
+        </label>
+      </div>
+
+      <!-- se rellenan con la tarifa (presupuesto.js) -->
+      <datalist id="listaMateriales"></datalist>
+      <datalist id="listaVitro">
+        <option value="Encastrada"><option value="Enrasada"><option value="Sin vitro">
+      </datalist>
+      <datalist id="listaFregadero"></datalist>
+    </section>
+
+    <section class="plano" aria-label="Plano">
+      <h2 class="seccion"><span class="paso">2</span>Plano</h2>
+      <div class="toolbar" role="toolbar" aria-label="Herramientas de dibujo">
+        <div class="tools">
+          <div class="grupo-h" role="group" aria-label="Dibujar"><span class="grupo-t">Dibujar</span><div class="grupo-b">
+            <button type="button" data-tool="linea" title="Línea recta"><svg class="ico"><use href="#i-linea"/></svg><span>Línea</span></button>
+            <button type="button" data-tool="lapiz" title="Dibujo a mano alzada"><svg class="ico"><use href="#i-lapiz"/></svg><span>Lápiz</span></button>
+            <button type="button" data-tool="rect" title="Rectángulo"><svg class="ico"><use href="#i-rect"/></svg><span>Rect.</span></button>
+            <button type="button" data-tool="texto" title="Texto"><svg class="ico"><use href="#i-texto"/></svg><span>Texto</span></button>
+          </div></div>
+          <div class="grupo-h" role="group" aria-label="Medir"><span class="grupo-t">Medir</span><div class="grupo-b">
+            <button type="button" data-tool="cota" title="Cota con medida"><svg class="ico"><use href="#i-cota"/></svg><span>Cota</span></button>
+          </div></div>
+          <div class="grupo-h" role="group" aria-label="Elementos"><span class="grupo-t">Elementos</span><div class="grupo-b">
+            <button type="button" data-tool="vitro" title="Símbolo vitrocerámica"><svg class="ico"><use href="#i-vitro"/></svg><span>Vitro</span></button>
+            <button type="button" data-tool="frega" title="Símbolo fregadero"><svg class="ico"><use href="#i-frega"/></svg><span>Fregad.</span></button>
+            <button type="button" data-tool="luz" title="Caja de luz / enchufe: toca donde va"><svg class="ico"><use href="#i-luz"/></svg><span>Caja luz</span></button>
+            <button type="button" data-tool="columna" title="Columna o pilar: arrastra el rectángulo"><svg class="ico"><use href="#i-columna"/></svg><span>Columna</span></button>
+          </div></div>
+          <div class="grupo-h" role="group" aria-label="Cantos"><span class="grupo-t">Cantos</span><div class="grupo-b">
+            <button type="button" data-tool="canto" title="Canto visto: arrastra a lo largo del canto"><svg class="ico"><use href="#i-canto"/></svg><span>Canto visto</span></button>
+            <button type="button" data-tool="inglete" title="Bajada a inglete: arrastra a lo largo del canto"><svg class="ico"><use href="#i-inglete"/></svg><span>Inglete</span></button>
+            <button type="button" data-tool="pulido" title="Pulido por detrás: arrastra a lo largo del canto"><svg class="ico"><use href="#i-pulido"/></svg><span>Pulido detrás</span></button>
+            <button type="button" data-tool="arista" title="Arista redondeada: toca la esquina"><svg class="ico"><use href="#i-arista"/></svg><span>Arista</span></button>
+            <button type="button" data-tool="descuadre" title="Descuadre de pared: arrastra a lo largo de la pared"><svg class="ico"><use href="#i-descuadre"/></svg><span>Descuadre</span></button>
+          </div></div>
+          <div class="grupo-h" role="group" aria-label="Editar"><span class="grupo-t">Editar</span><div class="grupo-b">
+            <button type="button" data-tool="editar" title="Toca un elemento para cambiar sus datos"><svg class="ico"><use href="#i-editar"/></svg><span>Editar</span></button>
+            <button type="button" data-tool="girar" title="Girar fregadero o vitro 90°"><svg class="ico"><use href="#i-girar"/></svg><span>Girar</span></button>
+            <button type="button" data-tool="mover" title="Mover elemento"><svg class="ico"><use href="#i-mover"/></svg><span>Mover</span></button>
+            <button type="button" data-tool="borrar" title="Borrar elemento"><svg class="ico"><use href="#i-borrar"/></svg><span>Borrar</span></button>
+          </div></div>
+        </div>
+        <div class="options">
+          <label class="chk"><input type="checkbox" id="optRejilla" checked> Rejilla</label>
+          <label class="chk"><input type="checkbox" id="optIman" checked> Imán</label>
+          <select id="optColor" aria-label="Color">
+            <option value="#111111">Negro</option>
+            <option value="#c62828">Rojo</option>
+            <option value="#1565c0">Azul</option>
+            <option value="#2e7d32">Verde</option>
+          </select>
+          <select id="optGrosor" aria-label="Grosor">
+            <option value="3">Fino</option>
+            <option value="5" selected>Medio</option>
+            <option value="9">Grueso</option>
+          </select>
+          <button type="button" id="btnDeshacer" title="Deshacer">↶</button>
+          <button type="button" id="btnRehacer" title="Rehacer">↷</button>
+          <button type="button" id="btnPlantilla" class="oro" title="Dibujar una cocina tipo con sus medidas">Plantilla</button>
+          <button type="button" id="btnLimpiar" title="Borrar todo el plano">Limpiar</button>
+          <button type="button" id="btnAmpliar" title="Plano a pantalla completa">Ampliar</button>
+        </div>
+      </div>
+      <div class="lienzo-area">
+        <div class="lienzo-wrap">
+          <canvas id="lienzo"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="presupuesto" id="presupuesto" aria-label="Presupuesto">
+      <div class="presu-cab">
+        <h2 class="seccion"><span class="paso">3</span>Presupuesto</h2>
+        <span class="tarifa">Tarifa: <b id="nombreTarifa"></b>
+          <button type="button" class="enlace" id="btnGrupos">Colores y grupos</button>
+          <label class="enlace">Cambiar tarifas<input type="file" id="fileTarifas" accept=".csv,text/csv" hidden></label>
+        </span>
+      </div>
+
+      <div class="auto-piezas">
+        <div>
+          <h3>Piezas automáticas, sin IA</h3>
+          <p class="ayuda">Elige una plantilla de cocina con sus medidas, o dibuja las piezas con «Rect.» y ponles cotas: la app saca las piezas sola.</p>
+        </div>
+        <div class="ia-botones">
+          <button type="button" id="btnPlantilla2" class="oro">Plantilla de cocina</button>
+          <button type="button" id="btnPiezasPlano" class="primary">Sacar piezas del plano</button>
+        </div>
+      </div>
+
+      <details class="ia">
+        <summary>Asistente con IA (opcional)</summary>
+        <p class="ayuda">La IA lee el plano, la ficha y lo que escribas, y rellena las piezas. Los precios salen siempre de tu tarifa.</p>
+        <label class="proveedor">IA:
+          <select id="proveedorIA">
+            <option value="gemini">Gemini (Google) · gratis</option>
+            <option value="claude">Claude (Anthropic) · de pago</option>
+          </select>
+        </label>
+        <textarea id="descripcionIA" rows="2" placeholder="Opcional. Ej.: encimera en L de 3200 y 1500, fondo 620, frente visto, con colocación"></textarea>
+        <div class="ia-botones">
+          <button type="button" id="btnIA" class="primary">Hacer presupuesto con IA</button>
+          <button type="button" id="btnClaveIA">Clave IA</button>
+        </div>
+        <p id="estadoIA" role="status" aria-live="polite"></p>
+      </details>
+
+      <h3>Piezas</h3>
+      <div id="listaPiezas"></div>
+      <button type="button" id="btnAnadirPieza">+ Añadir pieza</button>
+
+      <div class="extras">
+        <label class="chk"><input type="checkbox" id="colocBancada"> Colocación de bancada</label>
+        <label class="chk"><input type="checkbox" id="colocAplacado"> Colocación de aplacado</label>
+        <label class="chk"><input type="checkbox" id="conIva" checked> Añadir IVA 21 %</label>
+      </div>
+
+      <div class="despiece">
+        <div class="despiece-cab">
+          <h3>Tablas necesarias</h3>
+          <button type="button" id="btnDespiecePdf" hidden>Despiece en PDF</button>
+        </div>
+        <div class="despiece-opc">
+          <label>Tabla <select id="formatoTabla"></select></label>
+          <span id="tablaMedidaOtra" hidden>
+            <label>Largo (cm) <input id="tablaLargo" type="number" inputmode="decimal" min="50" step="0.5" placeholder="cm"></label>
+            <label>Ancho (cm) <input id="tablaAncho" type="number" inputmode="decimal" min="30" step="0.5" placeholder="cm"></label>
+          </span>
+          <label>Alto zócalo (cm) <input id="altoZocalo" type="number" inputmode="decimal" min="1" step="0.5" value="5"></label>
+          <label class="chk"><input type="checkbox" id="respetarVeta"> Respetar la veta (no girar piezas)</label>
+        </div>
+        <p id="despieceRes" class="despiece-res"></p>
+        <ul id="avisosDespiece" class="avisos"></ul>
+        <div id="despieceDibujo" class="despiece-dibujo"></div>
+      </div>
+
+      <div id="tablaPresupuesto"></div>
+      <ul id="avisosPresupuesto" class="avisos"></ul>
+      <div id="materialManual" class="material-manual" hidden>
+        <p><b>«<span id="mmNombre"></span>»</b> no está en la tarifa. Pon su precio y se cobrará con él (también en albaranes y facturas):</p>
+        <div class="pr-campos">
+          <label>€ por metro lineal <input id="mm_ml" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Ej. 210"></label>
+          <label>€ por m² <input id="mm_m2" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Ej. 300"></label>
+          <label>Zócalo € ml <input id="mm_zocalo" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Opcional"></label>
+          <label>Espesor <input id="mm_espesor" autocomplete="off" placeholder="Ej. 2 cm"></label>
+        </div>
+      </div>
+
+      <div class="acciones-presu">
+        <button type="button" id="btnPresuImagen">Descargar PDF</button>
+        <button type="button" id="btnPresuCompartir">Compartir PDF</button>
+        <button type="button" id="btnPresuImprimir">Imprimir / PDF</button>
+      </div>
+      <div class="acciones-presu rapido">
+        <span>Gestión:</span>
+        <button type="button" id="btnPresuAlbaran" class="primary">Hacer albarán</button>
+        <button type="button" id="btnPresuFactura" class="primary">Hacer factura</button>
+        <button type="button" id="btnPresuGestion">Ver en Gestión</button>
+      </div>
+    </section>
+
+    <section class="acciones">
+      <h2 class="seccion"><span class="paso">4</span>Enviar el plano</h2>
+      <button type="button" id="btnImagen">Descargar PDF</button>
+      <button type="button" id="btnCompartir">Compartir PDF</button>
+      <button type="button" id="btnImprimir">Imprimir / PDF</button>
+      <button type="button" id="btnConformidad" class="oro">Parte de conformidad</button>
+      <span id="estadoConformidad" class="estado-conf"></span>
+    </section>
+  </main>
+
+  <!-- Gestión: clientes, documentos (presupuestos, albaranes, facturas) y balance -->
+  <div id="gestion" class="contenido" hidden>
+    <nav class="pestanas" aria-label="Gestión">
+      <button type="button" data-pestana="documentos" class="active">Documentos</button>
+      <button type="button" data-pestana="agenda">Calendario</button>
+      <button type="button" data-pestana="clientes">Clientes</button>
+      <button type="button" data-pestana="almacen">Almacén</button>
+      <button type="button" data-pestana="conformidades">Conformidades</button>
+      <button type="button" data-pestana="gastos">Gastos</button>
+      <button type="button" data-pestana="impuestos">Impuestos y beneficio</button>
+      <button type="button" data-pestana="balance">Balance</button>
+      <button type="button" data-pestana="empresa">Mi empresa</button>
+    </nav>
+
+    <section class="panel-g" id="pDocumentos">
+      <div class="barra-filtros">
+        <select id="filtroTipo" aria-label="Tipo de documento">
+          <option value="">Todos</option>
+          <option value="presupuesto">Presupuestos</option>
+          <option value="albaran">Albaranes</option>
+          <option value="factura">Facturas</option>
+        </select>
+        <select id="filtroAnio" aria-label="Año"></select>
+        <input type="search" id="filtroTexto" placeholder="Buscar cliente o número…">
+        <button type="button" id="btnNuevoDoc" class="primary">+ Nuevo</button>
+        <button type="button" id="btnExportarCSV">Exportar CSV</button>
+      </div>
+      <div id="listaDocs"></div>
+      <p class="aviso-legal">MarmoPro no emite facturas. Para facturar usa tu programa de facturación (certificado
+        Verifactu cuando te sea obligatorio); aquí llevas presupuestos y albaranes, y lo que te deben.</p>
+    </section>
+
+    <section class="panel-g" id="pClientes" hidden>
+      <div class="barra-filtros">
+        <input type="search" id="buscarCliente" placeholder="Buscar nombre, NIF o teléfono…">
+        <button type="button" id="btnNuevoCliente" class="primary">+ Nuevo cliente</button>
+      </div>
+      <div id="listaClientes"></div>
+    </section>
+
+    <section class="panel-g" id="pGastos" hidden>
+      <div class="barra-filtros">
+        <select id="gastosAnio" aria-label="Año"></select>
+        <select id="gastosTrim" aria-label="Trimestre">
+          <option value="">Todo el año</option><option value="1">1.º trimestre</option><option value="2">2.º trimestre</option>
+          <option value="3">3.º trimestre</option><option value="4">4.º trimestre</option>
+        </select>
+        <input type="search" id="gastosTexto" placeholder="Buscar proveedor o concepto…">
+        <button type="button" id="btnNuevoGasto" class="primary">+ Nuevo gasto</button>
+      </div>
+      <div id="resumenGastos" class="resumen"></div>
+      <div id="listaGastos"></div>
+    </section>
+
+    <section class="panel-g" id="pImpuestos" hidden>
+      <div class="barra-filtros">
+        <label>Año <select id="impAnio"></select></label>
+        <label>Trimestre
+          <select id="impTrim"><option value="1">1.º</option><option value="2">2.º</option><option value="3">3.º</option><option value="4">4.º</option></select>
+        </label>
+        <span class="libros">
+          <span>Libros para el gestor:</span>
+          <button type="button" data-libro="ingresos">Ingresos</button>
+          <button type="button" data-libro="gastos">Gastos</button>
+          <label class="chk"><input type="checkbox" id="libroAnio"> Año completo</label>
+        </span>
+      </div>
+      <div id="impuestos"></div>
+    </section>
+
+    <section class="panel-g" id="pBalance" hidden>
+      <div class="barra-filtros">
+        <label>Año <select id="balanceAnio"></select></label>
+      </div>
+      <div id="tablaBalance"></div>
+    </section>
+
+    <section class="panel-g" id="pAgenda" hidden>
+      <div class="barra-filtros">
+        <button type="button" id="mesAnt" aria-label="Mes anterior">‹</button>
+        <h3 id="mesTitulo" class="mes-titulo"></h3>
+        <button type="button" id="mesSig" aria-label="Mes siguiente">›</button>
+        <button type="button" id="mesHoy">Hoy</button>
+        <span class="separa"></span>
+        <button type="button" id="btnAvisos">Activar avisos</button>
+        <button type="button" id="btnNuevoRecordatorio" class="primary">+ Recordatorio</button>
+      </div>
+      <div class="calendario" id="calendario"></div>
+      <div class="agenda-dia">
+        <h3 id="diaTitulo"></h3>
+        <ul class="ini-lista" id="diaLista"></ul>
+      </div>
+      <p class="ayuda">Salen solas las colocaciones de los trabajos, los plazos de Hacienda y las facturas sin cobrar a los 30 días.
+        Los recordatorios avisan al abrir la app y, si activas los avisos, también con una notificación del móvil o del PC mientras la app está abierta.</p>
+    </section>
+
+    <section class="panel-g" id="pAlmacen" hidden>
+      <div class="barra-filtros">
+        <select id="almCategoria" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <input type="search" id="almBuscar" placeholder="Buscar artículo…">
+        <label class="chk"><input type="checkbox" id="almBajo"> Solo con poco stock</label>
+        <button type="button" id="btnListaCompra">Lista de la compra</button>
+        <button type="button" id="btnNuevoArticulo" class="primary">+ Artículo</button>
+      </div>
+      <p class="resumen" id="almResumen"></p>
+      <div id="listaAlmacen" class="lista-almacen"></div>
+    </section>
+
+    <section class="panel-g" id="pConformidades" hidden>
+      <p class="ayuda">Partes de conformidad firmados por los clientes al terminar la instalación. Descárgalos en PDF cuando quieras.</p>
+      <div class="barra-filtros"><input type="search" id="confBuscar" placeholder="Buscar cliente, dirección o DNI…"></div>
+      <div id="listaConformidades"></div>
+    </section>
+
+    <section class="panel-g" id="pEmpresa" hidden>
+      <p class="ayuda">Estos datos salen en presupuestos, albaranes y facturas.</p>
+      <p class="ajustes-logo">
+        <img id="logoEmpresa" src="logo.svg" alt="Logo actual">
+        <span>
+          <label class="enlace">Cambiar logo<input type="file" id="fileLogo" accept="image/*" hidden></label>
+          <button type="button" id="btnQuitarLogo" class="enlace">Volver al de serie</button>
+        </span>
+      </p>
+      <form id="formEmpresa" class="grid">
+        <label class="wide">Nombre o razón social <input name="nombre" autocomplete="off" placeholder="MÁRMOLES GARCÍA"></label>
+        <label>NIF / CIF <input name="nif" autocomplete="off"></label>
+        <label>Teléfono <input name="telefono" type="tel" autocomplete="off"></label>
+        <label class="wide">Dirección <input name="direccion" autocomplete="off"></label>
+        <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
+        <label>Correo <input name="email" type="email" autocomplete="off"></label>
+        <label class="wide">IBAN (para las facturas) <input name="iban" autocomplete="off"></label>
+        <label>Página web <input name="web" autocomplete="off" placeholder="tuempresa.es"></label>
+        <label>Instagram <input name="instagram" autocomplete="off" placeholder="@tuempresa"></label>
+        <label>Facebook <input name="facebook" autocomplete="off" placeholder="tuempresa"></label>
+        <label>Tipo medio de IRPF estimado (%) <input name="irpfMedio" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
+        <label>Pago a cuenta IRPF, modelo 130 (%) <input name="irpf130" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="20"></label>
+        <label>QR de Hacienda en las facturas <select name="qr"><option value="">Sí</option><option value="no">No</option></select></label>
+        <label class="wide">Texto al pie de los documentos <textarea name="pie" rows="2" placeholder="Ej.: Presupuesto válido 30 días."></textarea></label>
+        <label class="wide">Texto del parte de conformidad <textarea name="textoConformidad" rows="3" placeholder="Si lo dejas vacío se usa el texto de serie."></textarea></label>
+      </form>
+
+      <div class="panel-sync">
+        <h3>Espacio en este aparato</h3>
+        <div class="medidor"><i id="espacioBarra"></i></div>
+        <p id="espacioTexto" class="ayuda"></p>
+      </div>
+
+      <div id="panelSuscripcion" class="panel-sync" hidden>
+        <h3>Mi suscripción a MarmoPro</h3>
+        <p id="suscripcionEstado" class="resumen"></p>
+        <div class="botones-sync">
+          <button type="button" id="btnSuscribirse" class="primary">Suscribirme ya</button>
+          <button type="button" id="btnPortal">Gestionar suscripción (facturas y baja)</button>
+        </div>
+        <p id="suscripcionSoporte" class="ayuda"></p>
+      </div>
+
+      <div id="panelBloqueo" class="panel-sync">
+        <h3>Bloqueo de la app</h3>
+        <p class="ayuda">Pide un PIN (o Face ID / huella) al abrir la app en este aparato. Cada aparato tiene su propio bloqueo.</p>
+        <p id="bloqueoEstado" class="resumen"></p>
+        <div class="botones-sync">
+          <button type="button" id="btnPonerPin" class="primary">Poner PIN</button>
+          <button type="button" id="btnPonerBio">Activar Face ID / huella</button>
+          <label class="chk">Bloquear al volver tras
+            <select id="bloqueoMinutos"><option value="0">no, solo al abrir</option><option value="1">1 minuto</option><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="60">1 hora</option></select>
+          </label>
+          <button type="button" id="btnQuitarPin" class="peligro">Quitar bloqueo</button>
+        </div>
+      </div>
+
+      <div id="panelSync" class="panel-sync">
+        <h3>Sincronización entre dispositivos</h3>
+        <p class="ayuda">Con una cuenta de la empresa, los trabajos, clientes, documentos, gastos, tarifas y estos datos
+          se ven igual en el PC, el móvil y la tablet. Sin internet se sigue trabajando y se sube todo al volver.</p>
+        <div id="syncFuera">
+          <div class="grid">
+            <label class="wide">Dirección del proyecto (Project URL) <input id="syncUrl" type="url" autocomplete="off" placeholder="https://xxxx.supabase.co"></label>
+            <label class="wide">Clave pública (anon public) <input id="syncClave" autocomplete="off" spellcheck="false"></label>
+            <label>Correo de la cuenta <input id="syncEmail" type="email" autocomplete="username"></label>
+            <label>Contraseña <input id="syncPass" type="password" autocomplete="current-password"></label>
+          </div>
+          <div class="botones-sync">
+            <button type="button" id="btnSyncEntrar" class="primary">Entrar</button>
+            <button type="button" id="btnSyncCrear">Crear cuenta (solo la primera vez)</button>
+          </div>
+        </div>
+        <div id="syncDentro" hidden>
+          <p id="syncCuenta"></p>
+          <div class="botones-sync">
+            <button type="button" id="btnSyncAhora" class="primary">Sincronizar ahora</button>
+            <button type="button" id="btnSyncSalir">Cerrar sesión</button>
+          </div>
+        </div>
+        <p id="syncMensaje" class="sync-mensaje" role="status"></p>
+      </div>
+    </section>
+  </div>
+
+  <nav class="barra-movil" aria-label="Secciones">
+    <button type="button" data-ir-vista="inicio"><svg class="ico"><use href="#i-casa"/></svg><span>Inicio</span></button>
+    <button type="button" data-ir-vista="planos"><svg class="ico"><use href="#i-rect"/></svg><span>Planos</span></button>
+    <button type="button" class="nuevo" data-ir-vista="nuevo" aria-label="Nuevo plano"><svg class="ico"><use href="#i-mas"/></svg></button>
+    <button type="button" data-ir-vista="gestion"><svg class="ico"><use href="#i-doc"/></svg><span>Gestión</span></button>
+    <button type="button" data-ir-vista="trabajos"><svg class="ico"><use href="#i-carpeta"/></svg><span>Trabajos</span></button>
+  </nav>
+
+  <div id="pie-app" class="contenido">
+    <p class="ajustes"><a class="enlace" href="Manual-MarmoPro.pdf" target="_blank" rel="noopener">Manual de uso (PDF)</a> · <a class="enlace" href="legal.html" target="_blank" rel="noopener">Aviso legal y condiciones</a></p>
+    <p id="version"></p>
+  </div>
+
+  <!-- Hoja usada solo al imprimir -->
+  <div id="hojaImpresion" aria-hidden="true"><img id="imgImpresion" alt=""></div>
+
+  <dialog id="dlgTrabajos">
+    <div class="dlg-head">
+      <h2>Trabajos guardados</h2>
+      <button type="button" class="cerrar" data-close>✕</button>
+    </div>
+    <input type="search" id="buscar" placeholder="Buscar cliente, referencia, teléfono…">
+    <ul id="listaTrabajos"></ul>
+    <div class="dlg-foot">
+      <button type="button" id="btnExportar">Copia de seguridad</button>
+      <label class="boton">Restaurar copia<input type="file" id="fileImportar" accept="application/json,.json" hidden></label>
+    </div>
+  </dialog>
+
+  <dialog id="dlgTexto">
+    <form method="dialog">
+      <label id="dlgTextoLabel">Texto
+        <input id="dlgTextoInput" autocomplete="off">
+      </label>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgGrupos" class="grande">
+    <div class="dlg-head"><h2>Tarifas</h2><button type="button" class="cerrar" data-close>✕</button></div>
+    <section class="precio-rapido">
+      <h3>Precio rápido</h3>
+      <div class="pr-campos">
+        <label class="pr-material">Material <input id="prMaterial" list="listaMateriales" autocomplete="off" placeholder="Escribe el color o la marca"></label>
+        <label>Largo (cm) <input id="prLargo" type="number" inputmode="decimal" min="0" step="0.1" placeholder="320"></label>
+        <label>Fondo (cm) <input id="prFondo" type="number" inputmode="decimal" min="0" step="0.1" value="62"></label>
+        <label class="chk"><input type="checkbox" id="prCanto" checked> Frente con canto</label>
+      </div>
+      <p id="prResultado" class="pr-resultado"></p>
+    </section>
+    <details class="otros-precios">
+      <summary>Cantos, huecos, colocación y demás precios</summary>
+      <div id="listaConceptos"></div>
+    </details>
+    <h3 class="titulo-grupos">Colores y grupos</h3>
+    <p class="ayuda">Todos los materiales de tu tarifa por marca y grupo. Toca un color para usarlo en el trabajo.
+      Si tu proveedor saca un color nuevo, añádelo a su grupo con «+ Color» y tendrá los precios de ese grupo.</p>
+    <div class="barra-filtros">
+      <select id="gruposMarca" aria-label="Marca"></select>
+      <input type="search" id="gruposBuscar" placeholder="Buscar color…">
+    </div>
+    <div id="listaGrupos" class="lista-grupos"></div>
+  </dialog>
+
+  <dialog id="dlgArticulo">
+    <form id="formArticulo" method="dialog">
+      <div class="dlg-head"><h2>Artículo del almacén</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Nombre <input name="nombre" required autocomplete="off" placeholder="Ej. Disco de corte diamante 230"></label>
+      </div>
+      <div class="grid doc-cab">
+        <label>Categoría <select name="categoria"></select></label>
+        <label>Unidad <input name="unidad" autocomplete="off" list="listaUnidades" placeholder="ud, caja, litro…"></label>
+        <label>Cantidad <input name="cantidad" type="number" inputmode="decimal" step="any" min="0" value="0"></label>
+        <label>Avisar si baja de <input name="minimo" type="number" inputmode="decimal" step="any" min="0" value="1"></label>
+        <label>Precio por unidad (€) <input name="precio" type="number" inputmode="decimal" step="0.01" min="0"></label>
+        <label>Proveedor <input name="proveedor" autocomplete="off" list="listaProveedores"></label>
+        <label class="wide">Notas <input name="notas" autocomplete="off" placeholder="Medida, referencia, dónde está…"></label>
+      </div>
+      <datalist id="listaUnidades"><option>ud</option><option>caja</option><option>bote</option><option>cartucho</option><option>litro</option><option>kg</option><option>rollo</option><option>paquete</option></datalist>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarArticulo" class="peligro">Borrar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgRecordatorio">
+    <form id="formRecordatorio" method="dialog">
+      <div class="dlg-head"><h2>Recordatorio</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Qué hay que hacer <input name="titulo" required autocomplete="off" placeholder="Ej. Medir cocina de Ana · Pedir tablas a Cosentino"></label>
+      </div>
+      <div class="grid doc-cab">
+        <label>Día <input name="fecha" type="date" required></label>
+        <label>Hora <input name="hora" type="time"></label>
+        <label>Repetir <select name="repetir"><option value="">No se repite</option><option value="semanal">Cada semana</option><option value="mensual">Cada mes</option><option value="anual">Cada año</option></select></label>
+        <label>Avisar antes <select name="antes"><option value="0">A la hora</option><option value="30">30 minutos antes</option><option value="60">1 hora antes</option><option value="1440">1 día antes</option></select></label>
+        <label class="wide">Notas <input name="notas" autocomplete="off"></label>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarRecordatorio" class="peligro">Borrar</button>
+        <button type="button" id="btnIcsRecordatorio">Al calendario del móvil</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgConformidad" class="grande">
+    <form id="formConformidad" method="dialog">
+      <div class="dlg-head"><h2>Conformidad de la instalación</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <p class="ayuda" id="confTrabajo"></p>
+      <div class="grid doc-cab">
+        <label>Nombre y apellidos <input name="nombre" autocomplete="off" required></label>
+        <label>DNI / NIE <input name="dni" autocomplete="off" required placeholder="12345678Z"><small id="confDniAviso" class="aviso-dni"></small></label>
+        <label>Fecha <input name="fecha" type="date" required></label>
+        <label>Instalado por <input name="instalador" autocomplete="off" placeholder="Nombre del colocador"></label>
+        <label class="wide">Texto de conformidad <textarea name="texto" rows="4"></textarea></label>
+        <label class="wide">Incidencias u observaciones <textarea name="incidencias" rows="2" placeholder="Si no hay ninguna, déjalo vacío"></textarea></label>
+      </div>
+      <div class="firma-caja">
+        <div class="firma-cab"><b>Firma del cliente</b><button type="button" id="btnBorrarFirma" class="mini">Borrar firma</button></div>
+        <canvas id="lienzoFirma" width="1200" height="400" aria-label="Firma con el dedo o el ratón"></canvas>
+        <small class="ayuda">Firma aquí con el dedo o el ratón.</small>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnConfQuitar" class="peligro">Quitar parte</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button type="button" id="btnConfPdf">Descargar PDF</button>
+        <button type="button" id="btnConfCompartir">Compartir PDF</button>
+        <button value="ok" type="submit" class="primary">Guardar firmado</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgPin">
+    <form id="formPin" method="dialog">
+      <div class="dlg-head"><h2>PIN de la app</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <div class="grid una-col">
+        <label>Nuevo PIN (4 a 6 números) <input name="pin1" type="password" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required></label>
+        <label>Repite el PIN <input name="pin2" type="password" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required></label>
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar PIN</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgPlantilla">
+    <form id="formPlantilla" method="dialog">
+      <div class="dlg-head"><h2>Plantilla de cocina</h2><button type="submit" value="cancel" class="cerrar" formnovalidate>✕</button></div>
+      <p class="ayuda">Elige la forma y pon las medidas en centímetros, a lo largo de la pared. La app dibuja el plano con sus cotas y rellena las piezas del presupuesto.</p>
+      <div class="formas" id="formasPlantilla"></div>
+      <div class="grid medidas-plantilla">
+        <label data-campo="a">Tramo de la pared del fondo <input name="a" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 320"></label>
+        <label data-campo="b">Tramo de la pared izquierda <input name="b" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 240"></label>
+        <label data-campo="c">Tramo de la pared derecha <input name="c" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 180"></label>
+        <label>Fondo de la bancada <input name="fondo" type="number" inputmode="decimal" min="30" step="0.1" value="62"></label>
+        <label data-campo="isla">Isla: largo <input name="islaL" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 200"></label>
+        <label data-campo="isla">Isla: fondo <input name="islaF" type="number" inputmode="decimal" min="30" step="0.1" value="90"></label>
+        <label data-campo="pen">Península: largo <input name="penL" type="number" inputmode="decimal" min="30" step="0.1" placeholder="Ej. 160"></label>
+        <label data-campo="pen">Península: fondo <input name="penF" type="number" inputmode="decimal" min="30" step="0.1" value="90"></label>
+      </div>
+      <div class="casillas-plantilla">
+        <label class="chk"><input type="checkbox" name="canto" checked> Frentes con canto visto</label>
+        <label class="chk"><input type="checkbox" name="elementos" checked> Poner fregadero y vitro</label>
+        <label class="chk"><input type="checkbox" name="zocalo"> Zócalo en las paredes</label>
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Dibujar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgColumna">
+    <form method="dialog">
+      <h2>Medidas de la columna</h2>
+      <p class="ayuda">Medida en cm de cada lado que toca la encimera. Deja vacío el lado que no toca.</p>
+      <div class="cruz">
+        <input id="colArriba" inputmode="numeric" autocomplete="off" placeholder="Arriba" aria-label="Lado de arriba">
+        <input id="colIzq" inputmode="numeric" autocomplete="off" placeholder="Izq." aria-label="Lado izquierdo">
+        <div class="cuadro" aria-hidden="true">Columna</div>
+        <input id="colDer" inputmode="numeric" autocomplete="off" placeholder="Der." aria-label="Lado derecho">
+        <input id="colAbajo" inputmode="numeric" autocomplete="off" placeholder="Abajo" aria-label="Lado de abajo">
+      </div>
+      <div class="dlg-foot">
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgCliente">
+    <form method="dialog" id="formCliente">
+      <div class="dlg-head"><h2>Cliente</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid una-col">
+        <label>Nombre o razón social <input name="nombre" autocomplete="off" required></label>
+        <label>NIF / CIF <input name="nif" autocomplete="off"></label>
+        <label>Teléfono <input name="telefono" type="tel" autocomplete="off"></label>
+        <label>Correo <input name="email" type="email" autocomplete="off"></label>
+        <label>Dirección <input name="direccion" autocomplete="off"></label>
+        <label>Código postal y población <input name="poblacion" autocomplete="off"></label>
+        <label>Notas <textarea name="notas" rows="2"></textarea></label>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarCliente" class="peligro">Borrar</button>
+        <button value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgTipo">
+    <form method="dialog">
+      <div class="dlg-head"><h2>Nuevo documento</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="dlg-foot tipos">
+        <button value="presupuesto" type="submit">Presupuesto</button>
+        <button value="albaran" type="submit">Albarán</button>
+        <button value="factura" type="submit" class="primary">Factura</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgDocumento" class="grande">
+    <form method="dialog" id="formDoc">
+      <div class="dlg-head"><h2 id="docTitulo">Documento</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid doc-cab">
+        <label>Fecha <input type="date" id="docFecha"></label>
+        <label>Estado <select id="docEstado"></select></label>
+        <label class="wide">Cliente
+          <span class="fila-cliente">
+            <select id="docCliente"></select>
+            <button type="button" id="btnDocNuevoCliente" title="Nuevo cliente">+</button>
+          </span>
+        </label>
+        <label class="wide" id="docPagoCampo">Forma de pago <input id="docPago" autocomplete="off" placeholder="Transferencia, contado…"></label>
+      </div>
+      <p id="docClienteInfo" class="ayuda"></p>
+      <div class="tabla-lineas">
+        <table>
+          <thead><tr><th>Concepto</th><th>Cant.</th><th>Ud.</th><th>Precio</th><th class="num">Importe</th><th></th></tr></thead>
+          <tbody id="docLineas"></tbody>
+        </table>
+      </div>
+      <button type="button" id="btnAnadirLinea">+ Añadir línea</button>
+      <div class="doc-pie">
+        <label class="chk"><input type="checkbox" id="docIva" checked> Añadir IVA 21 %</label>
+        <div id="docTotales"></div>
+      </div>
+      <p id="docRentabilidad" class="rentabilidad" hidden></p>
+      <label class="campo-notas">Notas <textarea id="docNotas" rows="2"></textarea></label>
+      <div class="dlg-foot">
+        <button type="button" id="btnDocBorrar" class="peligro">Borrar</button>
+        <button type="button" id="btnDocAnular" class="peligro">Anular</button>
+        <button type="button" id="btnDocRectificar">Rectificar</button>
+        <button type="button" id="btnDocAlbaran">→ Albarán</button>
+        <button type="button" id="btnDocFactura">→ Factura</button>
+        <button type="button" id="btnDocImprimir">Imprimir / PDF</button>
+        <button type="button" id="btnDocDescargar">Descargar PDF</button>
+        <button type="button" id="btnDocCompartir">Compartir PDF</button>
+        <button type="button" id="btnDocGuardar" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="avisoCopia" class="aviso-copia" role="alert" hidden>
+    <span id="avisoCopiaTxt"></span>
+    <span>Guárdala en el ordenador, en el correo o en la nube para no perder trabajos ni facturas.</span>
+    <div>
+      <button type="button" id="btnCopiaAhora" class="primary">Hacer copia ahora</button>
+      <button type="button" id="btnCopiaLuego">Mañana</button>
+    </div>
+  </div>
+  <dialog id="dlgGasto">
+    <form method="dialog" id="formGasto">
+      <div class="dlg-head"><h2>Gasto</h2><button type="button" class="cerrar" data-close>✕</button></div>
+      <div class="grid doc-cab">
+        <label>Fecha <input type="date" name="fecha"></label>
+        <label>Categoría <select name="categoria"></select></label>
+        <label class="wide">Proveedor <input name="proveedor" autocomplete="off" list="listaProveedores"></label>
+        <label class="wide">Concepto <input name="concepto" autocomplete="off" placeholder="Ej.: tabla Silestone Blanco Zeus"></label>
+        <label>Base imponible (€) <input name="base" type="number" step="0.01" inputmode="decimal"></label>
+        <label>IVA <select name="tipoIva"><option value="21">21 %</option><option value="10">10 %</option><option value="4">4 %</option><option value="0">Sin IVA</option></select></label>
+        <label class="wide">Es de una cocina (opcional) <select name="docId"></select></label>
+      </div>
+      <p class="casillas-gasto">
+        <label class="chk"><input type="checkbox" name="deducible" checked> Deducible (tengo factura a mi nombre)</label>
+      </p>
+      <p id="gastoTotal" class="ayuda"></p>
+      <div class="dlg-foot">
+        <button type="button" id="btnBorrarGasto" class="peligro">Borrar</button>
+        <button type="button" id="btnDuplicarGasto">Repetir el mes que viene</button>
+        <button value="ok" type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+  <datalist id="listaProveedores"></datalist>
+
+  <div id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="tarifas.js"></script>
+  <script src="app.js"></script>
+  <script src="presupuesto.js"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="gestion.js"></script>
+  <script src="contabilidad.js"></script>
+  <script src="almacen.js"></script>
+  <script src="despiece.js"></script>
+  <script src="plantillas.js"></script>
+  <script src="conformidad.js"></script>
+  <script src="sync.js"></script>
+  <script src="inicio.js"></script>
+  <script src="bloqueo.js"></script>
+  <script src="licencia.js"></script>
+</body>
+</html>
