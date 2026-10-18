@@ -27,7 +27,16 @@ Suscripción: **49,99 € al mes** con 14 días de prueba (Stripe + Supabase).
    `marmopro/` del repositorio `mesa-fondeo`: https://javifx004-cmd.github.io/mesa-fondeo/marmopro/
    (si más adelante se compra un dominio propio, se puede apuntar a esta carpeta).
 
-Mientras `config.js` esté vacío, la app funciona en modo local (sin cuenta ni pago) para probarla.
+Mientras falten los datos de Supabase en `config.js`, se ve la pantalla de acceso pero las altas salen como
+«abren muy pronto»: solo entra el administrador.
+
+## Administrador (entrar gratis)
+- En la pantalla de acceso, abajo, **Administrador** → contraseña de administrador. Queda recordado en ese aparato;
+  se sale en Mi empresa → «Salir de administrador».
+- En `config.js` solo está la huella de la contraseña (`admin`), nunca la contraseña. Para cambiarla hay que generar
+  otra huella (PBKDF2-SHA256, 200 000 vueltas, sal en hexadecimal).
+- Con Supabase activo, para que tu propia cuenta sea gratis también en la nube, en el SQL Editor:
+  `update licencias set estado = 'admin', activa_hasta = '2999-12-31' where email = 'TU CORREO';`
 
 ## Avisos legales antes de vender
 - **Verifactu**: esta versión **no emite facturas** (`facturas: false` en `config.js`): el albarán es el documento de

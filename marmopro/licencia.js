@@ -6,6 +6,7 @@
 // El cliente solo puede leer la suya. Sin conexión se respeta la última fecha comprobada (+3 días).
 // ---------------------------------------------------------------------------
 const CLAVE_LICENCIA = 'marmopro.licencia';
+const CLAVE_ADMIN = 'marmopro.admin';
 const GRACIA_SIN_CONEXION = 3 * 86400000;
 const configurado = !!(MARMOPRO.supabaseUrl && MARMOPRO.supabaseClave);
 const pantallaAcceso = $('#acceso');
@@ -26,6 +27,16 @@ const cargarLogoSinMarca = cargarLogo;
 // eslint-disable-next-line no-global-assign
 cargarLogo = function cargarLogoConMarca() { cargarLogoSinMarca(); pintarMarca(); };
 $('#formEmpresa').addEventListener('input', () => setTimeout(pintarMarca, 50));
+
+// --- administrador: entra gratis con su contraseña (en config.js solo está la huella) ---
+const esAdmin = () => !!(MARMOPRO.admin && MARMOPRO.admin.huella && leerJSON(CLAVE_ADMIN, null) === MARMOPRO.admin.huella);
+async function huellaAdmin(pass) {
+  const a = MARMOPRO.admin;
+  const clave = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
+  const sal = new Uint8Array(a.sal.match(/../g).map((h) => parseInt(h, 16)));
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: a.vueltas }, clave, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 // --- licencia ---
 const licenciaGuardada = () => leerJSON(CLAVE_LICENCIA, null);
@@ -58,7 +69,9 @@ function ocultarAcceso() {
 }
 
 async function revisarAcceso() {
-  if (!configurado) return;   // sin configurar (pruebas): se usa sin cuenta
+  if (esAdmin()) { ocultarAcceso(); pintarSuscripcion(); return; }
+  // sin Supabase todavía: se ve la pantalla de acceso, pero solo entra el administrador
+  if (!configurado) { if (pantallaAcceso.hidden) mostrarAcceso('entrar'); return; }
   const s = confSync().sesion;
   if (!s) { mostrarAcceso('entrar'); return; }
   const guardada = licenciaGuardada();
@@ -87,6 +100,7 @@ $('#formAcceso').addEventListener('submit', async (e) => {
   const email = f.email.value.trim();
   const pass = f.pass.value;
   if (!email || pass.length < 6) { $('#accesoMensaje').textContent = 'Pon tu correo y una contraseña de al menos 6 caracteres.'; return; }
+  if (!configurado) { $('#accesoMensaje').textContent = `Las altas abren muy pronto.${MARMOPRO.soporte ? ` Escríbenos: ${MARMOPRO.soporte}` : ''}`; return; }
   if (crear && !f.empresa.value.trim()) { $('#accesoMensaje').textContent = 'Pon el nombre de tu empresa.'; return; }
   if (crear && !f.acepto.checked) { $('#accesoMensaje').textContent = 'Para crear la cuenta tienes que aceptar las condiciones y la privacidad.'; return; }
   $('#accesoMensaje').textContent = crear ? 'Creando tu cuenta…' : 'Entrando…';
@@ -123,6 +137,31 @@ $('#btnYaPague').addEventListener('click', async () => {
   await revisarAcceso();
   if (!pantallaAcceso.hidden) $('#accesoMensaje').textContent = 'Todavía no nos consta el pago. Espera un minuto y vuelve a probar.';
 });
+$('#btnAdmin').addEventListener('click', () => {
+  const f = $('#formAdmin');
+  f.hidden = !f.hidden;
+  if (!f.hidden) f.elements.pass.focus();
+});
+$('#formAdmin').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const campo = $('#formAdmin').elements.pass;
+  if (!campo.value) return;
+  $('#accesoMensaje').textContent = 'Comprobando…';
+  let ok = false;
+  try { ok = (await huellaAdmin(campo.value)) === MARMOPRO.admin.huella; } catch { /* navegador sin cifrado */ }
+  campo.value = '';
+  if (!ok) { $('#accesoMensaje').textContent = 'Contraseña de administrador incorrecta.'; return; }
+  escribirJSON(CLAVE_ADMIN, MARMOPRO.admin.huella);
+  $('#formAdmin').hidden = true;
+  $('#accesoMensaje').textContent = '';
+  await revisarAcceso();
+  aviso('Has entrado como administrador');
+});
+$('#btnAdminSalir').addEventListener('click', () => {
+  escribirJSON(CLAVE_ADMIN, null);
+  aviso('Has salido del modo administrador');
+  revisarAcceso();
+});
 $('#btnAccesoSalir').addEventListener('click', () => {
   guardarConfSync({ sesion: null });
   escribirJSON(CLAVE_LICENCIA, null);
@@ -133,13 +172,22 @@ $('#btnAccesoSalir').addEventListener('click', () => {
 function pintarSuscripcion() {
   const caja = $('#panelSuscripcion');
   if (!caja) return;
-  caja.hidden = !configurado;
+  const admin = esAdmin();
+  caja.hidden = !configurado && !admin;
+  $('#btnAdminSalir').hidden = !admin;
+  if (admin && !configurado) {
+    $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
+    $('#btnPortal').hidden = true;
+    $('#btnSuscribirse').hidden = true;
+    return;
+  }
   const l = licenciaGuardada();
   const hasta = l && l.hasta ? new Date(l.hasta).toLocaleDateString('es-ES') : '—';
-  const textos = { prueba: `Prueba gratis hasta el ${hasta}`, activa: `Suscripción activa (renueva el ${hasta})`, cancelada: `Cancelada: puedes usarla hasta el ${hasta}` };
+  const textos = { prueba: `Prueba gratis hasta el ${hasta}`, activa: `Suscripción activa (renueva el ${hasta})`, cancelada: `Cancelada: puedes usarla hasta el ${hasta}`, admin: 'Administrador: acceso gratis' };
   $('#suscripcionEstado').textContent = l ? (textos[l.estado] || `Estado: ${l.estado} · hasta ${hasta}`) : 'Sin comprobar';
   $('#btnPortal').hidden = !MARMOPRO.portalUrl;
   $('#btnSuscribirse').hidden = !(l && l.estado === 'prueba');
+  if (admin) $('#suscripcionEstado').textContent = 'Administrador: acceso gratis.';
   $('#suscripcionSoporte').textContent = MARMOPRO.soporte ? `Soporte: ${MARMOPRO.soporte}` : '';
 }
 $('#btnPortal').addEventListener('click', () => window.open(MARMOPRO.portalUrl, '_blank', 'noopener'));

@@ -1138,3 +1138,6 @@ body.sin-facturas .ini-cols:has(#iniPlazo) { grid-template-columns: 1fr; }
 .acceso-form .acepto input { min-height: 0; width: 18px; height: 18px; margin-top: 2px; flex: none; }
 .acceso-form .acepto a, .acceso-legal a { color: #e2c992; }
 .acceso-legal { margin: 8px 0 0; text-align: center; font-size: 12px; }
+.acceso-legal .enlace { font-size: 12px; color: rgba(241, 220, 171, .55); padding: 0; min-height: 0; text-decoration: underline; }
+#formAdmin { margin-top: 10px; }
+.acceso-tarjetas { margin: 4px 0 0; font-size: 12px; text-align: center; color: rgba(241, 220, 171, .6); }

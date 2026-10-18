@@ -41,10 +41,16 @@
         <button type="button" id="btnPagar" class="oro">Suscribirme</button>
         <button type="button" id="btnYaPague">Ya he pagado: comprobar</button>
         <button type="button" id="btnAccesoSalir" class="enlace">Entrar con otra cuenta</button>
+        <p class="acceso-tarjetas">Pago seguro con tarjeta a través de Stripe · Sin permanencia: te das de baja cuando quieras</p>
       </div>
       <p id="accesoMensaje" class="acceso-mensaje" role="status"></p>
       <p id="accesoPrecio" class="acceso-precio"></p>
-      <p class="acceso-legal"><a href="legal.html" target="_blank" rel="noopener">Aviso legal y privacidad</a></p>
+      <p class="acceso-legal"><a href="legal.html" target="_blank" rel="noopener">Aviso legal y privacidad</a> ·
+        <button type="button" id="btnAdmin" class="enlace">Administrador</button></p>
+      <form id="formAdmin" class="acceso-form" hidden novalidate>
+        <label>Contraseña de administrador <input name="pass" type="password" autocomplete="current-password"></label>
+        <button type="submit" class="oro">Entrar como administrador</button>
+      </form>
     </div>
   </div>
 
@@ -597,6 +603,7 @@
         <div class="botones-sync">
           <button type="button" id="btnSuscribirse" class="primary">Suscribirme ya</button>
           <button type="button" id="btnPortal">Gestionar suscripción (facturas y baja)</button>
+          <button type="button" id="btnAdminSalir" hidden>Salir de administrador</button>
         </div>
         <p id="suscripcionSoporte" class="ayuda"></p>
       </div>
