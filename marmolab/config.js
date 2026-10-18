@@ -5,8 +5,8 @@
 // ---------------------------------------------------------------------------
 const MARMOLAB = {
   // Proyecto de Supabase de MarmoLab (Project Settings → API): dirección y clave «anon public»
-  supabaseUrl: '',
-  supabaseClave: '',
+  supabaseUrl: 'https://poxzbvkfhbatpmlqmanf.supabase.co',
+  supabaseClave: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBveHpidmtmaGJhdHBtbHFtYW5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNTA0MjMsImV4cCI6MjEwNzkyNjQyM30.EF0n3GWs78GV_zIFZkOp5lKeD_24k4PYmLM-5MNc-oQ',
   // PayPal.me: usuario de paypal.me al que te mandan el pago del mes (se activa a mano, como Bizum)
   paypalMe: 'jcfx1',
   // PayPal con renovación automática (opcional, necesita PayPal Business): Client ID de la app y el ID del plan «P-…».
