@@ -1,4 +1,4 @@
-// Panel del administrador: ver los clientes y sumar meses pagados a mano (Bizum o PayPal.me).
+// Panel del administrador: ver quién paga, sumar meses pagados a mano (Bizum o PayPal.me), dar acceso gratis o quitarlo.
 // La clave es la misma contraseña de administrador de la app: se comprueba con su huella (PBKDF2, la de config.js).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -51,6 +51,18 @@ Deno.serve(async (req) => {
       .eq('user_id', fila.user_id);
     if (e2) return respuesta({ error: e2.message }, 500);
     return respuesta({ ok: true, activa_hasta: desde.toISOString() });
+  }
+
+  // dar acceso gratis para siempre, o quitarlo (deja de entrar ya)
+  if (p.accion === 'gratis' || p.accion === 'quitar') {
+    const cambios = p.accion === 'gratis'
+      ? { estado: 'admin', metodo: null, activa_hasta: '2999-12-31T00:00:00Z' }
+      : { estado: 'bloqueada', activa_hasta: new Date().toISOString() };
+    const { data, error } = await db.from('licencias').update({ ...cambios, actualizado: new Date().toISOString() })
+      .eq('email', String(p.email || '')).select('email');
+    if (error) return respuesta({ error: error.message }, 500);
+    if (!data || !data.length) return respuesta({ error: 'No hay ninguna cuenta con ese correo' }, 404);
+    return respuesta({ ok: true });
   }
 
   return respuesta({ error: 'Acción desconocida' }, 400);

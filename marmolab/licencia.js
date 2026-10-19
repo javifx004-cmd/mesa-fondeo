@@ -87,7 +87,7 @@ async function revisarAcceso() {
     const l = await comprobarLicencia();
     if (!l) { mostrarAcceso('entrar', 'La sesión ha caducado: vuelve a entrar.'); return; }
     if (licenciaVigente(l)) { ocultarAcceso(); return; }
-    const motivo = { prueba: 'Tu prueba gratis ha terminado.', pendiente: 'Cuenta lista. Para empezar, paga el primer mes.' };
+    const motivo = { prueba: 'Tu prueba gratis ha terminado.', pendiente: 'Cuenta lista. Para empezar, paga el primer mes.', bloqueada: `Tu acceso está desactivado.${MARMOLAB.soporte ? ` Escríbenos: ${MARMOLAB.soporte}` : ''}` };
     mostrarAcceso('pagar', motivo[l.estado] || 'Tu suscripción no está activa.');
   } catch {
     // sin conexión: vale la última comprobación unos días más
@@ -252,17 +252,21 @@ $('#formAdmin').addEventListener('submit', async (e) => {
   if (!campo.value) return;
   $('#accesoMensaje').textContent = 'Comprobando…';
   let ok = false;
-  try { ok = (await huellaAdmin(campo.value)) === MARMOLAB.admin.huella; } catch { /* navegador sin cifrado */ }
+  const clave = campo.value;
+  try { ok = (await huellaAdmin(clave)) === MARMOLAB.admin.huella; } catch { /* navegador sin cifrado */ }
   campo.value = '';
   if (!ok) { $('#accesoMensaje').textContent = 'Contraseña de administrador incorrecta.'; return; }
   escribirJSON(CLAVE_ADMIN, MARMOLAB.admin.huella);
+  recordarClaveAdmin(clave);
   $('#formAdmin').hidden = true;
   $('#accesoMensaje').textContent = '';
   await revisarAcceso();
   aviso('Has entrado como administrador');
+  if (configurado) setTimeout(() => { abrirGestion('empresa'); abrirPanelAdmin(); $('#panelAdmin').scrollIntoView({ block: 'start' }); }, 400);
 });
 $('#btnAdminSalir').addEventListener('click', () => {
   escribirJSON(CLAVE_ADMIN, null);
+  recordarClaveAdmin('');
   aviso('Has salido del modo administrador');
   revisarAcceso();
 });
@@ -310,7 +314,10 @@ $('#btnPortal').addEventListener('click', () => window.open('https://www.paypal.
 $('#btnSuscribirse').addEventListener('click', () => mostrarAcceso('pagar'));
 
 // --- «Clientes de MarmoLab»: solo el administrador (la clave se comprueba en el servidor) ---
+// la clave se guarda solo mientras la app está abierta (al entrar como administrador o al escribirla en el panel)
 let claveAdmin = '';
+try { claveAdmin = sessionStorage.getItem('marmolab.claveAdmin') || ''; } catch { /* nada */ }
+const recordarClaveAdmin = (c) => { claveAdmin = c; try { sessionStorage.setItem('marmolab.claveAdmin', c); } catch { /* nada */ } };
 async function panelAdmin(accion, extra = {}) {
   const c = confSync();
   const r = await fetch(`${c.url}/functions/v1/admin-licencias`, {
@@ -322,50 +329,112 @@ async function panelAdmin(accion, extra = {}) {
   if (!r.ok) throw new Error(datos.error || `Error ${r.status}`);
   return datos;
 }
-function pintarClientes(lista) {
+// cada cliente cae en un grupo: paga, gratis o no paga
+function grupoCliente(c) {
+  if (c.estado === 'admin') return 'gratis';
+  if (c.estado === 'bloqueada') return 'quitado';
+  return new Date(c.activa_hasta).getTime() > Date.now() && c.estado !== 'pendiente' ? 'paga' : 'nopaga';
+}
+let clientesAdmin = [];
+let filtroAdmin = 'todos';
+async function cargarClientes() {
+  clientesAdmin = (await panelAdmin('listar')).clientes || [];
+  pintarClientes();
+}
+function pintarClientes() {
   const caja = $('#adminLista');
   caja.innerHTML = '';
-  if (!lista.length) { caja.textContent = 'Todavía no hay clientes.'; return; }
-  const nombres = { prueba: 'Prueba', pendiente: 'Sin pagar', activa: 'Activa', cancelada: 'Cancelada', suspendida: 'Sin cobrar', admin: 'Gratis' };
+  const cuenta = { paga: 0, nopaga: 0, gratis: 0, quitado: 0 };
+  for (const c of clientesAdmin) cuenta[grupoCliente(c)]++;
+  $('#adminResumen').hidden = false;
+  $('#adminResumen').innerHTML = '';
+  const filtros = [['todos', 'Todos', clientesAdmin.length], ['paga', 'Pagan', cuenta.paga], ['nopaga', 'No pagan', cuenta.nopaga],
+    ['gratis', 'Gratis', cuenta.gratis], ['quitado', 'Sin acceso', cuenta.quitado]];
+  for (const [id, txt, n] of filtros) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `admin-filtro f-${id}${filtroAdmin === id ? ' activo' : ''}`;
+    b.innerHTML = '<b></b><span></span>';
+    b.querySelector('b').textContent = n;
+    b.querySelector('span').textContent = txt;
+    b.addEventListener('click', () => { filtroAdmin = id; pintarClientes(); });
+    $('#adminResumen').appendChild(b);
+  }
+  const buscar = ($('#adminBuscar').value || '').trim().toLowerCase();
+  const lista = clientesAdmin.filter((c) => (filtroAdmin === 'todos' || grupoCliente(c) === filtroAdmin) && (!buscar || (c.email || '').toLowerCase().includes(buscar)));
+  if (!lista.length) { caja.textContent = clientesAdmin.length ? 'Ningún cliente con ese filtro.' : 'Todavía no hay clientes.'; return; }
+  const nombres = { paga: 'Paga', nopaga: 'No paga', gratis: 'Gratis', quitado: 'Sin acceso' };
+  const metodos = { paypal: 'PayPal automático', bizum: 'Bizum', manual: 'pago a mano' };
   for (const c of lista) {
+    const g = grupoCliente(c);
     const fila = document.createElement('div');
-    fila.className = 'admin-fila';
+    fila.className = `admin-fila g-${g}`;
     const vence = new Date(c.activa_hasta);
-    const caducada = vence.getTime() < Date.now();
     const info = document.createElement('div');
     info.innerHTML = '<b></b><span></span>';
     info.querySelector('b').textContent = c.email || '(sin correo)';
-    const metodos = { paypal: 'PayPal automático', bizum: 'Bizum', manual: 'Pago a mano' };
-    info.querySelector('span').textContent = `${nombres[c.estado] || c.estado}${c.metodo ? ` · ${metodos[c.metodo] || c.metodo}` : ''} · ${caducada ? 'caducó' : 'hasta'} el ${vence.toLocaleDateString('es-ES')}`;
-    if (caducada) info.classList.add('caducada');
+    const detalle = g === 'gratis' ? 'para siempre'
+      : g === 'quitado' ? `acceso quitado el ${vence.toLocaleDateString('es-ES')}`
+      : c.estado === 'pendiente' ? 'nunca ha pagado'
+      : `${g === 'paga' ? 'pagado hasta' : 'caducó'} el ${vence.toLocaleDateString('es-ES')}${c.metodo ? ` · ${metodos[c.metodo] || c.metodo}` : ''}`;
+    info.querySelector('span').innerHTML = '<i></i> ';
+    info.querySelector('i').textContent = nombres[g];
+    info.querySelector('span').append(detalle);
     fila.appendChild(info);
-    for (const meses of [1, 12]) {
+    const acciones = document.createElement('div');
+    acciones.className = 'admin-acciones';
+    const boton = (texto, fn, clase = '') => {
       const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = meses === 1 ? '+1 mes' : '+1 año';
+      b.type = 'button'; b.textContent = texto; if (clase) b.className = clase;
       b.addEventListener('click', async () => {
         b.disabled = true;
-        try {
-          const r = await panelAdmin('sumar', { email: c.email, meses });
-          aviso(`${c.email}: pagado hasta el ${new Date(r.activa_hasta).toLocaleDateString('es-ES')}`);
-          pintarClientes((await panelAdmin('listar')).clientes);
-        } catch (err) { $('#adminMensaje').textContent = err.message; b.disabled = false; }
+        try { const msg = await fn(); if (msg) aviso(msg); await cargarClientes(); }
+        catch (err) { $('#adminMensaje').textContent = err.message; b.disabled = false; }
       });
-      fila.appendChild(b);
+      acciones.appendChild(b);
+    };
+    boton('+1 mes', async () => `${c.email}: pagado hasta el ${new Date((await panelAdmin('sumar', { email: c.email, meses: 1 })).activa_hasta).toLocaleDateString('es-ES')}`);
+    boton('+1 año', async () => `${c.email}: pagado hasta el ${new Date((await panelAdmin('sumar', { email: c.email, meses: 12 })).activa_hasta).toLocaleDateString('es-ES')}`);
+    if (g !== 'gratis') boton('Dar gratis', async () => { await panelAdmin('gratis', { email: c.email }); return `${c.email}: acceso gratis`; });
+    if (g !== 'quitado') {
+      // quitar el acceso pide confirmar con un segundo toque (en la app no hay ventanas de «¿seguro?»)
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'peligro'; b.textContent = 'Quitar acceso';
+      b.addEventListener('click', async () => {
+        if (!b.dataset.seguro) { b.dataset.seguro = '1'; b.textContent = '¿Seguro? Toca otra vez'; setTimeout(() => { delete b.dataset.seguro; b.textContent = 'Quitar acceso'; }, 4000); return; }
+        b.disabled = true;
+        try { await panelAdmin('quitar', { email: c.email }); aviso(`${c.email}: acceso quitado`); await cargarClientes(); }
+        catch (err) { $('#adminMensaje').textContent = err.message; b.disabled = false; }
+      });
+      acciones.appendChild(b);
     }
+    fila.appendChild(acciones);
     caja.appendChild(fila);
   }
 }
-$('#formPanelAdmin').addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function abrirPanelAdmin() {
+  if (!esAdmin()) return;
   if (!configurado) { $('#adminMensaje').textContent = 'Estará disponible cuando Supabase esté activado.'; return; }
-  claveAdmin = $('#adminClave').value;
-  $('#adminMensaje').textContent = 'Cargando…';
+  if (!claveAdmin) { $('#formPanelAdmin').hidden = false; return; }
+  $('#formPanelAdmin').hidden = true;
+  $('#adminMensaje').textContent = 'Cargando clientes…';
   try {
-    pintarClientes((await panelAdmin('listar')).clientes);
+    await cargarClientes();
     $('#adminMensaje').textContent = 'Cuando te llegue un pago, busca el correo del concepto y pulsa «+1 mes» (o «+1 año» si pone «anual»).';
-  } catch (err) { $('#adminMensaje').textContent = err.message; }
+  } catch (err) {
+    $('#adminMensaje').textContent = err.message;
+    if (/clave/i.test(err.message)) { recordarClaveAdmin(''); $('#formPanelAdmin').hidden = false; }
+  }
+}
+$('#formPanelAdmin').addEventListener('submit', (e) => {
+  e.preventDefault();
+  recordarClaveAdmin($('#adminClave').value);
+  $('#adminClave').value = '';
+  abrirPanelAdmin();
 });
+$('#adminBuscar').addEventListener('input', pintarClientes);
+$('#btnAdminRecargar').addEventListener('click', abrirPanelAdmin);
+$$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', abrirPanelAdmin));
 $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarSuscripcion));
 
 // La licencia se revisa al abrir, al volver a la app y cada 6 horas

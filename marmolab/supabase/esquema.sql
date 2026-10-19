@@ -24,7 +24,7 @@ create trigger datos_actualizado before insert or update on public.datos for eac
 create table if not exists public.licencias (
   user_id uuid primary key references auth.users on delete cascade,
   email text,
-  estado text not null default 'pendiente',       -- pendiente | activa | cancelada | suspendida | admin
+  estado text not null default 'pendiente',       -- pendiente | activa | cancelada | suspendida | bloqueada | admin
   activa_hasta timestamptz not null,
   metodo text,                                    -- paypal | bizum
   paypal_suscripcion text,

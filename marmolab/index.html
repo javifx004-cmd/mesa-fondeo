@@ -620,12 +620,14 @@
       </div>
 
       <div id="panelAdmin" class="panel-sync" hidden>
-        <h3>Clientes de MarmoLab</h3>
-        <p class="ayuda">Solo lo ves tú. Aquí ves quién paga y activas los meses que te pagan por Bizum o PayPal.</p>
-        <form id="formPanelAdmin" class="admin-clave">
-          <label>Clave del panel <input name="clave" type="password" autocomplete="current-password" id="adminClave"></label>
+        <div class="admin-cab"><h3>Clientes de MarmoLab</h3><button type="button" id="btnAdminRecargar" class="enlace">Actualizar</button></div>
+        <p class="ayuda">Solo lo ves tú: quién paga y quién no, y dar o quitar el acceso.</p>
+        <form id="formPanelAdmin" class="admin-clave" hidden>
+          <label>Contraseña de administrador <input name="clave" type="password" autocomplete="current-password" id="adminClave"></label>
           <button type="submit" class="primary">Ver clientes</button>
         </form>
+        <div id="adminResumen" class="admin-resumen" hidden></div>
+        <input type="search" id="adminBuscar" class="admin-buscar" placeholder="Buscar por correo…" aria-label="Buscar cliente por correo">
         <p id="adminMensaje" class="ayuda" role="status"></p>
         <div id="adminLista" class="admin-lista"></div>
       </div>
