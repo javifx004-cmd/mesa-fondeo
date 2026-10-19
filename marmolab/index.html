@@ -38,6 +38,10 @@
       </form>
       <div class="acceso-pagar">
         <p>Cuenta: <b id="accesoCuenta"></b></p>
+        <div class="planes-pago" id="planesPago" role="radiogroup" aria-label="Elige cómo pagar">
+          <button type="button" data-plan="mes" class="activo" role="radio" aria-checked="true">Mensual<b id="planMes"></b></button>
+          <button type="button" data-plan="anual" role="radio" aria-checked="false">Anual · −10 %<b id="planAnual"></b></button>
+        </div>
         <div class="metodos-pago">
           <button type="button" id="btnPayPal" class="oro">Pagar con PayPal</button>
           <button type="button" id="btnBizum">Pagar con Bizum</button>
@@ -47,7 +51,7 @@
         <button type="button" id="btnYaPague">Ya he pagado: comprobar</button>
         <button type="button" id="btnAccesoVolver" class="enlace" hidden>Volver a la app</button>
         <button type="button" id="btnAccesoSalir" class="enlace">Entrar con otra cuenta</button>
-        <p class="acceso-tarjetas">Pago mes a mes por Bizum o PayPal · Sin permanencia</p>
+        <p class="acceso-tarjetas">Por Bizum o PayPal · Mes a mes o un año con un 10 % menos · Sin permanencia</p>
       </div>
       <p id="accesoMensaje" class="acceso-mensaje" role="status"></p>
       <p id="accesoPrecio" class="acceso-precio"></p>

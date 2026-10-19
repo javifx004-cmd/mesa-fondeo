@@ -193,6 +193,7 @@ sincronizado.
 - Se paga de dos formas:
   - **Bizum**: envías 49,99 € al teléfono que sale en pantalla.
   - **PayPal**: el botón «Abrir PayPal y pagar» abre PayPal con los 49,99 € ya puestos.
+  - Puedes pagar **mes a mes (49,99 €)** o **un año (539,89 €, un 10 % menos)**.
   - En los dos, pon tu correo en el concepto. Se activa al recibirlo (normalmente el mismo día). No se renueva solo:
     la última semana aparece **Pagar el mes siguiente**.
 - En **Gestión → Mi empresa → Mi suscripción** ves hasta cuándo está pagada y cómo.

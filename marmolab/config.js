@@ -16,6 +16,8 @@ const MARMOLAB = {
   // Bizum: teléfono al que te mandan el pago. No se renueva solo: el mes lo activas tú en «Clientes de MarmoLab».
   bizum: '685 426 211',
   precio: '49,99 € al mes',
+  // pago anual por adelantado: 12 meses con un 10 % de descuento (599,88 € → 539,89 €)
+  precioAnual: '539,89 €',
   // false: sin facturas (el albarán es el documento de cobro). Activar solo con el software certificado Verifactu.
   facturas: false,
   diasPrueba: 0,   // días gratis al crear la cuenta (0 = hay que pagar el primer mes para entrar)

@@ -65,7 +65,7 @@ function mostrarAcceso(modo, mensaje = '') {
   $('#accesoMensaje').textContent = mensaje;
   $('#accesoPrecio').textContent = MARMOLAB.diasPrueba > 0
     ? `${MARMOLAB.diasPrueba} días gratis. Después, ${MARMOLAB.precio}. Sin permanencia.`
-    : `${MARMOLAB.precio[0].toUpperCase()}${MARMOLAB.precio.slice(1)}. Sin permanencia.`;
+    : `${MARMOLAB.precio[0].toUpperCase()}${MARMOLAB.precio.slice(1)}${MARMOLAB.precioAnual ? ` o ${MARMOLAB.precioAnual} al año` : ''}. Sin permanencia.`;
   $('#accesoContacto').textContent = MARMOLAB.soporte ? `Contacto: ${MARMOLAB.soporte}` : '';
   $('#btnAccesoVolver').hidden = !(modo === 'pagar' && (licenciaVigente(licenciaGuardada()) || esAdmin()));
   if (modo !== 'pagar') { $('#paypalBotones').hidden = true; $('#bizumInfo').hidden = true; }
@@ -156,7 +156,22 @@ async function esperarActivacion() {
   if (!pantallaAcceso.hidden) $('#accesoMensaje').textContent = 'Pago recibido. Si en un par de minutos no entra, pulsa «Ya he pagado».';
   else aviso('¡Gracias! Suscripción activada');
 }
-const paypalAutomatico = () => !!(MARMOLAB.paypalClienteId && MARMOLAB.paypalPlanId);
+// plan elegido: mensual o anual (un año por adelantado con descuento)
+let planPago = 'mes';
+const anual = () => planPago === 'anual' && !!MARMOLAB.precioAnual;
+$('#planMes').textContent = MARMOLAB.precio.replace(/ al mes$/, '');
+$('#planAnual').textContent = MARMOLAB.precioAnual || '';
+if (!MARMOLAB.precioAnual) $('#planesPago').hidden = true;
+$('#planesPago').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-plan]');
+  if (!b) return;
+  planPago = b.dataset.plan;
+  for (const x of $$('#planesPago [data-plan]')) { x.classList.toggle('activo', x === b); x.setAttribute('aria-checked', String(x === b)); }
+  // si ya se estaban viendo las instrucciones, se rehacen con el importe nuevo
+  if (!$('#bizumInfo').hidden) instruccionesPago($('#bizumInfo').dataset.via);
+  else if (!$('#paypalBotones').hidden && anual()) instruccionesPago('paypal');
+});
+const paypalAutomatico = () => !!(MARMOLAB.paypalClienteId && MARMOLAB.paypalPlanId) && !anual();
 $('#btnPayPal').addEventListener('click', async () => {
   $('#bizumInfo').hidden = true;
   const s = confSync().sesion;
@@ -191,9 +206,11 @@ function instruccionesPago(via) {
   if (!destino) { $('#accesoMensaje').textContent = sinActivar(via === 'bizum' ? 'Bizum' : 'PayPal'); return; }
   const s = confSync().sesion;
   const correo = s && s.usuario ? s.usuario.email : 'tu correo';
-  const importe = MARMOLAB.precio.replace(/ al mes$/, '');
+  const importe = anual() ? MARMOLAB.precioAnual : MARMOLAB.precio.replace(/ al mes$/, '');
+  const periodo = anual() ? 'un año' : 'un mes';
   const nombreVia = via === 'bizum' ? 'Bizum' : 'PayPal';
   const caja = $('#bizumInfo');
+  caja.dataset.via = via;
   caja.innerHTML = '';
   const t = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const p = (html) => { const el = document.createElement('p'); el.innerHTML = html; caja.appendChild(el); };
@@ -201,16 +218,17 @@ function instruccionesPago(via) {
     const a = document.createElement('a'); a.className = clase; a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = texto; caja.appendChild(a);
   };
   if (via === 'bizum') {
-    p(`Envía <b>${t(importe)}</b> por Bizum al <b>${t(destino)}</b>.`);
+    p(`Envía <b>${t(importe)}</b> (${periodo}) por Bizum al <b>${t(destino)}</b>.`);
   } else {
-    p(`Envía <b>${t(importe)}</b> por PayPal a <b>paypal.me/${t(destino)}</b>.`);
+    p(`Envía <b>${t(importe)}</b> (${periodo}) por PayPal a <b>paypal.me/${t(destino)}</b>.`);
     const cantidad = importe.replace(/[^\d,]/g, '').replace(',', '.');
     enlace(`https://www.paypal.com/paypalme/${encodeURIComponent(destino)}/${cantidad}EUR`, 'Abrir PayPal y pagar', 'boton-pago');
   }
-  p(`En el concepto pon tu correo: <b>${t(correo)}</b>`);
-  p('Lo activamos en cuanto lo veamos (normalmente el mismo día). No se renueva solo: cada mes, repite el pago.');
+  p(`En el concepto pon tu correo${anual() ? ' y «anual»' : ''}: <b>${t(correo)}${anual() ? ' anual' : ''}</b>`);
+  p(anual() ? 'Lo activamos en cuanto lo veamos (normalmente el mismo día) para 12 meses.'
+    : 'Lo activamos en cuanto lo veamos (normalmente el mismo día). No se renueva solo: cada mes, repite el pago.');
   if (MARMOLAB.soporte) {
-    enlace(`mailto:${MARMOLAB.soporte}?subject=${encodeURIComponent(`Pago MarmoLab (${nombreVia})`)}&body=${encodeURIComponent(`Hola, he enviado el pago de MarmoLab por ${nombreVia} desde la cuenta ${correo}.`)}`,
+    enlace(`mailto:${MARMOLAB.soporte}?subject=${encodeURIComponent(`Pago MarmoLab ${anual() ? 'anual' : 'mensual'} (${nombreVia})`)}&body=${encodeURIComponent(`Hola, he enviado el pago ${anual() ? 'anual' : 'mensual'} de MarmoLab (${importe}) por ${nombreVia} desde la cuenta ${correo}.`)}`,
       `Avisar a ${MARMOLAB.soporte} de que ya lo he enviado`);
   }
   caja.hidden = false;
@@ -345,7 +363,7 @@ $('#formPanelAdmin').addEventListener('submit', async (e) => {
   $('#adminMensaje').textContent = 'Cargando…';
   try {
     pintarClientes((await panelAdmin('listar')).clientes);
-    $('#adminMensaje').textContent = 'Cuando te llegue un Bizum o un PayPal, busca el correo del concepto y pulsa «+1 mes».';
+    $('#adminMensaje').textContent = 'Cuando te llegue un pago, busca el correo del concepto y pulsa «+1 mes» (o «+1 año» si pone «anual»).';
   } catch (err) { $('#adminMensaje').textContent = err.message; }
 });
 $$('.pestanas [data-pestana="empresa"]').forEach((b) => b.addEventListener('click', pintarSuscripcion));

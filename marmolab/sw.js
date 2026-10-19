@@ -1,5 +1,5 @@
 // Guarda la aplicación para que funcione sin conexión.
-const CACHE = 'marmolab-v1.11';
+const CACHE = 'marmolab-v1.12';
 const ARCHIVOS = ['./', 'index.html', 'styles.css', 'tarifas.js', 'app.js', 'presupuesto.js', 'gestion.js', 'contabilidad.js', 'almacen.js', 'despiece.js', 'plantillas.js', 'conformidad.js', 'sync.js', 'inicio.js', 'bloqueo.js',
   'vendor/anthropic-sdk.js', 'vendor/qrcode.js', 'fuentes/cormorant-garamond-latin-600-normal.woff2',
   'fuentes/cormorant-garamond-latin-700-normal.woff2', 'fuentes/manrope-latin-wght-normal.woff2', 'manifest.webmanifest', 'icon.svg', 'logo.svg',

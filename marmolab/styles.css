@@ -1156,3 +1156,7 @@ img.logo-serie { border-radius: 50% !important; box-shadow: none !important; }
 .admin-fila > div span { font-size: 13px; opacity: .75; }
 .admin-fila > div.caducada span { color: #b3412c; opacity: 1; }
 .bizum-info .boton-pago { display: block; text-align: center; margin: 4px 0 10px; padding: 11px; border-radius: 999px; background: #ffc439; color: #111; font-weight: 800; font-size: 15px; text-decoration: none; }
+.planes-pago { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+#acceso .planes-pago button { display: grid; gap: 2px; padding: 10px; border-radius: 14px; border: 1px solid rgba(226, 201, 146, .35); background: transparent; color: rgba(247, 242, 234, .85); font-size: 13px; }
+#acceso .planes-pago b { font-size: 18px; color: #f5efe4; }
+#acceso .planes-pago button.activo { border-color: #e2c992; background: rgba(226, 201, 146, .14); box-shadow: 0 0 0 1px #e2c992; }
